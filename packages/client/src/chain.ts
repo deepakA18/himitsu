@@ -7,7 +7,7 @@ import {
   type Hex,
 } from 'viem';
 import { RpcClient, verifyDeployment } from './index';
-import { NoteTree, hex32, type SavedNote } from './notes';
+import { NoteTree, hex32, withAmount, type SavedNote } from './notes';
 import { type Attempt, type AttemptState } from './vault';
 export const poolAbi = parseAbi([
   'function depositETH(bytes32 commitment) payable returns (uint32)',
@@ -19,7 +19,16 @@ export const poolAbi = parseAbi([
   'function spendAndSwapToNote(address pair,uint256 amount0Out,uint256 amount1Out,address outPool,bytes32 outCommitment)',
   'event Deposit(bytes32 indexed commitment,uint32 leafIndex,bytes32 root)',
 ]);
+export const poolV2Abi = parseAbi([
+  'function depositETH(bytes32 recoveryTag) payable returns (uint32)',
+  'function depositTokenAmount(bytes32 recoveryTag,uint256 amount) returns (uint32)',
+  'function validateSpend(bytes32 root,bytes32 nullifierHash,address recipient,uint256 amount)',
+  'function spendAndSwapQuoted(address pair,uint256 minOut,address outPool,bytes32 recoveryTag)',
+  'event DepositV2(bytes32 indexed commitment,uint32 leafIndex,bytes32 root,bytes32 recoveryTag,uint256 amount)',
+]);
 export interface Deployment {
+  noteVersion?: 2;
+  name?: string;
   version: 1;
   id: string;
   rpcUrl: string;
@@ -58,6 +67,7 @@ export interface Receipt {
   payer?: Hex;
 }
 export interface PoolSnapshot {
+  recovered?: Map<string, SavedNote>;
   tree: NoteTree;
   indices: Map<string, number>;
   spent: Map<string, boolean>;
@@ -114,6 +124,7 @@ export async function snapshot(
   for (const pool of [d.pool, d.outputPool]) {
     const tree = new NoteTree(),
       indices = new Map<string, number>();
+    const tags = new Map<string, { commitment: Hex; amount: string }>();
     for (let from = BigInt(d.deploymentBlock); from <= height; from += 2000n) {
       const to = from + 1999n < height ? from + 1999n : height;
       const logs = await rpc.request<
@@ -123,7 +134,15 @@ export async function snapshot(
           address: pool,
           fromBlock: `0x${from.toString(16)}`,
           toBlock: `0x${to.toString(16)}`,
-          topics: [keccak256(new TextEncoder().encode('Deposit(bytes32,uint32,bytes32)'))],
+          topics: [
+            keccak256(
+              new TextEncoder().encode(
+                d.noteVersion === 2
+                  ? 'DepositV2(bytes32,uint32,bytes32,bytes32,uint256)'
+                  : 'Deposit(bytes32,uint32,bytes32)',
+              ),
+            ),
+          ],
         },
       ]);
       logs.sort(
@@ -134,12 +153,36 @@ export async function snapshot(
       for (const log of logs) {
         if (log.removed) throw new Error('Chain changed during event sync');
         const decoded = decodeEventLog({
-          abi: poolAbi,
-          eventName: 'Deposit',
+          abi: d.noteVersion === 2 ? poolV2Abi : poolAbi,
+          eventName: d.noteVersion === 2 ? 'DepositV2' : 'Deposit',
           data: log.data,
           topics: log.topics as [Hex, ...Hex[]],
         });
-        const a = decoded.args;
+        const a = decoded.args as {
+          commitment: Hex;
+          leafIndex: number;
+          root: Hex;
+          recoveryTag?: Hex;
+          amount?: bigint;
+        };
+        if (d.noteVersion === 2) {
+          if (
+            !a.recoveryTag ||
+            a.amount === undefined ||
+            a.amount <= 0n ||
+            a.amount >= 1n << 128n ||
+            tags.has(a.recoveryTag.toLowerCase())
+          )
+            throw new Error('Invalid amount-bound deposit event');
+          // Validate the amount/tag binding for ALL events, not just this wallet's matches.
+          const { poseidon2 } = await import('poseidon-lite');
+          if (hex32(poseidon2([BigInt(a.recoveryTag), a.amount])) !== a.commitment)
+            throw new Error('Deposit amount commitment mismatch');
+          tags.set(a.recoveryTag.toLowerCase(), {
+            commitment: a.commitment,
+            amount: String(a.amount),
+          });
+        }
         if (a.leafIndex !== tree.leaves.length || indices.has(a.commitment.toLowerCase()))
           throw new Error('Non-contiguous or duplicate deposit events');
         indices.set(a.commitment.toLowerCase(), a.leafIndex);
@@ -149,6 +192,18 @@ export async function snapshot(
     }
     if (hex32(tree.root()) !== (await contractRead(rpc, pool, 'getLastRoot', [], tag)))
       throw new Error('Canonical event tree does not match pool root');
+    const recovered = new Map<string, SavedNote>();
+    if (d.noteVersion === 2)
+      for (const n of notes) {
+        if (n.deployment !== d.id || n.pool.toLowerCase() !== pool.toLowerCase()) continue;
+        const event = tags.get((n.baseCommitment ?? n.commitment).toLowerCase());
+        if (event) {
+          const found = withAmount(n, event.amount);
+          if (found.commitment !== event.commitment)
+            throw new Error('Recovered commitment mismatch');
+          recovered.set(n.id, found);
+        }
+      }
     const spent = new Map<string, boolean>();
     await Promise.all(
       notes
@@ -156,7 +211,7 @@ export async function snapshot(
           (n) =>
             n.deployment === d.id &&
             n.pool.toLowerCase() === pool.toLowerCase() &&
-            indices.has(n.commitment.toLowerCase()),
+            (indices.has(n.commitment.toLowerCase()) || recovered.has(n.id)),
         )
         .map(async (n) =>
           spent.set(
@@ -169,6 +224,7 @@ export async function snapshot(
       tree,
       indices,
       spent,
+      recovered,
       nonce: BigInt(await rpc.request<Hex>('eth_getTransactionCount', [pool, tag])),
     });
   }

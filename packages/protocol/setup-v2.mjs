@@ -1,0 +1,22 @@
+// Explicit local development setup. Preserves every v1 proving artifact.
+import { execFileSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+process.chdir(fileURLToPath(new URL('.', import.meta.url)));
+mkdirSync('circuits/v2', { recursive: true });
+execFileSync('circom', ['circuits/spend-v2.circom', '--r1cs', '--wasm', '--sym', '-l', 'node_modules/circomlib/circuits', '-o', 'circuits/v2'], { stdio: 'inherit' });
+const cli = fileURLToPath(new URL('./node_modules/snarkjs/cli.js', import.meta.url));
+const run = args => execFileSync(process.execPath, [cli, ...args], { stdio: 'pipe' });
+console.log('Building separate v2 development proving key…');
+run(['groth16','setup','circuits/v2/spend-v2.r1cs','circuits/pot_final.ptau','circuits/v2/initial.zkey']);
+run(['zkey','contribute','circuits/v2/initial.zkey','circuits/v2/spend-v2.zkey','--name=Himitsu v2 dev','-e='+randomBytes(64).toString('hex')]);
+run(['zkey','verify','circuits/v2/spend-v2.r1cs','circuits/pot_final.ptau','circuits/v2/spend-v2.zkey']);
+run(['zkey','export','verificationkey','circuits/v2/spend-v2.zkey','circuits/v2/verification_key.json']);
+run(['zkey','export','solidityverifier','circuits/v2/spend-v2.zkey','circuits/v2/SpendVerifierV2.sol']);
+const stock = readFileSync('circuits/v2/SpendVerifierV2.sol','utf8');
+const gas = {7:20000,6:1000,8:250000};
+const patched = stock.replace(/staticcall\(sub\(gas\(\), 2000\), (\d)/g, (_,p) => `staticcall(${gas[p]}, ${p}`).replace('contract Groth16Verifier','contract SpendVerifierV2');
+if(patched.includes('gas()')) throw new Error('Unpatched verifier GAS site');
+writeFileSync('contracts/src/SpendVerifierV2.sol', patched);
+console.log('V2 artifacts verified. V1 artifacts unchanged.');

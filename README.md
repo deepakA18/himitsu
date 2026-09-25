@@ -12,7 +12,7 @@ The supplied implementation is preserved in `packages/protocol`, with import has
 - Immutable automatic-paymaster bytecode generator with explicit trusted-pool ABI shapes, fee/gas caps, prefix ordering, prior validation status, no sponsor signatures, and a separate ETH funding path.
 - Unit tests for envelope binding, receipt rollback, submission uncertainty, and paymaster policy control flow.
 
-**Implemented for local testing:** Next.js UI, browser Groth16 proving, encrypted IndexedDB vault with 24-word phrase recovery and encrypted backup/restore, canonical event reconstruction, and shared-pool nonce reconciliation. The automatic paymaster passes the native private swap, output withdrawal, and failed-swap rollback flow on the locally patched Ethrex client. The imported circuit and lifecycle tests also pass locally. The paymaster test interpreter is deliberately limited: it does not establish EVM gas bounds, admission compatibility, or proof soundness. Never deploy it with real funds.
+**Implemented for local testing:** Next.js UI, browser Groth16 proving, portable private-note files with encrypted per-note IndexedDB transaction caches, plus legacy 24-word phrase recovery and encrypted backup/restore at `/legacy`, canonical event reconstruction, and shared-pool nonce reconciliation. The automatic paymaster passes the native private swap, output withdrawal, and failed-swap rollback flow on the locally patched Ethrex client. The imported circuit and lifecycle tests also pass locally. The paymaster test interpreter is deliberately limited: it does not establish EVM gas bounds, admission compatibility, or proof soundness. Never deploy it with real funds.
 
 ## Commands
 
@@ -40,6 +40,9 @@ cd /Users/deepakagashe/Desktop/ethrex
 
 ## Basic testing app
 
+The latest app defaults to **Market swaps · v2**, with live Uniswap quotes, slippage limits and the full swap output in one amount-bound private note. Use the deployment selector for original fixed-size v1 notes. See `docs/market-swaps-v2.md` for accounting, recovery, privacy limits and validation.
+
+
 `app/` contains a minimal Next.js interface. Proofs run in a browser worker with the existing Circom circuit and Groth16 key. The browser submits frame transactions directly to RPC; there is no signing server, relayer, or bundler. The prefunded contract pays gas.
 
 From the repository root, with the patched local node running:
@@ -54,16 +57,20 @@ bun run dev
 
 Open http://127.0.0.1:3000. `deploy:app` writes `deployments/app.local.json`, the public deployment manifest, and browser proving assets. It deploys test pools, liquidity and a sponsor funded with 0.1 test ETH. Do not redeploy on every app start: old notes are bound to their original deployment. The manifest pins chain ID, genesis, a postdeployment anchor block, contract runtime hashes, and proving-asset hashes.
 
-1. Create a vault with a local password of at least 12 characters. Reveal the new 24-word Himitsu phrase, save it offline, hide it and re-enter it to confirm. To recover in an empty browser, select “Restore with recovery phrase” and choose a new local password. Encrypted backups remain supported.
-2. Connect a deposit wallet, or choose **Use local test wallet**. The latter creates an encrypted dev-only key and displays its address; fund that address with local test ETH. It is limited to chain 9 at a loopback RPC. An injected wallet should also use the configured devnet.
-3. Deposit 0.1 ETH to receive a 0.1 WETH note. Use **Refresh / reconcile** after two blocks.
-4. Select the note and swap to a fixed 150 gUSD note. Proving may take several seconds. Then withdraw the output note to a test address.
+1. **Deposit:** connect an injected wallet on chain 9, choose **Create deposit note**, download the private note, and confirm that you saved it. Only then approve the ETH deposit in your wallet. No phrase or local password is required.
+2. **Swap:** paste/import the WETH note, review the live quote and slippage, then download and confirm a **new output note before submission**. The entire actual gUSD output becomes that note. Retain the input note until confirmation; a failed swap leaves it unspent.
+3. **Withdraw:** paste/import an unspent input or output note and enter the recipient. The full note amount is withdrawn; WETH notes pay WETH, not native ETH. No connected wallet is required to authorize a private spend.
+4. **Legacy recovery:** `/legacy` retains the existing phrase/password interface and encrypted backups. It does not overwrite the original browser vault. Its local test wallet remains available for existing test workflows. The pool selector is under **Pool details & network status** on the new page.
 
-Private notes and the transaction journal are encrypted with AES-GCM using a password-derived PBKDF2 key. Notes and the full raw transaction are saved before broadcast. IndexedDB revision checks and Web Locks prevent stale tabs from overwriting the vault. Browser storage can still be cleared or evicted: the confirmed recovery phrase restores new confirmed notes from pool events without the old local password. Keep an encrypted backup for legacy random notes, pending transaction journals and local test-wallet keys. The phrase does not recover those. Losing both the phrase and usable vault/backup loses access. Use one active browser per phrase. See `docs/recovery.md` for the versioned derivation and limits. Encrypted storage does not protect an unlocked page from malicious scripts.
+Each downloaded file is an **unencrypted bearer secret**. Anyone holding it can spend its note. Save a new file for every deposit and swap output; there is no master recovery phrase for these random notes. A pre-swap output file contains the recovery tag preimage; its exact amount is reconstructed and verified against canonical pool events. Notes are bound to chain ID, genesis, immutable deployment identity, pool, and circuit version. Imported files cannot choose the RPC endpoint.
+
+The browser keeps AES-GCM encrypted per-note transaction records. The supplied note derives the cache key, so there is no separate password. Secrets are not stored in plaintext in browser storage. The raw signed transaction is saved before broadcast, and re-importing the source note in the same browser recovers pending history. Browser cleanup removes this journal; the file still recovers confirmed note ownership on a fresh device. Use one active browser per note and do not retry an uncertain submission from another device. Keep both source and output files until confirmation. Encrypted storage does not protect an open page from malicious scripts.
+
+See `docs/private-notes.md` for the format and flow, and run `bun run test:private-notes` for the real devnet note-file round trip. This uses the existing deployment; do not redeploy to test the UI.
 
 Reconciliation rebuilds trees from canonical deposit events and checks nullifiers, pool nonces and receipts at a consistent block. Two-block confirmation is a devnet policy, not finality. Unknown broadcasts reserve the input note until chain evidence resolves them. Nonce conflicts release only unspent notes for an explicit retry; no automatic reproving or replacement occurs. A later reorg reopens cached outcomes for reconciliation.
 
-The current fixed quote deliberately leaves excess AMM output in the pair; this is a test flow, not a market-price swap interface. The UI is intentionally basic. `bun run build:app` produces a production build; `bun run --cwd app start` serves it. Development mode uses polling to avoid host file-watcher limits.
+The original v1 fixed quote leaves excess AMM output in the pair. V2 replaces that path with exact-input market swaps and full-output private notes; it enforces slippage atomically. The UI is intentionally basic. `bun run build:app` produces a production build; `bun run --cwd app start` serves it. Development mode uses polling to avoid host file-watcher limits.
 
 Validation commands (integration commands spend only local test assets):
 
@@ -73,6 +80,7 @@ bun run typecheck:app
 bun run build:app
 RPC_URL=http://127.0.0.1:8567 bun run test:surplus
 bun run test:client
+bun run test:market
 # With the app running and a usable Playwright Chromium installation:
 bun run test:browser
 ```

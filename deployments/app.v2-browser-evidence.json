@@ -1,0 +1,20 @@
+{
+  "deployment": "0xa9b709c7592a19e23f5385a286724ea42ee0ef3d:0x1638b3326cadf52be9cb69333fadc9fbb76c13d80219655fc550bfe79b2892d2",
+  "origin": "http://127.0.0.1:3000",
+  "recoveryOrigin": "http://127.0.0.1:3001",
+  "phraseOnlyRecovery": true,
+  "originalVaultLocked": true,
+  "automaticConfirmations": true,
+  "browserProofs": true,
+  "outputAmount": "157609410164332580779",
+  "transactions": [
+    "0x232a049d4ec006c1c2ed808220b78ad6f056a663dd0b127ac266d15b1c815260",
+    "0xfb50097f4236f3fc47c31d5cd2d4c3f4fe1fab261e104a2bdca23aff1d6359d6",
+    "0x6af118a8903117a1c9f37056728cb114c0616eaf472723d965fda969215695e2"
+  ],
+  "gasUsed": [
+    "1178026",
+    "1650782",
+    "502374"
+  ]
+}

@@ -15,12 +15,12 @@ const chain = defineChain({
 const password = 'himitsu browser test vault 2026';
 async function unlock(page: Page) {
   await page.getByLabel('Vault password', { exact: true }).fill(password);
-  await page.getByRole('button', { name: 'Create / unlock vault' }).click();
+  await page.getByRole('button', { name: 'Unlock private wallet', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Export backup' })).toBeEnabled({ timeout: 20000 });
   await expect(page.getByRole('alert')).toHaveCount(0);
 }
 async function reconcile(page: Page) {
-  await page.getByRole('button', { name: 'Refresh / reconcile' }).click();
+  await page.getByRole('button', { name: 'Check now' }).click();
   await expect(page.getByRole('status')).toContainText('Reconciled', { timeout: 20000 });
 }
 async function waitAvailable(page: Page, count: number) {
@@ -37,6 +37,7 @@ async function waitAvailable(page: Page, count: number) {
 test('browser deposit, durable reload, local proof swap, backup and withdrawal', async ({
   page,
   context,
+  browser,
 }) => {
   const account = privateKeyToAccount(generatePrivateKey()),
     wallet = createWalletClient({ account, chain, transport: http(d.rpcUrl) });
@@ -71,8 +72,11 @@ test('browser deposit, durable reload, local proof swap, backup and withdrawal',
   });
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto('/');
-  await unlock(page);
+  await page.goto('/legacy');
+  await page.getByLabel('New local vault password', { exact: true }).fill(password);
+  await page.getByLabel('Confirm local password').fill(password);
+  await page.getByRole('button', { name: 'Create and generate phrase' }).click();
+  await expect(page.getByRole('button', { name: 'Reveal recovery phrase' })).toBeEnabled();
   await page.getByRole('button', { name: 'Reveal recovery phrase' }).click();
   const phrase = await page.locator('.recovery-phrase').innerText();
   expect(phrase.split(' ')).toHaveLength(24);
@@ -92,12 +96,12 @@ test('browser deposit, durable reload, local proof swap, backup and withdrawal',
   await unlock(page);
   await waitAvailable(page, 1);
   await page.getByLabel('Available note').selectOption({ index: 1 });
-  await page.getByRole('button', { name: 'Swap to 150 gUSD note' }).click();
+  await page.getByRole('button', { name: 'Swap to private gUSD' }).click();
   await expect(page.getByRole('status')).toContainText('Transaction submitted', {
     timeout: 120000,
   });
   await waitAvailable(page, 1);
-  await expect(page.locator('tbody tr').filter({ hasText: '150 gUSD' })).toContainText('Available');
+  await expect(page.locator('tbody tr').filter({ hasText: 'gUSD' })).toContainText('Available');
   await expect(page.locator('tbody tr').filter({ hasText: '0.1 WETH' })).toContainText('Spent');
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export backup' }).click();
@@ -108,10 +112,24 @@ test('browser deposit, durable reload, local proof swap, backup and withdrawal',
   expect(encrypted.format).toBe('himitsu-vault');
   expect(encrypted.secret).toBeUndefined();
   const second = await context.newPage();
-  await second.goto('/');
+  await second.goto('/legacy');
   await unlock(second);
   await expect(second.locator('tbody tr')).toHaveCount(2);
   await second.close();
+  const recoveryContext = await browser.newContext();
+  const recoveryPage = await recoveryContext.newPage();
+  await recoveryPage.goto('http://127.0.0.1:3000/legacy');
+  await recoveryPage.getByRole('button', { name: 'Restore from phrase', exact: true }).click();
+  await recoveryPage.getByLabel('New local vault password', { exact: true }).fill(password);
+  await recoveryPage.getByLabel('Confirm local password').fill(password);
+  await recoveryPage.getByLabel('24-word Himitsu recovery phrase').fill(phrase);
+  await recoveryPage.getByRole('button', { name: 'Restore phrase and scan' }).click();
+  await expect(recoveryPage.locator('tbody tr')).toHaveCount(2, { timeout: 30000 });
+  await expect(recoveryPage.locator('tbody tr').filter({ hasText: 'gUSD' })).toContainText(
+    'Available',
+  );
+  await page.getByRole('button', { name: 'Lock', exact: true }).click();
+  page = recoveryPage;
   await page.getByLabel('Available note').selectOption({ index: 1 });
   await page.getByLabel('Withdrawal recipient').fill(account.address);
   await page.getByRole('button', { name: 'Withdraw note', exact: true }).click();
@@ -135,7 +153,23 @@ test('browser deposit, durable reload, local proof swap, backup and withdrawal',
     functionName: 'balanceOf',
     args: [account.address],
   });
-  expect(balance).toBe(BigInt(d.outputDenomination));
+  expect(balance).toBeGreaterThan(0n);
+  expect(
+    await client.readContract({
+      address: d.token,
+      abi: [
+        {
+          name: 'balanceOf',
+          type: 'function',
+          stateMutability: 'view',
+          inputs: [{ name: 'owner', type: 'address' }],
+          outputs: [{ type: 'uint256' }],
+        },
+      ],
+      functionName: 'balanceOf',
+      args: [d.pool],
+    }),
+  ).toBe(0n);
   for (const width of [375, 768, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     expect(
@@ -144,4 +178,5 @@ test('browser deposit, durable reload, local proof swap, backup and withdrawal',
   }
   await page.screenshot({ path: '.local/app-tested.png', fullPage: true });
   expect(errors).toEqual([]);
+  await recoveryContext.close();
 });

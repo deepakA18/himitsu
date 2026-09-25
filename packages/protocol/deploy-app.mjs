@@ -1,3 +1,4 @@
+import { publishDeployment } from './publish-deployment.mjs';
 import { mkdirSync, writeFileSync, copyFileSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -85,7 +86,7 @@ const config = {
   codeHashes,
   artifacts,
 };
-writeFileSync(join(publicDir, 'deployment.json'), JSON.stringify(config, null, 2) + '\n');
+publishDeployment(root, config, 'Fixed notes · v1 · ' + config.pool.slice(0,10));
 writeFileSync(join(root, 'deployments/app.local.json'), JSON.stringify(config, null, 2) + '\n');
 console.log('Public app deployment saved. RPC:', RPC_URL, 'Pool:', system.pool);
 process.exit(0);

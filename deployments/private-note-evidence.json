@@ -1,0 +1,17 @@
+{
+  "deployment": "0xa9b709c7592a19e23f5385a286724ea42ee0ef3d:0x1638b3326cadf52be9cb69333fadc9fbb76c13d80219655fc550bfe79b2892d2",
+  "deposit": "0xe5b45be4cdc51f85403755a6a831352232adcd2fe6e72df30d39379851957665",
+  "swap": "0x4e78677564a51f99009aa38c58fc2f83a0972a50f2558457f623c942223f918e",
+  "withdrawal": "0xe027964e72d47103b574130eddb4a2c06e20f5d9c1a5a018b4fe5c46967ca425",
+  "outputAmount": "152159361338794709554",
+  "checks": [
+    "portable deposit",
+    "lost response journal recovered with input note",
+    "duplicate deposit rejected",
+    "fresh-file swap",
+    "pre-swap file recovers actual output",
+    "spent input rejected",
+    "fresh-file withdrawal",
+    "spent output reconciled"
+  ]
+}

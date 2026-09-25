@@ -1,4 +1,10 @@
 import {
+  readiness,
+  fundingRequired,
+  minimumOutput,
+  type Readiness,
+} from '../../../packages/client/src/market';
+import {
   recoveryKey,
   recoveryCandidates,
   deriveNote,
@@ -20,6 +26,7 @@ import {
   reconciled,
   contractRead,
   poolAbi,
+  poolV2Abi,
   type Deployment,
   type Snapshot,
   type Block,
@@ -30,7 +37,12 @@ import {
   isActive,
   type Attempt,
 } from '../../../packages/client/src/vault';
-import { type SavedNote, hex32 } from '../../../packages/client/src/notes';
+import {
+  type SavedNote,
+  hex32,
+  withAmount,
+  validateSecretNote,
+} from '../../../packages/client/src/notes';
 import {
   serializeTransaction,
   signingHash,
@@ -48,6 +60,7 @@ declare global {
 export class Controller {
   readonly rpc: RpcClient;
   current: Snapshot | null = null;
+  health: Readiness | null = null;
   constructor(
     readonly deployment: Deployment,
     readonly vault: Vault,
@@ -64,7 +77,16 @@ export class Controller {
     });
   }
   async refresh() {
-    return this.exclusive(() => this.sync());
+    return this.exclusive(async () => {
+      const result = await this.sync();
+      this.health = await readiness(this.rpc, this.deployment);
+      return result;
+    });
+  }
+  private async requireReady(action: 'deposit' | 'swap' | 'withdrawal') {
+    this.health = await readiness(this.rpc, this.deployment);
+    const issues = this.health[`${action}Issues`];
+    if (issues.length) throw new Error(issues.join('. '));
   }
   private candidates?: { phrase: string; key: CryptoKey; notes: SavedNote[] };
   private async sync() {
@@ -79,11 +101,16 @@ export class Controller {
     }
     const saved = this.vault.data.notes;
     const known = new Set(
-      saved.map((n) => n.deployment + ':' + n.pool.toLowerCase() + ':' + n.commitment),
+      saved.map(
+        (n) => n.deployment + ':' + n.pool.toLowerCase() + ':' + (n.baseCommitment ?? n.commitment),
+      ),
     );
     const candidates = recovery?.confirmed
       ? (this.candidates?.notes ?? []).filter(
-          (n) => !known.has(n.deployment + ':' + n.pool.toLowerCase() + ':' + n.commitment),
+          (n) =>
+            !known.has(
+              n.deployment + ':' + n.pool.toLowerCase() + ':' + (n.baseCommitment ?? n.commitment),
+            ),
         )
       : [];
 
@@ -93,18 +120,20 @@ export class Controller {
       [...saved, ...candidates],
       this.vault.data.attempts,
     );
+    const recovered = (n: SavedNote) =>
+      s.pools.get(n.pool.toLowerCase())?.recovered?.get(n.id) ?? n;
     const notes = [
-      ...saved,
-      ...candidates.filter((n) =>
-        s.pools.get(n.pool.toLowerCase())?.indices.has(n.commitment.toLowerCase()),
-      ),
+      ...saved.map(recovered),
+      ...candidates
+        .map(recovered)
+        .filter((n) => s.pools.get(n.pool.toLowerCase())?.indices.has(n.commitment.toLowerCase())),
     ];
     const next = {
       ...this.vault.data,
       notes,
       attempts: reconciled(this.vault.data.attempts, notes, this.deployment, s),
     };
-    await this.vault.save(next);
+    if (JSON.stringify(next) !== JSON.stringify(this.vault.data)) await this.vault.save(next);
     this.current = s;
     return s;
   }
@@ -128,11 +157,35 @@ export class Controller {
       pool,
       nextCounter(this.vault.data.notes, this.deployment.id, pool),
     );
-    return { ...note, createdAt: Date.now() };
+    const valued =
+      this.deployment.noteVersion === 2 && pool.toLowerCase() === this.deployment.pool.toLowerCase()
+        ? withAmount(note, this.deployment.denomination)
+        : note;
+    return { ...valued, createdAt: Date.now() };
   }
-  async deposit(wallet: Wallet, account: Hex) {
+  private preparedNote(note: SavedNote, pool: Hex): SavedNote {
+    validateSecretNote(note);
+    const d = this.deployment;
+    if (note.deployment !== d.id || note.pool.toLowerCase() !== pool.toLowerCase())
+      throw new Error('Prepared note belongs to a different pool');
+    if (
+      this.vault.data.notes.some((n) => n.id === note.id || n.nullifierHash === note.nullifierHash)
+    )
+      throw new Error('This output note was already used. Generate and save a fresh note.');
+    if (
+      d.noteVersion === 2 &&
+      pool.toLowerCase() === d.pool.toLowerCase() &&
+      note.amount !== d.denomination
+    )
+      throw new Error('Wrong input note amount');
+    if (pool.toLowerCase() === d.outputPool.toLowerCase() && note.amount !== undefined)
+      throw new Error('Output note must not assume the received amount');
+    return note;
+  }
+  async deposit(wallet: Wallet, account: Hex, prepared?: SavedNote) {
     return this.exclusive(async () => {
       await this.sync();
+      await this.requireReady('deposit');
       if (
         BigInt((await wallet.request({ method: 'eth_chainId' })) as string) !==
         BigInt(this.deployment.chainId)
@@ -141,7 +194,9 @@ export class Controller {
       const accounts = (await wallet.request({ method: 'eth_accounts' })) as string[];
       if (!accounts.some((a) => a.toLowerCase() === account.toLowerCase()))
         throw new Error('Wallet account changed; reconnect');
-      const note = await this.newNote(this.deployment.pool),
+      const note = prepared
+          ? this.preparedNote(prepared, this.deployment.pool)
+          : await this.newNote(this.deployment.pool),
         attempt: Attempt = {
           id: crypto.randomUUID(),
           deployment: this.deployment.id,
@@ -168,7 +223,7 @@ export class Controller {
               data: encodeFunctionData({
                 abi: poolAbi,
                 functionName: 'depositETH',
-                args: [note.commitment],
+                args: [note.baseCommitment ?? note.commitment],
               }),
             },
           ],
@@ -236,6 +291,8 @@ export class Controller {
     kind: 'swap' | 'withdraw',
     recipient: string,
     onProgress: (text: string) => void,
+    swapQuote?: { expected: string; minimum: string; quotedAt: number },
+    preparedOutput?: SavedNote,
   ) {
     return this.exclusive(async () => {
       onProgress('Checking canonical notes and pool nonce…');
@@ -257,12 +314,31 @@ export class Controller {
         )
       )
         throw new Error('This pool has an unresolved local transaction. Reconcile it first.');
+      await this.requireReady(kind === 'swap' ? 'swap' : 'withdrawal');
+      const expected = swapQuote ? BigInt(swapQuote.expected) : BigInt(this.health!.quote);
+      const minimum = swapQuote ? BigInt(swapQuote.minimum) : minimumOutput(expected, 50);
+      if (kind === 'swap' && d.noteVersion === 2) {
+        if (expected <= 0n || minimum <= 0n || minimum > expected)
+          throw new Error('Invalid swap quote');
+        if (
+          swapQuote &&
+          (Date.now() - swapQuote.quotedAt > 30000 || swapQuote.quotedAt > Date.now())
+        )
+          throw new Error('Quote expired. Review the refreshed quote and try again.');
+        if (BigInt(this.health!.quote) < minimum)
+          throw new Error('Price moved beyond your slippage limit. Review a new quote.');
+      }
       const nonce = await this.freeNonce(note.pool);
       if (await contractRead(this.rpc, note.pool, 'spent', [note.nullifierHash]))
         throw new Error('This note was just spent; refresh');
       const latest = await this.rpc.request<Block>('eth_getBlockByNumber', ['latest', false]),
         deadline = BigInt(latest.timestamp) + 300n;
-      const output = kind === 'swap' ? await this.newNote(d.outputPool) : undefined;
+      const output =
+        kind === 'swap'
+          ? preparedOutput
+            ? this.preparedNote(preparedOutput, d.outputPool)
+            : await this.newNote(d.outputPool)
+          : undefined;
       if (output)
         await this.vault.save({ ...this.vault.data, notes: [...this.vault.data.notes, output] });
       const target = kind === 'swap' ? d.pair : (recipient as Hex);
@@ -270,19 +346,25 @@ export class Controller {
         root = hex32(pool.tree.root());
       const execute =
         kind === 'swap'
-          ? encodeFunctionData({
-              abi: poolAbi,
-              functionName: 'spendAndSwapToNote',
-              args: [
-                d.pair,
-                d.wethIsToken0 ? 0n : BigInt(d.outputDenomination),
-                d.wethIsToken0 ? BigInt(d.outputDenomination) : 0n,
-                d.outputPool,
-                output!.commitment,
-              ],
-            })
+          ? d.noteVersion === 2
+            ? encodeFunctionData({
+                abi: poolV2Abi,
+                functionName: 'spendAndSwapQuoted',
+                args: [d.pair, minimum, d.outputPool, output!.commitment],
+              })
+            : encodeFunctionData({
+                abi: poolAbi,
+                functionName: 'spendAndSwapToNote',
+                args: [
+                  d.pair,
+                  d.wethIsToken0 ? 0n : BigInt(d.outputDenomination),
+                  d.wethIsToken0 ? BigInt(d.outputDenomination) : 0n,
+                  d.outputPool,
+                  output!.commitment,
+                ],
+              })
           : encodeFunctionData({ abi: poolAbi, functionName: 'spend' });
-      const fee = BigInt(latest.baseFeePerGas) * 2n + 1_000_000_000n;
+      const fee = fundingRequired(BigInt(latest.baseFeePerGas), kind === 'swap').fee;
       if (fee > 10_000_000_000n) throw new Error('Network fee exceeds sponsor policy');
       const tx: FrameTransaction = {
         chainId: BigInt(d.chainId),
@@ -307,9 +389,12 @@ export class Controller {
             limits: { execution: 500000n, state: 0n },
             value: 0n,
             data: encodeFunctionData({
-              abi: poolAbi,
+              abi: d.noteVersion === 2 ? poolV2Abi : poolAbi,
               functionName: 'validateSpend',
-              args: [root, note.nullifierHash, target],
+              args:
+                d.noteVersion === 2
+                  ? [root, note.nullifierHash, target, BigInt(note.amount!)]
+                  : [root, note.nullifierHash, target],
             }),
           },
           {
@@ -344,6 +429,7 @@ export class Controller {
         txHashLo: lo.toString(),
         nullifier: note.nullifier,
         secret: note.secret,
+        ...(d.noteVersion === 2 ? { amount: note.amount } : {}),
         ...pool.tree.path(index),
       });
       tx.signatures[0]!.signature = proof;
@@ -368,6 +454,22 @@ export class Controller {
         deadline: deadline.toString(),
         raw,
         hash,
+        ...(kind === 'swap' && d.noteVersion === 2
+          ? { quote: { expected: expected.toString(), minimum: minimum.toString() } }
+          : {}),
+        maxFeePerGas: tx.fees.maxFeePerGas.toString(),
+        frameDetails: tx.frames.map((f, i) => ({
+          mode: f.mode === 1 ? 'VERIFY' : 'SENDER',
+          purpose: [
+            'Check expiry',
+            'Verify note ownership and authorize this action',
+            'Approve gas payment onchain',
+            kind === 'swap' ? 'Swap and create output note atomically' : 'Withdraw the note',
+          ][i]!,
+          target: f.target ?? tx.sender,
+          executionGas: f.limits.execution.toString(),
+          stateGas: f.limits.state.toString(),
+        })),
         state: 'broadcasting',
         createdAt: Date.now(),
       };

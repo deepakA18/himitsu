@@ -13,6 +13,16 @@ export type AttemptState =
   | 'conflict'
   | 'expired';
 export interface Attempt {
+  frameDetails?: {
+    mode: string;
+    purpose: string;
+    target: Hex;
+    executionGas: string;
+    stateGas: string;
+  }[];
+  maxFeePerGas?: string;
+  quote?: { expected: string; minimum: string; changeRecipient?: Hex };
+
   id: string;
   deployment: string;
   kind: 'deposit' | 'swap' | 'withdraw';
@@ -131,6 +141,28 @@ function validate(data: VaultData) {
       !Number.isSafeInteger(a.createdAt)
     )
       throw new Error('Invalid attempt record');
+    if (a.frameDetails) {
+      if (!Array.isArray(a.frameDetails) || a.frameDetails.length > 8)
+        throw new Error('Invalid frame details');
+      for (const f of a.frameDetails) {
+        if (
+          !['VERIFY', 'SENDER'].includes(f.mode) ||
+          typeof f.purpose !== 'string' ||
+          f.purpose.length > 200 ||
+          !/^\d+$/.test(f.executionGas) ||
+          !/^\d+$/.test(f.stateGas)
+        )
+          throw new Error('Invalid frame details');
+        assertHex(f.target, 20);
+      }
+    }
+    if (
+      a.quote &&
+      (!/^\d+$/.test(a.quote.expected) ||
+        !/^\d+$/.test(a.quote.minimum) ||
+        BigInt(a.quote.minimum) > BigInt(a.quote.expected))
+    )
+      throw new Error('Invalid saved quote');
     attemptIds.add(a.id);
     assertHex(a.sender, 20);
     if (a.hash) assertHex(a.hash, 32);
@@ -205,11 +237,41 @@ export class Vault {
     private saved: Envelope,
     public data: VaultData,
   ) {}
-  static async open(store: VaultStore, password: string, restoredPhrase?: string) {
+  static async openPrivateNote(store: VaultStore, secretKey: string) {
+    const saved = await store.read();
+    if (saved) {
+      envelope(saved);
+      const key = await derive(secretKey, saved.salt);
+      return new Vault(store, key, saved, await decrypt(saved, key));
+    }
+    if (secretKey.length < 64) throw new Error('Private note cache requires a high-entropy key');
+    const salt = encode(crypto.getRandomValues(new Uint8Array(16)));
+    const key = await derive(secretKey, salt);
+    const data: VaultData = { version: 1, notes: [], attempts: [] };
+    const fresh = await encrypt(data, key, salt, 0);
+    await store.compareAndSet(null, fresh);
+    return new Vault(store, key, fresh, data);
+  }
+  static async create(store: VaultStore, password: string) {
+    if (await store.read())
+      throw new Error('A private wallet already exists here. Unlock it instead.');
+    return Vault.open(store, password, undefined, true);
+  }
+  static async unlock(store: VaultStore, password: string) {
+    if (!(await store.read()))
+      throw new Error('No private wallet saved in this browser. Create or restore one.');
+    return Vault.open(store, password);
+  }
+  static async open(
+    store: VaultStore,
+    password: string,
+    restoredPhrase?: string,
+    createOnly = false,
+  ) {
     const restored = restoredPhrase === undefined ? undefined : normalizePhrase(restoredPhrase);
     const saved = await store.read();
     if (saved) {
-      if (restored !== undefined)
+      if (restored !== undefined || createOnly)
         throw new Error(
           'Restore requires an empty browser vault; existing notes were not overwritten',
         );

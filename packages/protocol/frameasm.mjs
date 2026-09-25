@@ -40,10 +40,11 @@ const PROOF_LEN = 256
  * Calldata is the pool's own msg.data: validateSpend(bytes32,bytes32,address),
  * hence the offsets 4 / 36 / 68 past the selector.
  */
-export function spendValidatorRuntime(verifier) {
+export function spendValidatorRuntime(verifier, amountBound = false) {
+  const selector = amountBound ? BigInt("0x" + Buffer.from(keccak_256(Buffer.from(VERIFY_PROOF_SIGNATURE.replace("uint256[5]", "uint256[6]")))).toString("hex").slice(0,8)) : VERIFY_PROOF_SELECTOR;
   return assemble([
     // mem[0x00] = snarkjs verifier selector, left-aligned.
-    ['PUSH', VERIFY_PROOF_SELECTOR << 224n, 32], ['PUSH', 0], 'MSTORE',
+    ['PUSH', selector << 224n, 32], ['PUSH', 0], 'MSTORE',
 
     // The proof rides in the ARBITRARY signature entry, whose bytes sig_hash
     // elides -- which is what lets the proof commit to sig_hash.
@@ -62,12 +63,13 @@ export function spendValidatorRuntime(verifier) {
     ['PUSH', 0x08], 'TXPARAM',
     'DUP1',
     ['PUSH', 128], 'SHR',
-    ['PUSH', 0x164], 'MSTORE',                    // txHashHi
+    ['PUSH', amountBound ? 0x184 : 0x164], 'MSTORE',                    // txHashHi
     ['PUSH', (1n << 128n) - 1n, 16], 'AND',
-    ['PUSH', 0x184], 'MSTORE',                    // txHashLo
+    ['PUSH', amountBound ? 0x1a4 : 0x184], 'MSTORE',                    // txHashLo
 
+    ...(amountBound ? [['PUSH', 100], 'CALLDATALOAD', ['PUSH', 0x164], 'MSTORE'] : []),
     // STATICCALL pops [gas, address, argsOffset, argsLength, retOffset, retLength].
-    ['PUSH', 32], ['PUSH', RET_AT], ['PUSH', VERIFIER_ARGS_LEN], ['PUSH', 0],
+    ['PUSH', 32], ['PUSH', RET_AT], ['PUSH', VERIFIER_ARGS_LEN + (amountBound ? 32 : 0)], ['PUSH', 0],
     ['PUSH', verifier, 20],
     ['PUSH', 400000], // literal, never the GAS opcode
     'STATICCALL',

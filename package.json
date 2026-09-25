@@ -25,7 +25,13 @@
     "deploy:app": "bun run build:protocol && node packages/protocol/deploy-app.mjs",
     "test:browser": "node node_modules/@playwright/test/cli.js test",
     "test:surplus": "node packages/protocol/surplus.mjs",
-    "test:client": "bun build scripts/test-client.ts --target=node --packages=external --outfile=.local/test-client.mjs && node .local/test-client.mjs"
+    "test:client": "bun build scripts/test-client.ts --target=node --packages=external --outfile=.local/test-client.mjs && node .local/test-client.mjs",
+    "setup:v2": "node packages/protocol/setup-v2.mjs",
+    "deploy:app:v2": "node packages/protocol/compile-contracts.mjs && node packages/protocol/deploy-app-v2.mjs",
+    "test:market": "bun build scripts/test-market.ts --target=node --packages=external --outfile=.local/test-market.mjs && node .local/test-market.mjs",
+    "test:readiness": "bun scripts/test-readiness.ts",
+    "test:v2-deposits": "bun scripts/test-v2-deposits.ts",
+    "test:private-notes": "bun build scripts/test-private-notes.ts --target=node --packages=external --outfile=.local/test-private-notes.mjs && node .local/test-private-notes.mjs"
   },
   "dependencies": {
     "@scure/bip39": "1.6.0",

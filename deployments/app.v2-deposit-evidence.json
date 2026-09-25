@@ -1,0 +1,7 @@
+{
+  "deployment": "0xa9b709c7592a19e23f5385a286724ea42ee0ef3d:0x1638b3326cadf52be9cb69333fadc9fbb76c13d80219655fc550bfe79b2892d2",
+  "donationCannotMintCredit": true,
+  "freshTransferRequired": true,
+  "amountBoundsEnforced": true,
+  "swapAllowanceCleared": true
+}

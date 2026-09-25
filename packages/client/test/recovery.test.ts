@@ -88,3 +88,17 @@ test('enabling recovery preserves legacy notes and cannot replace an existing ph
   expect(v.data.recovery!.phrase).toBe(original);
   expect(v.data.notes).toEqual([legacy]);
 });
+
+test('create and unlock are separate actions and never overwrite an existing wallet', async () => {
+  const destination = store();
+  await expect(Vault.unlock(destination, 'test local password')).rejects.toThrow(
+    'No private wallet',
+  );
+  const created = await Vault.create(destination, 'test local password');
+  await expect(Vault.create(destination, 'another local password')).rejects.toThrow(
+    'already exists',
+  );
+  expect((await Vault.unlock(destination, 'test local password')).data.recovery).toEqual(
+    created.data.recovery,
+  );
+});

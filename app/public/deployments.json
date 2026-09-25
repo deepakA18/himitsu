@@ -1,0 +1,12 @@
+[
+  {
+    "name": "Market swaps · v2",
+    "url": "/deployments/0xa9b709c7592a19e23f5385a286724ea42ee0ef3d.json",
+    "id": "0xa9b709c7592a19e23f5385a286724ea42ee0ef3d:0x1638b3326cadf52be9cb69333fadc9fbb76c13d80219655fc550bfe79b2892d2"
+  },
+  {
+    "name": "Original fixed notes · v1",
+    "url": "/deployments/0xb81eb4138da8f5abc8437e7451997c3756aca77b.json",
+    "id": "0xb81eb4138da8f5abc8437e7451997c3756aca77b:0xd079e904828af1257c0625135b5595a7ef303aeccbf01b18e4247c3f39664049"
+  }
+]

@@ -237,3 +237,353 @@ textarea {
   line-height: 2;
   word-spacing: 0.35em;
 }
+
+.deployment-choice {
+  margin-bottom: 24px;
+}
+.quote-box {
+  padding: 16px;
+  margin: 16px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+summary {
+  cursor: pointer;
+  padding: 12px 0;
+  min-height: 44px;
+  font-weight: 600;
+}
+summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+details {
+  overflow-wrap: anywhere;
+}
+
+/* The coins use asset-specific tones; the rest inherits the existing theme. */
+:root {
+  --coin-eth: #e6e9f4;
+  --coin-eth-ink: #3d4667;
+  --coin-facet: #7986b0;
+  --coin-usd: #deeddf;
+  --swap-radius: 24px;
+  --coin-size: 76px;
+}
+.swap-card {
+  max-width: 820px;
+  margin: 0 auto 32px;
+  padding: 32px;
+  border-radius: var(--swap-radius);
+}
+.swap-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.swap-heading .eyebrow {
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+.swap-heading h2 {
+  font-size: clamp(24px, 4vw, 34px);
+  letter-spacing: -1px;
+  font-weight: 500;
+  margin: 0;
+}
+.swap-stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  isolation: isolate;
+}
+.swap-amount-panel {
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 112px 24px 20px;
+  text-align: center;
+}
+.receive-panel {
+  background: color-mix(in srgb, var(--coin-usd) 30%, var(--surface));
+}
+.swap-token-name {
+  font-size: 18px;
+  font-weight: 600;
+}
+.swap-amount-panel label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+  margin-top: 20px;
+}
+.swap-amount-panel input {
+  text-align: center;
+  border: 0;
+  background: transparent;
+  font-size: clamp(24px, 4vw, 40px);
+  font-weight: 500;
+  letter-spacing: -1px;
+  padding: 0;
+  border-radius: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.swap-amount-panel .hint {
+  min-height: 20px;
+  margin-bottom: 0;
+}
+.coin-track {
+  position: absolute;
+  inset: 24px 0 auto;
+  height: var(--coin-size);
+  pointer-events: none;
+  z-index: 2;
+}
+.coin-carrier {
+  position: absolute;
+  top: 0;
+  width: calc(50% - 6px);
+  display: flex;
+  justify-content: center;
+}
+.coin-from {
+  left: 0;
+  --travel: calc(100% + 12px);
+  --arc: -20px;
+  --rotation: 360deg;
+  z-index: 2;
+}
+.coin-to {
+  right: 0;
+  --travel: calc(-100% - 12px);
+  --arc: 20px;
+  --rotation: -360deg;
+}
+.token-coin {
+  width: var(--coin-size);
+  height: var(--coin-size);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px solid currentColor;
+  outline: 4px solid var(--surface);
+  outline-offset: -7px;
+}
+.eth-coin {
+  color: var(--coin-eth-ink);
+  background: var(--coin-eth);
+}
+.eth-coin svg {
+  width: 28px;
+  height: 44px;
+}
+.usd-coin {
+  color: var(--primary);
+  background: var(--coin-usd);
+}
+.usd-coin span {
+  font-size: 40px;
+  font-weight: 500;
+}
+.swap-bridge {
+  position: absolute;
+  top: 172px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 20px;
+}
+.swap-balance,
+.swap-settings,
+.swap-benefits {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+.swap-balance {
+  font-size: 13px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  color: var(--muted);
+}
+.swap-balance strong {
+  color: var(--text);
+}
+.swap-settings {
+  margin: 8px 0 24px;
+  align-items: end;
+}
+.swap-settings > div {
+  min-width: 0;
+}
+.swap-settings label {
+  font-size: 13px;
+}
+.swap-settings select {
+  min-width: 110px;
+}
+.swap-minimum {
+  text-align: right;
+  display: grid;
+  font-size: 13px;
+}
+.swap-minimum .hint {
+  margin: 0 0 8px;
+}
+.swap-submit {
+  width: 100%;
+  min-height: 56px;
+  border-radius: 14px;
+  font-size: 17px;
+}
+.swap-feedback {
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  min-height: 20px;
+  overflow-wrap: anywhere;
+}
+.swap-benefits {
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  font-size: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+.swap-disclosure {
+  text-align: center;
+  font-size: 12px;
+}
+/* Deliberately slower than a UI transition: requested rolling progress illustration,
+   never delays submission or confirmation. Two offset arcs keep both coins visible. */
+@media (prefers-reduced-motion: no-preference) {
+  .is-rolling .coin-carrier {
+    animation: coin-cross 3.2s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+  }
+  .is-rolling .token-coin {
+    animation: coin-roll 3.2s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+  }
+}
+@keyframes coin-cross {
+  0%,
+  8%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(calc(var(--travel) / 2), var(--arc));
+  }
+  42%,
+  58% {
+    transform: translate(var(--travel), 0);
+  }
+  75% {
+    transform: translate(calc(var(--travel) / 2), var(--arc));
+  }
+  92% {
+    transform: translate(0, 0);
+  }
+}
+@keyframes coin-roll {
+  0%,
+  8%,
+  100% {
+    transform: rotate(0deg);
+  }
+  42%,
+  58% {
+    transform: rotate(var(--rotation));
+  }
+  92% {
+    transform: rotate(0deg);
+  }
+}
+@media (max-width: 540px) {
+  :root {
+    --coin-size: 60px;
+  }
+  .swap-card {
+    padding: 16px;
+  }
+  .swap-heading {
+    align-items: start;
+  }
+  .swap-heading .badge {
+    display: none;
+  }
+  .swap-amount-panel {
+    padding: 100px 8px 16px;
+    border-radius: 16px;
+  }
+  .swap-amount-panel input {
+    font-size: 25px;
+  }
+  .swap-amount-panel .hint {
+    font-size: 12px;
+    min-height: 36px;
+  }
+  .swap-bridge {
+    top: 157px;
+    width: 32px;
+    height: 32px;
+  }
+  .eth-coin svg {
+    width: 22px;
+    height: 34px;
+  }
+  .usd-coin span {
+    font-size: 32px;
+  }
+}
+.note-tabs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.note-tabs button {
+  flex: 1;
+}
+.note-action,
+.note-backup {
+  max-width: 820px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.note-backup {
+  border: 2px solid var(--primary);
+}
+.check-label {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-weight: 400;
+}
+.check-label input {
+  width: 22px;
+  min-height: 44px;
+  flex-shrink: 0;
+}
+.note-summary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+a {
+  color: var(--primary);
+}

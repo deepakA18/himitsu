@@ -9,7 +9,7 @@ import type { Hex } from 'viem';
 import { createRequire } from 'node:module';
 const snarkjs = createRequire(process.cwd() + '/packages/protocol/package.json')('snarkjs');
 const { FUNDER_KEY } = await import(process.cwd() + '/packages/protocol/ghost.mjs');
-const d = JSON.parse(readFileSync('app/public/deployment.json', 'utf8')) as Deployment;
+const d = JSON.parse(readFileSync(process.env.DEPLOYMENT_FILE ?? 'app/public/deployment.json', 'utf8')) as Deployment;
 // Two independent browser origins/profiles have separate Web Locks and vaults.
 Object.defineProperty(globalThis, 'navigator', {
   value: { locks: { request: async (_name: string, fn: () => unknown) => fn() } },
@@ -18,12 +18,29 @@ Object.defineProperty(globalThis, 'navigator', {
 async function prover(_d: Deployment, input: unknown): Promise<Hex> {
   const { proof, publicSignals } = await snarkjs.groth16.fullProve(
     input,
-    'packages/protocol/circuits/spend_js/spend.wasm',
-    'packages/protocol/circuits/spend_final.zkey',
+    d.noteVersion === 2
+      ? 'packages/protocol/circuits/v2/spend-v2_js/spend-v2.wasm'
+      : 'packages/protocol/circuits/spend_js/spend.wasm',
+    d.noteVersion === 2
+      ? 'packages/protocol/circuits/v2/spend-v2.zkey'
+      : 'packages/protocol/circuits/spend_final.zkey',
     undefined,
     undefined,
     { singleThread: true },
   );
+  if (d.noteVersion === 2) {
+    const vk = JSON.parse(
+      readFileSync('packages/protocol/circuits/v2/verification_key.json', 'utf8'),
+    );
+    assert.equal(await snarkjs.groth16.verify(vk, publicSignals, proof), true);
+    const forged = [...publicSignals];
+    forged[3] = String(BigInt(forged[3]) + 1n);
+    assert.equal(
+      await snarkjs.groth16.verify(vk, forged, proof),
+      false,
+      'Proof must bind the exact amount',
+    );
+  }
   const encoded = await snarkjs.groth16.exportSolidityCallData(proof, publicSignals);
   return ('0x' +
     encoded
@@ -78,7 +95,7 @@ async function settled(c: Controller, id: string) {
     if (['confirmed', 'conflict', 'failed', 'expired'].includes(a.state)) return a;
     await new Promise((r) => setTimeout(r, 600));
   }
-  throw new Error('Reconciliation did not settle');
+  throw new Error('Reconciliation did not settle: ' + JSON.stringify(c.vault.data.attempts.find(a => a.id === id)));
 }
 const a = await client(),
   b = await client();
@@ -154,6 +171,9 @@ const summary = {
   lostResponseRecovered: true,
   outputNoteRecovered: true,
   withdrawalConfirmed: true,
+  noteVersion: d.noteVersion ?? 1,
+  recoveredOutputAmount: recoveredOutput.amount ?? d.outputDenomination,
+  amountBindingVerified: d.noteVersion === 2,
   phraseRestoreWithNewPassword: true,
   counterGapRecovery: [32, 64],
   transactions: [loser.hash, first.hash, retry.hash, outputWithdrawal.hash],

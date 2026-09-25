@@ -1,523 +1,637 @@
 'use client';
-import { useEffect, useState, useRef } from 'react';
-import type { Hex } from 'viem';
-import { Controller, Vault, IndexedVaultStore } from '../lib/controller';
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { formatUnits, type Hex } from 'viem';
+import { Controller, Vault, IndexedVaultStore, type Wallet } from '../lib/controller';
+import { SwapPanel } from '../components/swap-panel';
+import {
+  createPrivateNote,
+  exportPrivateNote,
+  importPrivateNote,
+  privateNoteCacheKey,
+} from '../../../packages/client/src/private-note';
+import type { SavedNote } from '../../../packages/client/src/notes';
 import type { Deployment } from '../../../packages/client/src/chain';
-const short = (s: string) => s.slice(0, 10) + '…' + s.slice(-6);
+import { readiness, minimumOutput, type Readiness } from '../../../packages/client/src/market';
+import { isActive } from '../../../packages/client/src/vault';
+import { RpcClient } from '../../../packages/client/src/index';
+const money = (v: string) =>
+  Number(formatUnits(BigInt(v), 18)).toLocaleString(undefined, { maximumFractionDigits: 6 });
+const short = (v: string) => `${v.slice(0, 10)}…${v.slice(-6)}`;
+type Draft = {
+  kind: 'deposit' | 'swap';
+  note: SavedNote;
+  text: string;
+  controller: Controller;
+  source?: string;
+};
 export default function Page() {
-  const [config, setConfig] = useState<Deployment | null>(null),
-    [controller, setController] = useState<Controller | null>(null),
-    [password, setPassword] = useState(''),
-    [showPassword, setShowPassword] = useState(false),
-    [restoreMode, setRestoreMode] = useState(false),
-    [phrase, setPhrase] = useState(''),
-    [showPhrase, setShowPhrase] = useState(false),
-    [account, setAccount] = useState<Hex | null>(null),
-    [recipient, setRecipient] = useState(''),
-    [selected, setSelected] = useState(''),
-    [busy, setBusy] = useState(''),
-    [message, setMessage] = useState(''),
-    [error, setError] = useState(''),
-    [, render] = useState(0);
-  const working = useRef(false);
-  const walletRef = useRef<import('../lib/controller').Wallet | null>(null);
-  useEffect(() => {
-    fetch('/deployment.json', { cache: 'no-store' })
-      .then(async (r) => {
-        if (!r.ok)
-          throw new Error('Deployment missing. Run bun run deploy:app against the local node.');
-        setConfig(await r.json());
-      })
-      .catch((e) => setError(e.message));
-  }, []);
-  async function run(label: string, fn: () => Promise<void>) {
+  const [config, setConfig] = useState<Deployment | null>(null);
+  const [catalog, setCatalog] = useState<{ name: string; url: string }[]>([]);
+  const [tab, setTab] = useState<'deposit' | 'swap' | 'withdraw'>('deposit');
+  const [health, setHealth] = useState<Readiness | null>(null);
+  const [controller, setController] = useState<Controller | null>(null);
+  const [noteId, setNoteId] = useState('');
+  const [input, setInput] = useState('');
+  const [recipient, setRecipient] = useState('');
+  const [account, setAccount] = useState<Hex | null>(null);
+  const [slippage, setSlippage] = useState('50');
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [downloaded, setDownloaded] = useState(false);
+  const [backedUp, setBackedUp] = useState(false);
+  const [busy, setBusy] = useState('');
+  const [status, setStatus] = useState('');
+  const [error, setError] = useState('');
+  const [networkError, setNetworkError] = useState('');
+  const [, rerender] = useState(0);
+  const working = useRef(false),
+    syncing = useRef(false);
+  const wallet = useRef<Wallet | null>(null);
+  const download = (text: string, name: string) => {
+    const url = URL.createObjectURL(new Blob([text + '\n'], { type: 'text/plain' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  async function run(label: string, action: () => Promise<void>) {
     if (working.current) return;
     working.current = true;
     setBusy(label);
     setError('');
-    setMessage('');
     try {
-      await fn();
+      await action();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Action failed');
     } finally {
       working.current = false;
       setBusy('');
-      render((x) => x + 1);
+      rerender((v) => v + 1);
     }
   }
-  async function unlock(backup?: string) {
-    if (!config) throw new Error('Load a deployment first');
-    const store = new IndexedVaultStore();
-    const vault = backup
-      ? await Vault.restore(store, password, backup)
-      : restoreMode
-        ? await Vault.restorePhrase(store, password, phrase)
-        : await Vault.open(store, password);
-    const c = new Controller(config, vault);
-    setController(c);
-    setPassword('');
-    setPhrase('');
-    setShowPhrase(false);
-    await navigator.storage?.persist?.();
-    await c.refresh();
-    setMessage(
-      vault.data.recovery?.confirmed
-        ? `Recovery scan complete: ${vault.data.notes.length} saved notes. No matches can mean a different phrase or deployment, or deposits still awaiting confirmation.`
-        : 'Vault unlocked. Back up and confirm your recovery phrase before depositing.',
+  useEffect(() => {
+    fetch('/deployment.json', { cache: 'no-store' })
+      .then(async (r) => {
+        if (!r.ok) throw new Error('Deployment unavailable');
+        setConfig(await r.json());
+      })
+      .catch((e) => setError(e.message));
+    fetch('/deployments.json', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setCatalog)
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    if (!config) return;
+    let stopped = false;
+    const update = async () => {
+      if (working.current || syncing.current || document.hidden) return;
+      syncing.current = true;
+      try {
+        const checked = controller
+          ? (await controller.refresh(), controller.health!)
+          : await readiness(new RpcClient(config.rpcUrl), config);
+        if (!stopped) {
+          setHealth(checked);
+          setNetworkError('');
+          rerender((v) => v + 1);
+        }
+      } catch (e) {
+        if (!stopped) {
+          setHealth(null);
+          setNetworkError(e instanceof Error ? e.message : 'Network unavailable');
+        }
+      } finally {
+        syncing.current = false;
+      }
+    };
+    void update();
+    const timer = setInterval(update, 3000);
+    window.addEventListener('focus', update);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+      window.removeEventListener('focus', update);
+    };
+  }, [config, controller]);
+  const note = controller?.vault.data.notes.find((n) => n.id === noteId);
+  const noteState = note ? controller!.noteState(note) : '';
+  const attempts = controller?.vault.data.attempts ?? [];
+  const pending = attempts.some(isActive);
+  const disabled = !!busy || !!draft || pending;
+  const swapPending =
+    (!!busy && busy.toLowerCase().includes('proof')) ||
+    attempts.some(
+      (a) => a.kind === 'swap' && ['broadcasting', 'submitted', 'mined'].includes(a.state),
     );
+  const asset = note?.pool.toLowerCase() === config?.pool.toLowerCase() ? 'WETH' : 'gUSD';
+  async function session(n: SavedNote, importing: boolean) {
+    const v = await navigator.locks.request('himitsu-vault-actions', async () => {
+      const v = await Vault.openPrivateNote(
+        new IndexedVaultStore(`himitsu-note-cache-${n.id}`),
+        privateNoteCacheKey(n),
+      );
+      if (
+        importing &&
+        !v.data.notes.some(
+          (x) =>
+            x.nullifierHash === n.nullifierHash && x.pool.toLowerCase() === n.pool.toLowerCase(),
+        )
+      )
+        await v.save({ ...v.data, notes: [...v.data.notes, n] });
+      return v;
+    });
+    const c = new Controller(config!, v);
+    await c.refresh();
+    setController(c);
+    setHealth(c.health);
+    return c;
   }
-  async function refresh() {
-    if (!controller) return;
-    await controller.refresh();
-    setMessage('Reconciled against canonical chain events and receipts.');
+  async function loadNote(text: string) {
+    if (!config) throw new Error('Wait for the deployment to load');
+    const n = importPrivateNote(text, config);
+    const c = await session(n, true);
+    setNoteId(
+      c.vault.data.notes.find(
+        (x) => x.nullifierHash === n.nullifierHash && x.pool.toLowerCase() === n.pool.toLowerCase(),
+      )!.id,
+    );
+    setInput('');
+    setStatus('Note checked against the chain.');
   }
   async function connect() {
     if (!window.ethereum)
-      throw new Error('Install an Ethereum wallet and add the local RPC shown below.');
+      throw new Error('Connect an Ethereum wallet configured for the local devnet.');
     const accounts = (await window.ethereum.request({ method: 'eth_requestAccounts' })) as Hex[];
     if (!accounts[0]) throw new Error('No wallet account selected');
     if (
       BigInt((await window.ethereum.request({ method: 'eth_chainId' })) as string) !==
       BigInt(config!.chainId)
     )
-      throw new Error('Switch wallet to chain 9 using the RPC below, then reconnect');
-    walletRef.current = window.ethereum;
+      throw new Error(`Switch your wallet to chain ${config!.chainId}`);
+    wallet.current = window.ethereum;
     setAccount(accounts[0]);
-    setRecipient(accounts[0]);
-    setMessage('Deposit wallet connected. Private spends do not need wallet signatures.');
   }
-  const notes = controller?.vault.data.notes ?? [],
-    attempts = controller?.vault.data.attempts ?? [];
-  const available = notes.filter((n) => controller?.noteState(n) === 'Available');
-  const chosen = available.find((n) => n.id === selected);
-  async function spend(kind: 'swap' | 'withdraw') {
-    if (!controller || !chosen) throw new Error('Choose an available note');
-    const result = await controller.spend(chosen.id, kind, recipient, setBusy);
-    setMessage(
+  async function prepare(kind: 'deposit' | 'swap') {
+    if (!config) throw new Error('Wait for the deployment to load');
+    const n = createPrivateNote(config, kind === 'deposit' ? config.pool : config.outputPool);
+    const c = kind === 'deposit' ? await session(n, false) : controller!;
+    if (!c || (kind === 'swap' && (!note || noteState !== 'Available')))
+      throw new Error('Import an available WETH note first');
+    setDraft({ kind, note: n, text: exportPrivateNote(n, config), controller: c, source: noteId });
+    setDownloaded(false);
+    setBackedUp(false);
+    setStatus('Save the new private note before continuing.');
+  }
+  async function submitDraft() {
+    if (!draft || !downloaded || !backedUp)
+      throw new Error('Save your private note and confirm the backup first');
+    const current = draft;
+    // Remove the submission control before awaiting; retries must prepare a fresh output note.
+    setDraft(null);
+    let result;
+    if (current.kind === 'deposit') {
+      if (!wallet.current || !account) throw new Error('Connect your deposit wallet first');
+      result = await current.controller.deposit(wallet.current, account, current.note);
+      setNoteId(current.note.id);
+    } else {
+      if (!health) throw new Error('Wait for a live quote');
+      result = await current.controller.spend(
+        current.source!,
+        'swap',
+        '',
+        setBusy,
+        config!.noteVersion === 2
+          ? {
+              expected: health.quote,
+              minimum: minimumOutput(BigInt(health.quote), Number(slippage)).toString(),
+              quotedAt: health.checkedAt,
+            }
+          : undefined,
+        current.note,
+      );
+    }
+    setController(current.controller);
+    setStatus(
       result.state === 'submitted'
-        ? `Transaction submitted: ${result.hash}. Refresh after a few blocks.`
-        : 'Submission uncertain. Keep this vault and refresh before retrying.',
+        ? 'Submitted. Watching for confirmation; keep your downloaded note.'
+        : 'Submission uncertain. Keep both notes and check status before retrying.',
     );
-    setSelected('');
   }
+  const swapReason = !note
+    ? 'Import a WETH private note above to swap.'
+    : noteState !== 'Available'
+      ? `Note: ${noteState}.`
+      : asset !== 'WETH'
+        ? 'This pool supports WETH → gUSD. You can withdraw this gUSD note.'
+        : !health
+          ? 'Waiting for a live quote.'
+          : health.swapIssues.join(' ');
   return (
     <main>
       <header>
         <div>
           <p className="eyebrow">LOCAL DEVNET · TEST ASSETS</p>
           <h1>Himitsu</h1>
-          <p className="muted">Deposit, swap a private note, and recover your transaction state.</p>
+          <p className="muted">Private notes. Permissionless swaps.</p>
         </div>
-        <span className="badge">Test interface</span>
+        <Link href="/legacy">Legacy phrase recovery</Link>
       </header>
-      <div role="status" aria-live="polite" className="status">
-        {busy || message || 'Connect to the local devnet to begin.'}
-      </div>
-      {error && (
-        <div role="alert" className="error">
-          {error}
-        </div>
-      )}
-      <section>
-        <h2>1. Note vault</h2>
-        <p className="muted">
-          Back up your Himitsu recovery phrase once to recover confirmed new private notes on a new
-          browser. Your local password encrypts this browser. Anyone with the phrase can spend your
-          notes. Use a separate phrase from your Ethereum wallet and keep it offline.
-        </p>
-        {!controller ? (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void run('Unlocking vault…', () => unlock());
+      <nav className="note-tabs" aria-label="Actions">
+        {(['deposit', 'swap', 'withdraw'] as const).map((t) => (
+          <button
+            key={t}
+            className={tab === t ? '' : 'secondary'}
+            aria-pressed={tab === t}
+            disabled={!!busy || !!draft}
+            onClick={() => {
+              setTab(t);
+              setError('');
             }}
           >
-            <label htmlFor="password">
-              {restoreMode ? 'New local vault password' : 'Vault password'}
-            </label>
-            <div className="row">
-              <input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
-                minLength={12}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={!!busy}
-                aria-describedby="password-hint"
-              />
-              <button type="button" onClick={() => setShowPassword(!showPassword)}>
-                {showPassword ? 'Hide' : 'Show'}
-              </button>
-            </div>
-            <p id="password-hint" className="hint">
-              Use at least 12 characters for a new vault. This password never leaves your browser.
+            {t[0].toUpperCase() + t.slice(1)}
+          </button>
+        ))}
+      </nav>
+      <p className="status" role="status">
+        {busy || status}
+      </p>
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+      {networkError && (
+        <p className="error">Network unavailable: {networkError}. Retrying automatically.</p>
+      )}
+      {draft && (
+        <section className="note-backup" aria-labelledby="backup-heading">
+          <h2 id="backup-heading">
+            Save your {draft.kind === 'swap' ? 'new gUSD' : 'deposit'} note
+          </h2>
+          <p>
+            This file is the key to your funds. Anyone who has it can spend them. Himitsu cannot
+            replace a lost note.
+          </p>
+          {draft.kind === 'swap' && (
+            <p>
+              The new note recovers the actual swap output. Keep your input note too until the swap
+              confirms. If it fails, the input note remains yours.
             </p>
-            <button
-              type="button"
-              disabled={!!busy}
-              onClick={() => {
-                setRestoreMode(!restoreMode);
-                setPhrase('');
-              }}
-            >
-              {restoreMode ? 'Back to create / unlock' : 'Restore with recovery phrase'}
-            </button>
-            {restoreMode && (
-              <>
-                <label htmlFor="restore-phrase">24-word Himitsu recovery phrase</label>
-                <textarea
-                  id="restore-phrase"
-                  rows={4}
-                  value={phrase}
-                  onChange={(e) => setPhrase(e.target.value)}
-                  autoComplete="off"
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  required
-                  disabled={!!busy}
-                />
-                <p className="hint">
-                  Restores confirmed notes for this deployment. The old local password is not
-                  needed. Pending history and deposit wallet keys require an encrypted backup.
-                </p>
-              </>
-            )}
-            <div className="row">
-              <button disabled={!!busy || !config} type="submit">
-                {restoreMode ? 'Restore phrase and scan' : 'Create / unlock vault'}
-              </button>
-              <label className="file">
-                Restore encrypted backup
-                <input
-                  aria-label="Restore encrypted backup"
-                  type="file"
-                  accept="application/json,.json"
-                  disabled={!!busy || !password || !config}
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f)
-                      void run('Restoring backup…', async () => {
-                        if (f.size > 5_000_000) throw new Error('Backup is too large');
-                        await unlock(await f.text());
-                      });
-                  }}
-                />
-              </label>
-            </div>
-            <p className="hint">
-              Restore is available only when this browser has no existing vault; it never overwrites
-              notes.
-            </p>
-          </form>
-        ) : (
+          )}
+          <button
+            onClick={() => {
+              download(draft.text, `himitsu-${draft.kind}-${draft.note.id.slice(2, 10)}.txt`);
+              setDownloaded(true);
+            }}
+          >
+            Download private note
+          </button>
+          <details>
+            <summary>Show private note</summary>
+            <label htmlFor="new-note">Secret note — keep private</label>
+            <textarea
+              id="new-note"
+              value={draft.text}
+              readOnly
+              rows={5}
+              spellCheck={false}
+              autoComplete="off"
+            />
+          </details>
+          <label className="check-label">
+            <input
+              type="checkbox"
+              checked={backedUp}
+              disabled={!downloaded}
+              onChange={(e) => setBackedUp(e.target.checked)}
+            />
+            I saved the file somewhere safe and understand it controls my funds.
+          </label>
           <div className="row">
-            <span>Vault unlocked · {notes.length} saved notes</span>
             <button
-              disabled={!!busy}
+              disabled={!downloaded || !backedUp || !!busy}
               onClick={() =>
-                void run('Exporting encrypted backup…', async () => {
-                  const blob = new Blob([await controller.vault.backup()], {
-                    type: 'application/json',
-                  });
-                  const url = URL.createObjectURL(blob),
-                    a = document.createElement('a');
-                  a.href = url;
-                  a.download = 'himitsu-vault.json';
-                  a.click();
-                  setTimeout(() => URL.revokeObjectURL(url), 1000);
-                  setMessage(
-                    'Encrypted backup downloaded. Store it with your vault password separately.',
-                  );
-                })
+                void run(
+                  draft.kind === 'deposit'
+                    ? 'Approve the deposit in your wallet…'
+                    : 'Preparing private swap…',
+                  submitDraft,
+                )
               }
             >
-              Export backup
+              Continue with {draft.kind}
             </button>
             <button
               className="secondary"
               disabled={!!busy}
               onClick={() => {
-                setController(null);
-                setPhrase('');
-                setShowPhrase(false);
-                setRestoreMode(false);
-                setSelected('');
-                setAccount(null);
-                walletRef.current = null;
-                setMessage('Vault locked.');
+                setDraft(null);
+                setStatus('Cancelled. No transaction submitted.');
               }}
             >
-              Lock
+              Cancel
             </button>
           </div>
-        )}
-        {controller && (
-          <div>
-            {!controller.vault.data.recovery ? (
-              <button
-                disabled={!!busy}
-                onClick={() =>
-                  void run('Preparing recovery phrase…', () => controller.vault.enableRecovery())
-                }
-              >
-                Enable recovery for new notes
-              </button>
-            ) : (
-              <>
-                <p>
-                  {controller.vault.data.recovery.confirmed
-                    ? 'Recovery phrase confirmed.'
-                    : 'Write down all 24 words in order, then hide them and re-enter them to confirm your backup.'}
-                </p>
-                <button disabled={!!busy} onClick={() => setShowPhrase(!showPhrase)}>
-                  {showPhrase ? 'Hide recovery phrase' : 'Reveal recovery phrase'}
-                </button>
-                {showPhrase && (
-                  <p className="recovery-phrase">{controller.vault.data.recovery.phrase}</p>
-                )}
-                {!controller.vault.data.recovery.confirmed && !showPhrase && (
-                  <>
-                    <label htmlFor="confirm-phrase">Re-enter your saved recovery phrase</label>
-                    <textarea
-                      id="confirm-phrase"
-                      rows={4}
-                      autoComplete="off"
-                      autoCapitalize="none"
-                      spellCheck={false}
-                      value={phrase}
-                      onChange={(e) => setPhrase(e.target.value)}
-                      disabled={!!busy}
-                    />
-                    <button
-                      disabled={!!busy || !phrase}
-                      onClick={() =>
-                        void run('Confirming backup and scanning…', async () => {
-                          await controller.vault.confirmRecovery(phrase);
-                          setPhrase('');
-                          await controller.refresh();
-                          setMessage('Recovery phrase confirmed. You can create private notes.');
-                        })
-                      }
-                    >
-                      Confirm backup
-                    </button>
-                  </>
-                )}
-              </>
-            )}
-            {notes.some((n) => !n.recovery) && (
-              <p className="error">
-                Legacy notes require your encrypted backup. This phrase cannot recover them.
-              </p>
-            )}
-            <p className="hint">
-              Use one active browser for each phrase. Recovery scans confirmed pool events directly
-              through RPC; no hosted indexer is required. Keep an encrypted backup for pending
-              transactions and local test-wallet keys.
-            </p>
-          </div>
-        )}
-      </section>
-      <div className="columns">
-        <section>
-          <h2>2. Deposit</h2>
-          <p>
-            Each deposit creates one <strong>0.1 WETH</strong> note.
-          </p>
+        </section>
+      )}
+      {tab === 'deposit' ? (
+        <section className="note-action">
+          <h2>Deposit ETH</h2>
+          <p>Create a private WETH note to swap or withdraw later.</p>
+          <label htmlFor="deposit-amount">Amount · ETH</label>
+          <input id="deposit-amount" value={config ? money(config.denomination) : ''} readOnly />
           <p className="hint">
-            Your wallet pays deposit gas. The prefunded paymaster pays private swaps and
-            withdrawals.
+            Fixed-size deposit. ETH is wrapped into WETH. Your connected wallet pays deposit gas.
           </p>
           <div className="row">
             <button
               className="secondary"
-              disabled={!config || !!busy}
+              disabled={!config || disabled}
               onClick={() => void run('Connecting wallet…', connect)}
             >
-              {account ? short(account) : 'Connect deposit wallet'}
+              {account ? short(account) : 'Connect wallet'}
             </button>
             <button
-              disabled={!controller?.vault.data.recovery?.confirmed || !account || !!busy}
-              onClick={() =>
-                void run('Save note, then approve deposit in your wallet…', async () => {
-                  const a = await controller!.deposit(walletRef.current!, account!);
-                  setMessage(
-                    a.hash
-                      ? `Deposit submitted: ${a.hash}. Refresh after a few blocks.`
-                      : 'Wallet outcome uncertain. Your note is saved; refresh to reconcile.',
-                  );
-                })
-              }
+              disabled={!account || !health || !!health.depositIssues.length || disabled}
+              onClick={() => void run('Preparing your private note…', () => prepare('deposit'))}
             >
-              Deposit 0.1 ETH
-            </button>
-            <button
-              className="secondary"
-              disabled={!controller || !!busy}
-              onClick={() =>
-                void run('Opening encrypted local test wallet…', async () => {
-                  const local = await controller!.localTestWallet();
-                  walletRef.current = local.wallet;
-                  setAccount(local.account);
-                  setRecipient(local.account);
-                  setMessage(
-                    'Local test wallet ready. Fund this address with devnet ETH before depositing.',
-                  );
-                })
-              }
-            >
-              Use local test wallet
+              Create deposit note
             </button>
           </div>
-          {account && (
-            <>
-              <label htmlFor="deposit-address">Deposit wallet address</label>
-              <input id="deposit-address" readOnly value={account} />
-              <p className="hint">
-                For the local test wallet, send devnet ETH to this address using your existing
-                funded account. Its key is saved inside the encrypted vault.
-              </p>
-            </>
-          )}
+          {health?.depositIssues.map((issue) => (
+            <p key={issue} className="error">
+              {issue}
+            </p>
+          ))}
+          <p className="hint">
+            You’ll save a private note before approving the deposit. No recovery phrase or vault
+            password.
+          </p>
         </section>
+      ) : (
+        <>
+          <section className="note-action">
+            <h2>Use a private note</h2>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void run('Checking private note…', () => loadNote(input));
+              }}
+            >
+              <label htmlFor="private-note">Paste your Himitsu note</label>
+              <textarea
+                id="private-note"
+                rows={3}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                disabled={disabled}
+                spellCheck={false}
+                autoComplete="off"
+                autoCapitalize="none"
+                placeholder="himitsu-note-v1:…"
+              />
+              <div className="row">
+                <button disabled={!input.trim() || !config || disabled}>Check note</button>
+                <label className="file">
+                  Or import a note file
+                  <input
+                    type="file"
+                    accept=".txt,text/plain"
+                    disabled={!config || disabled}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = '';
+                      if (file)
+                        void run('Reading private note…', async () => {
+                          if (file.size > 4096) throw new Error('Private note file is too large');
+                          await loadNote(await file.text());
+                        });
+                    }}
+                  />
+                </label>
+              </div>
+            </form>
+            {note && (
+              <div className="note-summary">
+                <strong>
+                  {note.amount
+                    ? money(note.amount)
+                    : config?.noteVersion === 2
+                      ? 'Amount awaiting confirmation'
+                      : money(
+                          asset === 'WETH' ? config!.denomination : config!.outputDenomination,
+                        )}{' '}
+                  {asset}
+                </strong>
+                <span>{noteState}</span>
+                <button
+                  className="secondary"
+                  disabled={disabled}
+                  onClick={() => {
+                    setController(null);
+                    setNoteId('');
+                    setInput('');
+                    setStatus(
+                      'Note removed from this session. Encrypted transaction records remain for reconciliation.',
+                    );
+                  }}
+                >
+                  Clear note
+                </button>
+              </div>
+            )}
+            <p className="hint">
+              Notes stay secret in this browser. Imported notes unlock encrypted local transaction
+              records. Use one active browser per note; do not retry an uncertain transaction from
+              another device.
+            </p>
+          </section>
+          {tab === 'swap' ? (
+            <SwapPanel
+              privateNoteMode
+              inputAmount={money(config?.denomination ?? '100000000000000000')}
+              outputAmount={
+                health
+                  ? money(
+                      config?.noteVersion === 2
+                        ? health.quote
+                        : (config?.outputDenomination ?? '0'),
+                    )
+                  : ''
+              }
+              balance="0"
+              notes={[]}
+              selected=""
+              onSelect={() => {}}
+              slippage={slippage}
+              onSlippage={setSlippage}
+              minimum={
+                health
+                  ? money(
+                      config?.noteVersion === 2
+                        ? minimumOutput(BigInt(health.quote), Number(slippage)).toString()
+                        : (config?.outputDenomination ?? '0'),
+                    )
+                  : ''
+              }
+              market={config?.noteVersion === 2}
+              locked={false}
+              busy={disabled}
+              rolling={!!swapPending}
+              status={busy || attempts.filter((a) => a.kind === 'swap').at(-1)?.state || ''}
+              error=""
+              reason={swapReason}
+              disabled={disabled || !!swapReason}
+              onSwap={() => void run('Preparing your output note…', () => prepare('swap'))}
+            />
+          ) : (
+            <section className="note-action">
+              <h2>Withdraw</h2>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void run('Preparing withdrawal…', async () => {
+                    const a = await controller!.spend(noteId, 'withdraw', recipient, setBusy);
+                    setStatus(`Withdrawal ${a.state}. Watching the chain automatically.`);
+                  });
+                }}
+              >
+                <label htmlFor="recipient">Recipient address</label>
+                <input
+                  id="recipient"
+                  value={recipient}
+                  onChange={(e) => setRecipient(e.target.value)}
+                  placeholder="0x…"
+                  autoComplete="off"
+                  spellCheck={false}
+                  disabled={disabled}
+                />
+                <p className="hint">
+                  The full note amount goes to this public address. WETH notes withdraw as WETH. The
+                  paymaster pays gas.
+                </p>
+                <button
+                  disabled={
+                    disabled ||
+                    noteState !== 'Available' ||
+                    !recipient ||
+                    !health ||
+                    !!health.withdrawalIssues.length
+                  }
+                >
+                  Withdraw note
+                </button>
+              </form>
+              {health?.withdrawalIssues.map((x) => (
+                <p className="error" key={x}>
+                  {x}
+                </p>
+              ))}
+            </section>
+          )}
+        </>
+      )}
+      {attempts.length > 0 && (
         <section>
-          <h2>3. Spend a note</h2>
-          <label htmlFor="note">Available note</label>
-          <select
-            id="note"
-            value={selected}
-            onChange={(e) => setSelected(e.target.value)}
-            disabled={!controller || !!busy}
+          <h2>Activity for this note</h2>
+          <button
+            className="secondary"
+            disabled={!!busy || !!draft}
+            onClick={() =>
+              void run('Checking chain status…', async () => {
+                await controller!.refresh();
+                setHealth(controller!.health);
+              })
+            }
           >
-            <option value="">Choose a note</option>
-            {available.map((n) => (
-              <option key={n.id} value={n.id}>
-                {n.pool.toLowerCase() === config?.pool.toLowerCase() ? '0.1 WETH' : '150 gUSD'} ·{' '}
-                {short(n.commitment)}
+            Check status
+          </button>
+          <ul className="journal">
+            {[...attempts].reverse().map((a) => (
+              <li key={a.id}>
+                <strong>
+                  {a.kind} · {a.state}
+                </strong>
+                {a.hash && <code>{a.hash}</code>}
+                {a.detail && <p>{a.detail}</p>}
+                {a.output && controller!.vault.data.notes.find((n) => n.id === a.output) && (
+                  <button
+                    className="secondary"
+                    onClick={() =>
+                      download(
+                        exportPrivateNote(
+                          controller!.vault.data.notes.find((n) => n.id === a.output)!,
+                          config!,
+                        ),
+                        `himitsu-output-${a.id.slice(0, 8)}.txt`,
+                      )
+                    }
+                  >
+                    Download output note again
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      <details>
+        <summary>Pool details & network status</summary>
+        <section>
+          <label htmlFor="deployment">Pool deployment</label>
+          <select
+            id="deployment"
+            value={config ? '/deployments/' + config.pool.toLowerCase() + '.json' : ''}
+            disabled={disabled}
+            onChange={(e) =>
+              void run('Loading deployment…', async () => {
+                const r = await fetch(e.target.value, { cache: 'no-store' });
+                if (!r.ok) throw new Error('Deployment unavailable');
+                const d = await r.json();
+                setConfig(d);
+                setController(null);
+                setNoteId('');
+                setInput('');
+                setHealth(null);
+                setStatus('Deployment changed. Import a note for this pool.');
+              })
+            }
+          >
+            {catalog.map((d) => (
+              <option key={d.url} value={d.url}>
+                {d.name}
               </option>
             ))}
           </select>
-          <label htmlFor="recipient">Withdrawal recipient</label>
-          <input
-            id="recipient"
-            placeholder="0x…"
-            spellCheck={false}
-            autoComplete="off"
-            value={recipient}
-            onChange={(e) => setRecipient(e.target.value)}
-            disabled={!!busy}
-          />
-          <div className="row">
-            <button
-              disabled={
-                !!busy ||
-                !controller?.vault.data.recovery?.confirmed ||
-                !chosen ||
-                chosen.pool.toLowerCase() !== config?.pool.toLowerCase()
-              }
-              onClick={() => void run('Preparing private swap…', () => spend('swap'))}
-            >
-              Swap to 150 gUSD note
-            </button>
-            <button
-              className="secondary"
-              disabled={!!busy || !chosen}
-              onClick={() => void run('Preparing withdrawal…', () => spend('withdraw'))}
-            >
-              Withdraw note
-            </button>
-          </div>
-          <p className="hint">
-            Fixed test quote: 0.1 WETH → 150 gUSD. Proof generation happens locally. Outputs remain
-            private notes until withdrawal.
-          </p>
+          {config && (
+            <>
+              <p>
+                Chain {config.chainId} · <code>{config.rpcUrl}</code>
+              </p>
+              <p>
+                Input pool <code>{config.pool}</code>
+              </p>
+            </>
+          )}
+          {health ? (
+            <>
+              <p>
+                Verified block {health.block} · paymaster {money(health.sponsorBalance)} ETH
+              </p>
+              <p>
+                Swap quote: {money(health.quote)} gUSD per {money(config!.denomination)} WETH
+              </p>
+            </>
+          ) : (
+            <p>Checking network and pool liquidity…</p>
+          )}
         </section>
-      </div>
-      <section>
-        <div className="row between">
-          <h2>Notes & recovery</h2>
-          <button
-            disabled={!controller || !!busy}
-            onClick={() => void run('Synchronizing canonical chain…', refresh)}
-          >
-            Refresh / reconcile
-          </button>
-        </div>
-        {notes.length === 0 ? (
-          <p className="muted">No notes yet. Unlock your vault, then make a deposit.</p>
-        ) : (
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Note</th>
-                  <th>Asset</th>
-                  <th>State</th>
-                </tr>
-              </thead>
-              <tbody>
-                {notes.map((n) => (
-                  <tr key={n.id}>
-                    <td title={n.commitment}>{short(n.commitment)}</td>
-                    <td>
-                      {n.pool.toLowerCase() === config?.pool.toLowerCase()
-                        ? '0.1 WETH'
-                        : n.pool.toLowerCase() === config?.outputPool.toLowerCase()
-                          ? '150 gUSD'
-                          : 'Other deployment'}
-                    </td>
-                    <td>{controller!.noteState(n)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {attempts.length > 0 && (
-          <>
-            <h3>Transaction journal</h3>
-            <ul className="journal">
-              {[...attempts].reverse().map((a) => (
-                <li key={a.id}>
-                  <strong>
-                    {a.kind} · {a.state}
-                  </strong>
-                  <code>{a.hash ? short(a.hash) : 'No transaction hash yet'}</code>
-                  <p className="hint">{a.detail || 'Refresh to check canonical inclusion.'}</p>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-        <p className="hint">
-          Two successor blocks are required before a note becomes available. A missing receipt alone
-          never releases a reserved note. If another user consumes the pool nonce or a transaction
-          expires, reconcile before explicitly retrying.
-        </p>
-      </section>
-      <footer>
-        <h2>Local network</h2>
-        {config ? (
-          <dl>
-            <dt>RPC · chain {config.chainId}</dt>
-            <dd>{config.rpcUrl}</dd>
-            <dt>WETH pool</dt>
-            <dd>{config.pool}</dd>
-            <dt>gUSD pool</dt>
-            <dd>{config.outputPool}</dd>
-            <dt>Paymaster</dt>
-            <dd>{config.sponsor}</dd>
-          </dl>
-        ) : (
-          <p>Waiting for deployment configuration.</p>
-        )}
-        <p className="hint">
-          Private authorization does not hide deposits, withdrawals, swap amounts, or RPC metadata.
-          Development ceremony and test tokens only.
-        </p>
+      </details>
+      <footer className="hint">
+        Test assets only. Swap amounts are public. Keep private notes offline; sharing a note gives
+        access to its funds.
       </footer>
     </main>
   );

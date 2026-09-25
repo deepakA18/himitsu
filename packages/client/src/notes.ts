@@ -4,6 +4,8 @@ export const FIELD = 21888242871839275222246405745257275088548364400416034343698
 export const hex32 = (v: bigint): Hex => `0x${v.toString(16).padStart(64, '0')}`;
 export const ZERO = BigInt(keccak256(stringToHex('ghostswap.empty.leaf'))) % FIELD;
 export interface SecretNote {
+  amount?: string;
+  baseCommitment?: Hex;
   nullifier: string;
   secret: string;
   commitment: Hex;
@@ -33,11 +35,26 @@ export function createSecretNote(): SecretNote {
     nullifierHash: hex32(poseidon1([nullifier])),
   };
 }
+export function withAmount<T extends SecretNote>(note: T, amount: string): T {
+  if (!/^[0-9]+$/.test(amount) || BigInt(amount) <= 0n || BigInt(amount) >= 1n << 128n)
+    throw new Error('Invalid note amount');
+  const baseCommitment = hex32(poseidon2([BigInt(note.nullifier), BigInt(note.secret)]));
+  return {
+    ...note,
+    amount,
+    baseCommitment,
+    commitment: hex32(poseidon2([BigInt(baseCommitment), BigInt(amount)])),
+  };
+}
 export function validateSecretNote(note: SecretNote) {
   for (const v of [note.nullifier, note.secret])
     if (!/^[0-9]+$/.test(v) || BigInt(v) >= FIELD) throw new Error('Invalid note field');
   if (
-    hex32(poseidon2([BigInt(note.nullifier), BigInt(note.secret)])) !== note.commitment ||
+    (note.amount === undefined
+      ? hex32(poseidon2([BigInt(note.nullifier), BigInt(note.secret)]))
+      : withAmount(note, note.amount).commitment) !== note.commitment ||
+    (note.amount !== undefined &&
+      note.baseCommitment !== hex32(poseidon2([BigInt(note.nullifier), BigInt(note.secret)]))) ||
     hex32(poseidon1([BigInt(note.nullifier)])) !== note.nullifierHash
   )
     throw new Error('Note commitment mismatch');
