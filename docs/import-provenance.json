@@ -1,0 +1,373 @@
+{
+  "source": "/private/tmp/claude-501/-Users-deepakagashe-Desktop-ethrex/ef948a86-02ff-41df-975b-daae346ed190/scratchpad/zk",
+  "excluded": [
+    "cache",
+    "node_modules",
+    "package-lock.json",
+    "pot13_0000.ptau",
+    "pot13_0001.ptau",
+    "pot13_final.ptau"
+  ],
+  "files": [
+    {
+      "path": "accounts.mjs",
+      "sha256": "3279410891beaeaeeddff8b35083d0394a432611103565f4a75c8541e268f870",
+      "bytes": 5501
+    },
+    {
+      "path": "lifecycle.mjs",
+      "sha256": "f9d1f39f6a4ba46706e75abfefd0047de5c114efbbb4d6a9b202d589419413de",
+      "bytes": 10224
+    },
+    {
+      "path": "swap.mjs",
+      "sha256": "ae9dea03852dadbae25b07ff62fa201c9e56a0bf31a2fa7703549f803e0409eb",
+      "bytes": 8465
+    },
+    {
+      "path": "roundtrip.mjs",
+      "sha256": "4e2feb7e7a77cec6d1744b6c7a5779aaf71dc3b8af2422acf2bbd59e0057d4ba",
+      "bytes": 7944
+    },
+    {
+      "path": "attack.mjs",
+      "sha256": "c326fa5093e0f3aa1e9f3e84a0341253038d07a5e54f4e56cdf3935410eb1d34",
+      "bytes": 7382
+    },
+    {
+      "path": "compile-uniswap.mjs",
+      "sha256": "01345132e4ceba4a6c09a3b05c1581899dc8f28d36b70168bbaa769f458f5c9c",
+      "bytes": 3365
+    },
+    {
+      "path": "test-circuit.mjs",
+      "sha256": "348872b169d930e3a34877f67f82b5818c3abcf4dd7ec2355838d98e2bf6fd6c",
+      "bytes": 1990
+    },
+    {
+      "path": "test-groth16.mjs",
+      "sha256": "e25d983686cefcef9e759eaa02e0f79ea02818d8d65e5fe259e1fb8bb1e2a4a8",
+      "bytes": 876
+    },
+    {
+      "path": "frameasm.mjs",
+      "sha256": "bcdc19d4d19b68048ff7082ba9e09b7670817f8555966ed8d90543d0494aa89f",
+      "bytes": 5681
+    },
+    {
+      "path": "asm.mjs",
+      "sha256": "d1184cacb95f625e856f0efd114a018851d968d5f6af9c3375e1d4dce00b48ed",
+      "bytes": 4600
+    },
+    {
+      "path": "package.json",
+      "sha256": "4ebdaf5116d75cf304153f965ad9691d0556a05e0dcc5c28e030f223bbeb92a8",
+      "bytes": 468
+    },
+    {
+      "path": "setup-ceremony.sh",
+      "sha256": "aac28a88d4c411f14604119e4603e08b7c68e41e2aaf434b13cd17ee7e73bfbe",
+      "bytes": 1846
+    },
+    {
+      "path": "frametx.mjs",
+      "sha256": "e29d674dc277e3a0f9ed00c2ef2569394a301367db95c1913ebc0246ebe40ad5",
+      "bytes": 4743
+    },
+    {
+      "path": "build-artifacts.mjs",
+      "sha256": "5051f8fa09b11cbf198c47121dbe6e1dceb0ec838df77123d7d91b8661ecb0df",
+      "bytes": 4421
+    },
+    {
+      "path": "poseidon.json",
+      "sha256": "10532d2d239afd4cef248b9b12cbb70b6201924baf849edea21a44fb061d4464",
+      "bytes": 35206
+    },
+    {
+      "path": "keys.mjs",
+      "sha256": "e12957b4db2c570c990ccdc8c25be7ab88116e816be2ca5e46ece5d1dcf4b11d",
+      "bytes": 2328
+    },
+    {
+      "path": "groth16.mjs",
+      "sha256": "58701b124368b76ddef0fb3ff91923c0dba546b7e64360dd08ff7578ec97cba4",
+      "bytes": 10458
+    },
+    {
+      "path": "deploy.mjs",
+      "sha256": "b806d8ca9974f1b7adb928b8564c9b92a28b6edc8e8037e7530b6d4599348a41",
+      "bytes": 3549
+    },
+    {
+      "path": "ghost.mjs",
+      "sha256": "302b5970c870881dede5b1eff1911c5d5f97df28f7a4c88420fd5eab3a1f4fe4",
+      "bytes": 11499
+    },
+    {
+      "path": "notes.mjs",
+      "sha256": "3d14326723608518d250e5d5f3cc18e88a72fccbe1a7f6fa20f7e1abcb87eac4",
+      "bytes": 6421
+    },
+    {
+      "path": "uniswap.json",
+      "sha256": "541324b62f305f2c6c0068349277c609c394733549fa6981af6ec2f4c7fc5b51",
+      "bytes": 122331
+    },
+    {
+      "path": "circuits/verification_key.json",
+      "sha256": "a0b5e591a1c9f3a5f502d440289146538c9fa0e35693ecc1fdb5d11bbf3968ac",
+      "bytes": 3663
+    },
+    {
+      "path": "circuits/spend.circom",
+      "sha256": "eb068a538701963758e5b97e36c742de6e79e4953cd9a892b2a2ada0186ce3e7",
+      "bytes": 4336
+    },
+    {
+      "path": "circuits/spend.sym",
+      "sha256": "8acfc0cc53e83ce2ebc9ce070d8d1848dd5717a5d67ef80f64f893485e6cf7a9",
+      "bytes": 488120
+    },
+    {
+      "path": "circuits/spend_final.zkey",
+      "sha256": "dca802f130775a745e2c4cfaa3661ec3d0faf488ff3c2fe6cc4b538c77210079",
+      "bytes": 2867506
+    },
+    {
+      "path": "circuits/pot_final.ptau",
+      "sha256": "2feebec9d8379a57da16f305ab4fca7c5961015013da3681f07a1e3d4e46a4ba",
+      "bytes": 9438652
+    },
+    {
+      "path": "circuits/spend.r1cs",
+      "sha256": "c45f63d0092cccad7e0fd506422e3494f964b7cfb013c150a691b97c48f1f052",
+      "bytes": 859636
+    },
+    {
+      "path": "circuits/SpendVerifier.sol",
+      "sha256": "b5fa2cb094d27d09a56299bceca4572e3094af8e90e2b6163c9a37850201ff9e",
+      "bytes": 8616
+    },
+    {
+      "path": "circuits/spend_js/spend.wasm",
+      "sha256": "df96c0544bc26687acf3b8e55a1af2074847d148ba3b78a8c0710b56089e06fd",
+      "bytes": 1998356
+    },
+    {
+      "path": "circuits/spend_js/generate_witness.js",
+      "sha256": "4995a2e6b01432f76182abec6a831fdaf7f840384035072002ccaa43101b14d4",
+      "bytes": 697
+    },
+    {
+      "path": "circuits/spend_js/witness_calculator.js",
+      "sha256": "3bfca49ee5489996a827a1e5a0c8a1f558dbd99e657c7591f5b32e0d33189ce4",
+      "bytes": 10441
+    },
+    {
+      "path": "contracts/foundry.toml",
+      "sha256": "a71c90d01622d741d120c5a8d91e947776e010140cf767d969cf96d977bd89e2",
+      "bytes": 90
+    },
+    {
+      "path": "contracts/out/WETH9.sol/WETH9.json",
+      "sha256": "87765d2419fe2dff96416082c3f9b90ecccabc0c0ebce9c8f5f7ba12fd9a9cc4",
+      "bytes": 26840
+    },
+    {
+      "path": "contracts/out/SpendVerifierStock.sol/SpendVerifierStock.json",
+      "sha256": "6a31bfd62cbb6895cf210ee880baad43b9546b9959c2c9eecb3aba1337651f76",
+      "bytes": 13418
+    },
+    {
+      "path": "contracts/out/GhostPoolUnchecked.sol/IHasher.json",
+      "sha256": "f1f276b47e20ec776a621d85885aa251fb942a62ba423a3c9e507b831bb2cb4a",
+      "bytes": 2350
+    },
+    {
+      "path": "contracts/out/GhostPoolUnchecked.sol/IGhostPool.json",
+      "sha256": "6388b85ae86d3858a26162154ae278b6adf504b47425955fa63b3dd45de02b66",
+      "bytes": 2390
+    },
+    {
+      "path": "contracts/out/GhostPoolUnchecked.sol/IWETH.json",
+      "sha256": "8a3be21026e0670ccff5572fa5f846577df3057fc71cdd1a31d1475753041104",
+      "bytes": 3481
+    },
+    {
+      "path": "contracts/out/GhostPoolUnchecked.sol/IPair.json",
+      "sha256": "8587bd8a265bafc28a74b2edbdf8de297db7c4007387fd5a1eb48cd3639190e8",
+      "bytes": 2738
+    },
+    {
+      "path": "contracts/out/GhostPoolUnchecked.sol/IERC20.json",
+      "sha256": "fb31335f6d9a41be78d7c9e2590d50f66033179e089309f36072d5dcb5711ac0",
+      "bytes": 3187
+    },
+    {
+      "path": "contracts/out/GhostPoolUnchecked.sol/GhostPoolUnchecked.json",
+      "sha256": "d61549a8f955be9a99fbabeb3bd3689f1c7e8699fcbd1526064842c9f6e4a6f1",
+      "bytes": 66636
+    },
+    {
+      "path": "contracts/out/V2Pair.sol/V2Pair.json",
+      "sha256": "831aeada15b4660b994e25f2cae197603057e130ec8ed47fec6b3405fe4d6ef1",
+      "bytes": 37747
+    },
+    {
+      "path": "contracts/out/V2Pair.sol/IERC20Minimal.json",
+      "sha256": "df78cedee3fadf43b1f33024f175c2072af29f3375937ad986a574225455de68",
+      "bytes": 3153
+    },
+    {
+      "path": "contracts/out/GhostPool.sol/IHasher.json",
+      "sha256": "cde68a62c93f942762ffe818f58dfcd4ea18e4788948adf33dd1b6fa97153d0c",
+      "bytes": 2314
+    },
+    {
+      "path": "contracts/out/GhostPool.sol/IGhostPool.json",
+      "sha256": "4e856e5353023d42e073c0c320d9c2e5ed5e976646aa11208253751b2404b92f",
+      "bytes": 2354
+    },
+    {
+      "path": "contracts/out/GhostPool.sol/GhostPool.json",
+      "sha256": "48aadeed197b026b7685a5d99239d40756de28f2c31afdf68f363d95274b9c9f",
+      "bytes": 70947
+    },
+    {
+      "path": "contracts/out/GhostPool.sol/IWETH.json",
+      "sha256": "0fb048be381ddf529edd41d211e39b17a33a9fe21a12df15c725310d915ee242",
+      "bytes": 3445
+    },
+    {
+      "path": "contracts/out/GhostPool.sol/IPair.json",
+      "sha256": "a522cbe70701b28338364a39040055bef84bde6efb3e6fc40feccf5d05041a17",
+      "bytes": 2702
+    },
+    {
+      "path": "contracts/out/GhostPool.sol/IERC20.json",
+      "sha256": "c7c40d5542dec5cf7dad3ce09d69775cd9ee18df55f89adef72cf6601f312151",
+      "bytes": 3151
+    },
+    {
+      "path": "contracts/out/SpendVerifier.sol/SpendVerifier.json",
+      "sha256": "04f158b9c9f30a80305b10b44506cbe119777213ab2f0507a055eb08dc894455",
+      "bytes": 13325
+    },
+    {
+      "path": "contracts/out/Groth16Verifier.sol/Groth16Verifier.json",
+      "sha256": "1f99bd8fe1a5e927b591dc73ba7910f876f1f3b9ac7d44bb7265d1152fab8265",
+      "bytes": 17803
+    },
+    {
+      "path": "contracts/out/TestToken.sol/TestToken.json",
+      "sha256": "35ea7e77fe29d111e45ef7fc0c944c5e7b1ce4225974831fa0577f25e39a4223",
+      "bytes": 23065
+    },
+    {
+      "path": "contracts/out/T.sol/T.json",
+      "sha256": "6fa201bd4f8f6b106c037f22ed155567937ed43d29797d4e521ed55a198823d8",
+      "bytes": 2672
+    },
+    {
+      "path": "contracts/out/Groth16VerifierSnarkjsGas.sol/Groth16VerifierSnarkjsGas.json",
+      "sha256": "805c171e90ebcb6b1664d60066f2ab537401f124750fc4be7005b80442baa466",
+      "bytes": 17902
+    },
+    {
+      "path": "contracts/out/build-info/4350db1e4646d25f.json",
+      "sha256": "b49a83f3ceabf38dd746a25253fd810b78823a27c29d237e7713b8c884a78d50",
+      "bytes": 187
+    },
+    {
+      "path": "contracts/out/build-info/e2661866184a4971.json",
+      "sha256": "7dd05226014abfb339f5263563a701573d851a8cd5ca63ae67953f5c326bb8c5",
+      "bytes": 198
+    },
+    {
+      "path": "contracts/reference/v2-core-0.5.16/UniswapV2Factory.sol",
+      "sha256": "e0cef3e874a68cbcc5986451b1fec180ba5ff5699f27a256b7c10fafefe36b99",
+      "bytes": 1867
+    },
+    {
+      "path": "contracts/reference/v2-core-0.5.16/UniswapV2ERC20.sol",
+      "sha256": "b8ce88929ce2c93b8fce385f8d57701b1a64c600a95317ea5f3561d36297be32",
+      "bytes": 3435
+    },
+    {
+      "path": "contracts/reference/v2-core-0.5.16/UniswapV2Pair.sol",
+      "sha256": "43a5421b31415868367b62bfa161ca10bcee03778873faad905f5a3e2cce9cbd",
+      "bytes": 9788
+    },
+    {
+      "path": "contracts/reference/v2-core-0.5.16/libraries/SafeMath.sol",
+      "sha256": "4b1c95ff75de7342e0fadff58064820a4eb7c2fcb422a75b4994980ce8e216ae",
+      "bytes": 563
+    },
+    {
+      "path": "contracts/reference/v2-core-0.5.16/libraries/UQ112x112.sol",
+      "sha256": "6633b57b0723b1d72e08cc3e8b29f0af838294e59863b6cdcce95a141ed02cdb",
+      "bytes": 578
+    },
+    {
+      "path": "contracts/reference/v2-core-0.5.16/libraries/Math.sol",
+      "sha256": "e4a9d451964a0689be2b244322a353de143ca4248d8736d91aca4ffadca4325f",
+      "bytes": 602
+    },
+    {
+      "path": "contracts/reference/v2-core-0.5.16/interfaces/IERC20.sol",
+      "sha256": "2b63f199f838028184efefbcfd6cf2b9192624c3dae5dc1116ecbb15c36a67e8",
+      "bytes": 823
+    },
+    {
+      "path": "contracts/reference/v2-core-0.5.16/interfaces/IUniswapV2ERC20.sol",
+      "sha256": "7948069aea398dec4b7e771ffc749a24fdce3a64673a1b14deae960e7a54c603",
+      "bytes": 1148
+    },
+    {
+      "path": "contracts/reference/v2-core-0.5.16/interfaces/IUniswapV2Factory.sol",
+      "sha256": "51d056199e3f5e41cb1a9f11ce581aa3e190cc982db5771ffeef8d8d1f962a0d",
+      "bytes": 661
+    },
+    {
+      "path": "contracts/reference/v2-core-0.5.16/interfaces/IUniswapV2Pair.sol",
+      "sha256": "29c75e69ce173ff8b498584700fef76bc81498c1d98120e2877a1439f0c31b5a",
+      "bytes": 2424
+    },
+    {
+      "path": "contracts/reference/v2-core-0.5.16/interfaces/IUniswapV2Callee.sol",
+      "sha256": "ecfa434d468bb1888124d8c34b0b8483f4ea1e5cd63f0874c8b28aa4305c1dbc",
+      "bytes": 159
+    },
+    {
+      "path": "contracts/src/WETH9.sol",
+      "sha256": "8d08720f201b567a2c0949b01ee91fcce3d401804854f29a0f7796f7626802d0",
+      "bytes": 2102
+    },
+    {
+      "path": "contracts/src/SpendVerifierStock.sol",
+      "sha256": "21c7c524860cea5285b73f03daacc4f5620fc886a3ad6bbd9f4772ba9a812a7a",
+      "bytes": 8695
+    },
+    {
+      "path": "contracts/src/GhostPoolUnchecked.sol",
+      "sha256": "9ec7f91563f8bcb186b7a447ef612e1e6d02acba26cbff5ccbcb178ab72cd614",
+      "bytes": 16001
+    },
+    {
+      "path": "contracts/src/GhostPool.sol",
+      "sha256": "48a22b5c83c59cf0a214c200d0be670b083b907a13bc042eac375a5eecbf2f1c",
+      "bytes": 15750
+    },
+    {
+      "path": "contracts/src/SpendVerifier.sol",
+      "sha256": "e0812b259e729e8ecdc558b8477fef7f0bcf47554dbbb1dc5417cf23f241921c",
+      "bytes": 9028
+    },
+    {
+      "path": "contracts/src/TestToken.sol",
+      "sha256": "0e425ae6b5358e830cee035430bbd9fe120c3bdc1c52d43ebafd218d0df88afc",
+      "bytes": 1728
+    }
+  ]
+}

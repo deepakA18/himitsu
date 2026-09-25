@@ -1,0 +1,39 @@
+diff --git a/crates/vm/levm/src/vm.rs b/crates/vm/levm/src/vm.rs
+index c06ea7258..699d955a3 100644
+--- a/crates/vm/levm/src/vm.rs
++++ b/crates/vm/levm/src/vm.rs
+@@ -3076,6 +3076,7 @@ impl<'a> VM<'a> {
+                 false
+             };
+ 
++            let state_gas_before_frame = self.state_gas_used;
+             let (frame_success, frame_gas_used) = if value_transfer_reverted {
+                 self.substate.revert_backup();
+                 self.restore_cache_state()?;
+@@ -3159,6 +3160,26 @@ impl<'a> VM<'a> {
+                 .checked_add(frame_gas_used)
+                 .ok_or(VMError::Internal(InternalError::Overflow))?;
+ 
++            // Later validation frames may inspect earlier results with FRAMEPARAM.
++            // Keep the same frame-indexed history that full execution exposes.
++            let status = if frame_success {
++                ethrex_common::types::FRAME_RECEIPT_STATUS_SUCCESS
++            } else {
++                ethrex_common::types::FRAME_RECEIPT_STATUS_FAILURE
++            };
++            let state_gas_used = if frame_success {
++                self.state_gas_used.saturating_sub(state_gas_before_frame).max(0) as u64
++            } else {
++                0
++            };
++            self.frame_tx_context
++                .as_mut()
++                .ok_or(VMError::Internal(InternalError::Custom(
++                    "missing frame tx context".to_string(),
++                )))?
++                .frame_results
++                .push((status, frame_gas_used, state_gas_used, Vec::new()));
++
+             if !frame_success {
+                 any_revert = true;
+             }

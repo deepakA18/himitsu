@@ -1,0 +1,38 @@
+{
+  "name": "himitsu",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "packageManager": "bun@1.3.9",
+  "workspaces": [
+    "packages/*",
+    "app"
+  ],
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "check": "bun run typecheck && bun test",
+    "doctor": "bun scripts/doctor.ts",
+    "build:paymaster": "bun build packages/contracts/src/paymaster.ts --target=node --format=esm --outfile=packages/protocol/generated/paymaster.mjs",
+    "build:protocol": "bun run build:paymaster && bun run --cwd packages/protocol build:artifacts",
+    "test:circuit": "bun run --cwd packages/protocol test:circuit",
+    "test:lifecycle": "bun run --cwd packages/protocol test:lifecycle",
+    "test:automatic": "bun run build:paymaster && bun run --cwd packages/protocol test:automatic",
+    "test:attack": "bun run --cwd packages/protocol test:attack",
+    "dev": "bun run --cwd app dev",
+    "build:app": "bun run --cwd app build",
+    "typecheck:app": "bun run --cwd app typecheck",
+    "deploy:app": "bun run build:protocol && node packages/protocol/deploy-app.mjs",
+    "test:browser": "playwright test"
+  },
+  "dependencies": {
+    "viem": "2.38.5",
+    "poseidon-lite": "0.3.0"
+  },
+  "devDependencies": {
+    "@types/bun": "1.3.9",
+    "typescript": "5.9.3",
+    "@playwright/test": "1.63.0",
+    "fake-indexeddb": "6.2.5"
+  }
+}

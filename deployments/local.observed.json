@@ -1,0 +1,10 @@
+{
+  "status": "rpc-observation-only",
+  "chainId": "9",
+  "genesisHash": "0xb473dc850bb03610a9d5633bd20dcc66a773dba2ef9b1dc05e1c57319eb932ca",
+  "clientVersion": "ethrex/v23.0.0-frames-devnet-0-d587cf9ff0996315381c4b2784a4d7d499decc0f/aarch64-apple-darwin/rustc-v1.93.0",
+  "ethrexCommit": "d587cf9ff0996315381c4b2784a4d7d499decc0f",
+  "eipCommit": "b75cbe6115",
+  "contracts": null,
+  "note": "No deployment addresses or native execution evidence have been imported. Reverify genesis after any node reset."
+}

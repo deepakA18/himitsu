@@ -1,0 +1,26 @@
+{
+  "name": "@himitsu/protocol",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:artifacts": "node build-artifacts.mjs && node compile-uniswap.mjs && node compile-contracts.mjs",
+    "test:circuit": "node test-circuit.mjs",
+    "test:lifecycle": "node lifecycle.mjs",
+    "test:roundtrip": "node roundtrip.mjs",
+    "test:attack": "node attack.mjs",
+    "test:automatic": "node automatic-roundtrip.mjs"
+  },
+  "dependencies": {
+    "@noble/curves": "2.4.0",
+    "@noble/hashes": "2.4.0",
+    "circomlib": "2.0.5",
+    "circomlibjs": "0.1.7",
+    "snarkjs": "0.7.6"
+  },
+  "devDependencies": {
+    "@uniswap/v2-core": "1.0.1",
+    "solc-v2": "npm:solc@0.5.16",
+    "solc": "0.8.30"
+  }
+}
