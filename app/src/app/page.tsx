@@ -9,6 +9,9 @@ export default function Page() {
     [controller, setController] = useState<Controller | null>(null),
     [password, setPassword] = useState(''),
     [showPassword, setShowPassword] = useState(false),
+    [restoreMode, setRestoreMode] = useState(false),
+    [phrase, setPhrase] = useState(''),
+    [showPhrase, setShowPhrase] = useState(false),
     [account, setAccount] = useState<Hex | null>(null),
     [recipient, setRecipient] = useState(''),
     [selected, setSelected] = useState(''),
@@ -48,13 +51,21 @@ export default function Page() {
     const store = new IndexedVaultStore();
     const vault = backup
       ? await Vault.restore(store, password, backup)
-      : await Vault.open(store, password);
+      : restoreMode
+        ? await Vault.restorePhrase(store, password, phrase)
+        : await Vault.open(store, password);
     const c = new Controller(config, vault);
     setController(c);
     setPassword('');
+    setPhrase('');
+    setShowPhrase(false);
     await navigator.storage?.persist?.();
     await c.refresh();
-    setMessage('Vault unlocked and synchronized. Export a backup after creating notes.');
+    setMessage(
+      vault.data.recovery?.confirmed
+        ? `Recovery scan complete: ${vault.data.notes.length} saved notes. No matches can mean a different phrase or deployment, or deposits still awaiting confirmation.`
+        : 'Vault unlocked. Back up and confirm your recovery phrase before depositing.',
+    );
   }
   async function refresh() {
     if (!controller) return;
@@ -111,8 +122,9 @@ export default function Page() {
       <section>
         <h2>1. Note vault</h2>
         <p className="muted">
-          Notes and transaction history are encrypted in this browser. Keep an encrypted backup and
-          its password; clearing browser data without a backup loses your notes.
+          Back up your Himitsu recovery phrase once to recover confirmed new private notes on a new
+          browser. Your local password encrypts this browser. Anyone with the phrase can spend your
+          notes. Use a separate phrase from your Ethereum wallet and keep it offline.
         </p>
         {!controller ? (
           <form
@@ -121,7 +133,9 @@ export default function Page() {
               void run('Unlocking vault…', () => unlock());
             }}
           >
-            <label htmlFor="password">Vault password</label>
+            <label htmlFor="password">
+              {restoreMode ? 'New local vault password' : 'Vault password'}
+            </label>
             <div className="row">
               <input
                 id="password"
@@ -141,9 +155,39 @@ export default function Page() {
             <p id="password-hint" className="hint">
               Use at least 12 characters for a new vault. This password never leaves your browser.
             </p>
+            <button
+              type="button"
+              disabled={!!busy}
+              onClick={() => {
+                setRestoreMode(!restoreMode);
+                setPhrase('');
+              }}
+            >
+              {restoreMode ? 'Back to create / unlock' : 'Restore with recovery phrase'}
+            </button>
+            {restoreMode && (
+              <>
+                <label htmlFor="restore-phrase">24-word Himitsu recovery phrase</label>
+                <textarea
+                  id="restore-phrase"
+                  rows={4}
+                  value={phrase}
+                  onChange={(e) => setPhrase(e.target.value)}
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  required
+                  disabled={!!busy}
+                />
+                <p className="hint">
+                  Restores confirmed notes for this deployment. The old local password is not
+                  needed. Pending history and deposit wallet keys require an encrypted backup.
+                </p>
+              </>
+            )}
             <div className="row">
               <button disabled={!!busy || !config} type="submit">
-                Create / unlock vault
+                {restoreMode ? 'Restore phrase and scan' : 'Create / unlock vault'}
               </button>
               <label className="file">
                 Restore encrypted backup
@@ -197,6 +241,9 @@ export default function Page() {
               disabled={!!busy}
               onClick={() => {
                 setController(null);
+                setPhrase('');
+                setShowPhrase(false);
+                setRestoreMode(false);
                 setSelected('');
                 setAccount(null);
                 walletRef.current = null;
@@ -205,6 +252,72 @@ export default function Page() {
             >
               Lock
             </button>
+          </div>
+        )}
+        {controller && (
+          <div>
+            {!controller.vault.data.recovery ? (
+              <button
+                disabled={!!busy}
+                onClick={() =>
+                  void run('Preparing recovery phrase…', () => controller.vault.enableRecovery())
+                }
+              >
+                Enable recovery for new notes
+              </button>
+            ) : (
+              <>
+                <p>
+                  {controller.vault.data.recovery.confirmed
+                    ? 'Recovery phrase confirmed.'
+                    : 'Write down all 24 words in order, then hide them and re-enter them to confirm your backup.'}
+                </p>
+                <button disabled={!!busy} onClick={() => setShowPhrase(!showPhrase)}>
+                  {showPhrase ? 'Hide recovery phrase' : 'Reveal recovery phrase'}
+                </button>
+                {showPhrase && (
+                  <p className="recovery-phrase">{controller.vault.data.recovery.phrase}</p>
+                )}
+                {!controller.vault.data.recovery.confirmed && !showPhrase && (
+                  <>
+                    <label htmlFor="confirm-phrase">Re-enter your saved recovery phrase</label>
+                    <textarea
+                      id="confirm-phrase"
+                      rows={4}
+                      autoComplete="off"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      value={phrase}
+                      onChange={(e) => setPhrase(e.target.value)}
+                      disabled={!!busy}
+                    />
+                    <button
+                      disabled={!!busy || !phrase}
+                      onClick={() =>
+                        void run('Confirming backup and scanning…', async () => {
+                          await controller.vault.confirmRecovery(phrase);
+                          setPhrase('');
+                          await controller.refresh();
+                          setMessage('Recovery phrase confirmed. You can create private notes.');
+                        })
+                      }
+                    >
+                      Confirm backup
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+            {notes.some((n) => !n.recovery) && (
+              <p className="error">
+                Legacy notes require your encrypted backup. This phrase cannot recover them.
+              </p>
+            )}
+            <p className="hint">
+              Use one active browser for each phrase. Recovery scans confirmed pool events directly
+              through RPC; no hosted indexer is required. Keep an encrypted backup for pending
+              transactions and local test-wallet keys.
+            </p>
           </div>
         )}
       </section>
@@ -227,7 +340,7 @@ export default function Page() {
               {account ? short(account) : 'Connect deposit wallet'}
             </button>
             <button
-              disabled={!controller || !account || !!busy}
+              disabled={!controller?.vault.data.recovery?.confirmed || !account || !!busy}
               onClick={() =>
                 void run('Save note, then approve deposit in your wallet…', async () => {
                   const a = await controller!.deposit(walletRef.current!, account!);
@@ -300,7 +413,10 @@ export default function Page() {
           <div className="row">
             <button
               disabled={
-                !!busy || !chosen || chosen.pool.toLowerCase() !== config?.pool.toLowerCase()
+                !!busy ||
+                !controller?.vault.data.recovery?.confirmed ||
+                !chosen ||
+                chosen.pool.toLowerCase() !== config?.pool.toLowerCase()
               }
               onClick={() => void run('Preparing private swap…', () => spend('swap'))}
             >

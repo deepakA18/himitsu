@@ -90,6 +90,7 @@ label {
   font-weight: 600;
 }
 input,
+textarea,
 select,
 button {
   font: inherit;
@@ -99,6 +100,7 @@ button {
   padding: 10px 12px;
 }
 input,
+textarea,
 select {
   background: var(--surface);
   color: var(--text);
@@ -224,4 +226,14 @@ dd {
   .row button {
     flex-grow: 1;
   }
+}
+
+textarea {
+  resize: vertical;
+}
+.recovery-phrase {
+  padding: 16px;
+  border: 1px solid var(--border);
+  line-height: 2;
+  word-spacing: 0.35em;
 }

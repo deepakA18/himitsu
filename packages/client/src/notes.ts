@@ -10,6 +10,7 @@ export interface SecretNote {
   nullifierHash: Hex;
 }
 export interface SavedNote extends SecretNote {
+  recovery?: { version: 1; counter: number };
   id: string;
   deployment: string;
   pool: Hex;

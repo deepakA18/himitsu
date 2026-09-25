@@ -73,6 +73,15 @@ test('browser deposit, durable reload, local proof swap, backup and withdrawal',
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/');
   await unlock(page);
+  await page.getByRole('button', { name: 'Reveal recovery phrase' }).click();
+  const phrase = await page.locator('.recovery-phrase').innerText();
+  expect(phrase.split(' ')).toHaveLength(24);
+  await page.getByRole('button', { name: 'Hide recovery phrase' }).click();
+  await page.getByLabel('Re-enter your saved recovery phrase').fill(phrase);
+  await page.getByRole('button', { name: 'Confirm backup', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Recovery phrase confirmed', {
+    timeout: 30000,
+  });
   await page.getByRole('button', { name: 'Connect deposit wallet' }).click();
   await expect(page.getByRole('status')).toContainText('wallet connected');
   await page.getByRole('button', { name: 'Deposit 0.1 ETH' }).click();

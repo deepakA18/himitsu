@@ -12,7 +12,7 @@ The supplied implementation is preserved in `packages/protocol`, with import has
 - Immutable automatic-paymaster bytecode generator with explicit trusted-pool ABI shapes, fee/gas caps, prefix ordering, prior validation status, no sponsor signatures, and a separate ETH funding path.
 - Unit tests for envelope binding, receipt rollback, submission uncertainty, and paymaster policy control flow.
 
-**Implemented for local testing:** Next.js UI, browser Groth16 proving, encrypted IndexedDB vault with backup/restore, canonical event reconstruction, and shared-pool nonce reconciliation. The automatic paymaster passes the native private swap, output withdrawal, and failed-swap rollback flow on the locally patched Ethrex client. The imported circuit and lifecycle tests also pass locally. The paymaster test interpreter is deliberately limited: it does not establish EVM gas bounds, admission compatibility, or proof soundness. Never deploy it with real funds.
+**Implemented for local testing:** Next.js UI, browser Groth16 proving, encrypted IndexedDB vault with 24-word phrase recovery and encrypted backup/restore, canonical event reconstruction, and shared-pool nonce reconciliation. The automatic paymaster passes the native private swap, output withdrawal, and failed-swap rollback flow on the locally patched Ethrex client. The imported circuit and lifecycle tests also pass locally. The paymaster test interpreter is deliberately limited: it does not establish EVM gas bounds, admission compatibility, or proof soundness. Never deploy it with real funds.
 
 ## Commands
 
@@ -54,12 +54,12 @@ bun run dev
 
 Open http://127.0.0.1:3000. `deploy:app` writes `deployments/app.local.json`, the public deployment manifest, and browser proving assets. It deploys test pools, liquidity and a sponsor funded with 0.1 test ETH. Do not redeploy on every app start: old notes are bound to their original deployment. The manifest pins chain ID, genesis, a postdeployment anchor block, contract runtime hashes, and proving-asset hashes.
 
-1. Create a vault with a password of at least 12 characters, or restore an encrypted backup into an empty vault.
+1. Create a vault with a local password of at least 12 characters. Reveal the new 24-word Himitsu phrase, save it offline, hide it and re-enter it to confirm. To recover in an empty browser, select “Restore with recovery phrase” and choose a new local password. Encrypted backups remain supported.
 2. Connect a deposit wallet, or choose **Use local test wallet**. The latter creates an encrypted dev-only key and displays its address; fund that address with local test ETH. It is limited to chain 9 at a loopback RPC. An injected wallet should also use the configured devnet.
 3. Deposit 0.1 ETH to receive a 0.1 WETH note. Use **Refresh / reconcile** after two blocks.
-4. Select the note and swap to a fixed 150 gUSD note. Proving may take several seconds. Export a fresh backup, then withdraw the output note to a test address.
+4. Select the note and swap to a fixed 150 gUSD note. Proving may take several seconds. Then withdraw the output note to a test address.
 
-Private notes and the transaction journal are encrypted with AES-GCM using a password-derived PBKDF2 key. Notes and the full raw transaction are saved before broadcast. IndexedDB revision checks and Web Locks prevent stale tabs from overwriting the vault. Browser storage can still be cleared or evicted: export backups after creating notes and keep the password. Losing both storage and backup loses note access; losing the password prevents decryption. Encrypted storage does not protect an unlocked page from malicious scripts.
+Private notes and the transaction journal are encrypted with AES-GCM using a password-derived PBKDF2 key. Notes and the full raw transaction are saved before broadcast. IndexedDB revision checks and Web Locks prevent stale tabs from overwriting the vault. Browser storage can still be cleared or evicted: the confirmed recovery phrase restores new confirmed notes from pool events without the old local password. Keep an encrypted backup for legacy random notes, pending transaction journals and local test-wallet keys. The phrase does not recover those. Losing both the phrase and usable vault/backup loses access. Use one active browser per phrase. See `docs/recovery.md` for the versioned derivation and limits. Encrypted storage does not protect an unlocked page from malicious scripts.
 
 Reconciliation rebuilds trees from canonical deposit events and checks nullifiers, pool nonces and receipts at a consistent block. Two-block confirmation is a devnet policy, not finality. Unknown broadcasts reserve the input note until chain evidence resolves them. Nonce conflicts release only unspent notes for an explicit retry; no automatic reproving or replacement occurs. A later reorg reopens cached outcomes for reconciliation.
 
@@ -77,7 +77,7 @@ bun run test:client
 bun run test:browser
 ```
 
-`test:client` reads the existing app deployment. It exercises two independent vaults, a real nonce collision, an accepted transaction with a lost response, output recovery, and withdrawal. Full browser testing and host limitations are recorded in `docs/app-validation.md`.
+`test:client` reads the existing app deployment. It exercises two independent vaults, a real nonce collision, an accepted transaction with a lost response, phrase-only restoration with a new password across counter gaps, output recovery, and withdrawal. Full browser testing and host limitations are recorded in `docs/app-validation.md`.
 
 ## Version boundary
 

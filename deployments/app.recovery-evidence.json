@@ -1,0 +1,18 @@
+{
+  "deployment": "0xb81eb4138da8f5abc8437e7451997c3756aca77b:0xd079e904828af1257c0625135b5595a7ef303aeccbf01b18e4247c3f39664049",
+  "nonceConflict": true,
+  "lostResponseRecovered": true,
+  "outputNoteRecovered": true,
+  "withdrawalConfirmed": true,
+  "phraseRestoreWithNewPassword": true,
+  "counterGapRecovery": [
+    32,
+    64
+  ],
+  "transactions": [
+    "0x8a85798cb419c672874ffbc57ad40fd475ef2d87c968bbddd898396f106ea4ab",
+    "0xc9e03bf9fbdb7c7a99954614fce07c9a4b5fe7f7f4fb8a237212d62ba4df504d",
+    "0xa269541385ac248f0226e620988123c80e89c054bd58f2184ddb66e76f10e754",
+    "0xbb76407339a2154498dafde69f8f8534180dff93e4c21544cc0a4cd4dc283ffa"
+  ]
+}

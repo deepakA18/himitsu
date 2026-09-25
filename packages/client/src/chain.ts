@@ -152,7 +152,12 @@ export async function snapshot(
     const spent = new Map<string, boolean>();
     await Promise.all(
       notes
-        .filter((n) => n.deployment === d.id && n.pool.toLowerCase() === pool.toLowerCase())
+        .filter(
+          (n) =>
+            n.deployment === d.id &&
+            n.pool.toLowerCase() === pool.toLowerCase() &&
+            indices.has(n.commitment.toLowerCase()),
+        )
         .map(async (n) =>
           spent.set(
             n.id,

@@ -1,3 +1,4 @@
+import { createRecovery, normalizePhrase, RECOVERY_SLOTS, type Recovery } from './recovery';
 import { assertHex } from '../../frame-codec/src/index';
 import { validateSecretNote, type SavedNote } from './notes';
 import type { Hex } from 'viem';
@@ -27,6 +28,7 @@ export interface Attempt {
   detail?: string;
 }
 export interface VaultData {
+  recovery?: Recovery;
   version: 1;
   notes: SavedNote[];
   attempts: Attempt[];
@@ -77,10 +79,25 @@ function validate(data: VaultData) {
     data.attempts.length > 16384
   )
     throw new Error('Invalid vault data');
+  if (
+    data.recovery &&
+    (data.recovery.version !== 1 ||
+      typeof data.recovery.confirmed !== 'boolean' ||
+      normalizePhrase(data.recovery.phrase) !== data.recovery.phrase)
+  )
+    throw new Error('Invalid recovery data');
   if (data.testWalletKey) assertHex(data.testWalletKey, 32);
   const ids = new Set<string>();
   for (const n of data.notes) {
     validateSecretNote(n);
+    if (
+      n.recovery &&
+      (n.recovery.version !== 1 ||
+        !Number.isInteger(n.recovery.counter) ||
+        n.recovery.counter < 0 ||
+        n.recovery.counter >= RECOVERY_SLOTS)
+    )
+      throw new Error('Invalid note recovery metadata');
     assertHex(n.pool, 20);
     if (
       typeof n.id !== 'string' ||
@@ -188,9 +205,14 @@ export class Vault {
     private saved: Envelope,
     public data: VaultData,
   ) {}
-  static async open(store: VaultStore, password: string) {
+  static async open(store: VaultStore, password: string, restoredPhrase?: string) {
+    const restored = restoredPhrase === undefined ? undefined : normalizePhrase(restoredPhrase);
     const saved = await store.read();
     if (saved) {
+      if (restored !== undefined)
+        throw new Error(
+          'Restore requires an empty browser vault; existing notes were not overwritten',
+        );
       envelope(saved);
       const key = await derive(password, saved.salt);
       return new Vault(store, key, saved, await decrypt(saved, key));
@@ -198,10 +220,31 @@ export class Vault {
     if (password.length < 12) throw new Error('Use a vault password of at least 12 characters');
     const salt = encode(crypto.getRandomValues(new Uint8Array(16))),
       key = await derive(password, salt),
-      data: VaultData = { version: 1, notes: [], attempts: [] };
+      data: VaultData = {
+        version: 1,
+        notes: [],
+        attempts: [],
+        recovery:
+          restored === undefined
+            ? createRecovery()
+            : { version: 1, phrase: restored, confirmed: true },
+      };
     const fresh = await encrypt(data, key, salt, 0);
     await store.compareAndSet(null, fresh);
     return new Vault(store, key, fresh, data);
+  }
+  static async restorePhrase(store: VaultStore, password: string, phrase: string) {
+    return Vault.open(store, password, phrase);
+  }
+  async enableRecovery() {
+    await this.reload();
+    if (!this.data.recovery) await this.save({ ...this.data, recovery: createRecovery() });
+  }
+  async confirmRecovery(phrase: string) {
+    await this.reload();
+    if (!this.data.recovery || normalizePhrase(phrase) !== this.data.recovery.phrase)
+      throw new Error('Recovery phrase does not match');
+    await this.save({ ...this.data, recovery: { ...this.data.recovery, confirmed: true } });
   }
   static async restore(store: VaultStore, password: string, text: string) {
     if (text.length > 10_000_000) throw new Error('Backup too large');

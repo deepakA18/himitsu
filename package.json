@@ -28,8 +28,9 @@
     "test:client": "bun build scripts/test-client.ts --target=node --packages=external --outfile=.local/test-client.mjs && node .local/test-client.mjs"
   },
   "dependencies": {
-    "viem": "2.38.5",
-    "poseidon-lite": "0.3.0"
+    "@scure/bip39": "1.6.0",
+    "poseidon-lite": "0.3.0",
+    "viem": "2.38.5"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

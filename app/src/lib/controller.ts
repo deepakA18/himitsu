@@ -1,4 +1,10 @@
 import {
+  recoveryKey,
+  recoveryCandidates,
+  deriveNote,
+  nextCounter,
+} from '../../../packages/client/src/recovery';
+import {
   createWalletClient,
   defineChain,
   http,
@@ -24,7 +30,7 @@ import {
   isActive,
   type Attempt,
 } from '../../../packages/client/src/vault';
-import { createSecretNote, type SavedNote, hex32 } from '../../../packages/client/src/notes';
+import { type SavedNote, hex32 } from '../../../packages/client/src/notes';
 import {
   serializeTransaction,
   signingHash,
@@ -60,16 +66,43 @@ export class Controller {
   async refresh() {
     return this.exclusive(() => this.sync());
   }
+  private candidates?: { phrase: string; key: CryptoKey; notes: SavedNote[] };
   private async sync() {
+    const recovery = this.vault.data.recovery;
+    if (recovery?.confirmed && this.candidates?.phrase !== recovery.phrase) {
+      const key = await recoveryKey(recovery.phrase);
+      const notes = [
+        ...(await recoveryCandidates(key, this.deployment.id, this.deployment.pool)),
+        ...(await recoveryCandidates(key, this.deployment.id, this.deployment.outputPool)),
+      ];
+      this.candidates = { phrase: recovery.phrase, key, notes };
+    }
+    const saved = this.vault.data.notes;
+    const known = new Set(
+      saved.map((n) => n.deployment + ':' + n.pool.toLowerCase() + ':' + n.commitment),
+    );
+    const candidates = recovery?.confirmed
+      ? (this.candidates?.notes ?? []).filter(
+          (n) => !known.has(n.deployment + ':' + n.pool.toLowerCase() + ':' + n.commitment),
+        )
+      : [];
+
     const s = await snapshot(
       this.rpc,
       this.deployment,
-      this.vault.data.notes,
+      [...saved, ...candidates],
       this.vault.data.attempts,
     );
+    const notes = [
+      ...saved,
+      ...candidates.filter((n) =>
+        s.pools.get(n.pool.toLowerCase())?.indices.has(n.commitment.toLowerCase()),
+      ),
+    ];
     const next = {
       ...this.vault.data,
-      attempts: reconciled(this.vault.data.attempts, this.vault.data.notes, this.deployment, s),
+      notes,
+      attempts: reconciled(this.vault.data.attempts, notes, this.deployment, s),
     };
     await this.vault.save(next);
     this.current = s;
@@ -86,14 +119,16 @@ export class Controller {
       return 'Reserved';
     return p?.indices.has(n.commitment.toLowerCase()) ? 'Available' : 'Awaiting deposit';
   }
-  private newNote(pool: Hex): SavedNote {
-    return {
-      ...createSecretNote(),
-      id: crypto.randomUUID(),
-      deployment: this.deployment.id,
+  private async newNote(pool: Hex): Promise<SavedNote> {
+    if (!this.vault.data.recovery?.confirmed || !this.candidates)
+      throw new Error('Back up and confirm your recovery phrase before creating notes');
+    const note = await deriveNote(
+      this.candidates.key,
+      this.deployment.id,
       pool,
-      createdAt: Date.now(),
-    };
+      nextCounter(this.vault.data.notes, this.deployment.id, pool),
+    );
+    return { ...note, createdAt: Date.now() };
   }
   async deposit(wallet: Wallet, account: Hex) {
     return this.exclusive(async () => {
@@ -106,7 +141,7 @@ export class Controller {
       const accounts = (await wallet.request({ method: 'eth_accounts' })) as string[];
       if (!accounts.some((a) => a.toLowerCase() === account.toLowerCase()))
         throw new Error('Wallet account changed; reconnect');
-      const note = this.newNote(this.deployment.pool),
+      const note = await this.newNote(this.deployment.pool),
         attempt: Attempt = {
           id: crypto.randomUUID(),
           deployment: this.deployment.id,
@@ -227,7 +262,7 @@ export class Controller {
         throw new Error('This note was just spent; refresh');
       const latest = await this.rpc.request<Block>('eth_getBlockByNumber', ['latest', false]),
         deadline = BigInt(latest.timestamp) + 300n;
-      const output = kind === 'swap' ? this.newNote(d.outputPool) : undefined;
+      const output = kind === 'swap' ? await this.newNote(d.outputPool) : undefined;
       if (output)
         await this.vault.save({ ...this.vault.data, notes: [...this.vault.data.notes, output] });
       const target = kind === 'swap' ? d.pair : (recipient as Hex);

@@ -22,3 +22,10 @@ RPC: http://127.0.0.1:8567, chain 9. Deployment identity is in `deployments/app.
 - Withdrawal: `0x1a7c50918442fb42be868926cc67eded74290107f73fd7dccc7ed44490be8022`
 
 These are disposable devnet results, not evidence of public-network admission or production security. The node requires the recorded Ethrex simulator patch. Two-block confirmation is not finality. The test Groth16 ceremony, fixed swap output, pooled nonce contention and sponsor subsidy/griefing remain MVP limitations. Note secrets and wallet keys are excluded from this report.
+
+## Recovery phrase update — 2026-09-26
+
+- 56 unit tests and 101 assertions pass, including the fixed v1 derivation vector and 1,024-slot scan. Root and app TypeScript checks pass.
+- Optimized Next.js build passes with recovery support.
+- Real Ethrex integration recovered notes at counters 32 and 64 from only the phrase, into empty storage using a different local password, then withdrew the recovered swap output. No draft notes, old journal, or test wallet key were imported. Nonce collision and lost-response tests also passed in this run. Evidence: `deployments/app.recovery-evidence.json`.
+- The actual in-app browser unlocked the existing legacy fixture, synchronized both spent notes and retained all journal entries, and displayed the legacy-backup warning and recovery setup entry point. Phrase creation/restore was verified through native client tests; the new phrase UI was not exercised end to end in a browser this run. The maintained Playwright workflow includes phrase confirmation but was not rerun due to the previously recorded host launch limitation.

@@ -1,3 +1,4 @@
+import { deriveNote, recoveryKey } from '../packages/client/src/recovery';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -43,6 +44,13 @@ function store(): VaultStore {
 }
 async function client() {
   const v = await Vault.open(store(), 'native integration test vault');
+  await v.confirmRecovery(v.data.recovery!.phrase);
+  // Persist abandoned drafts: recovery must not stop at empty counter gaps.
+  const key = await recoveryKey(v.data.recovery!.phrase);
+  await v.save({
+    ...v.data,
+    notes: [await deriveNote(key, d.id, d.pool, 31), await deriveNote(key, d.id, d.outputPool, 63)],
+  });
   const c = new Controller(d, v, prover);
   const local = await c.localTestWallet();
   execFileSync(
@@ -76,8 +84,8 @@ const a = await client(),
   b = await client();
 await settled(a.c, a.c.vault.data.attempts[0]!.id);
 await settled(b.c, b.c.vault.data.attempts[0]!.id);
-const aNote = a.c.vault.data.notes[0]!,
-  bNote = b.c.vault.data.notes[0]!;
+const aNote = a.c.vault.data.notes.find((n) => n.id === a.c.vault.data.attempts[0]!.source)!,
+  bNote = b.c.vault.data.notes.find((n) => n.id === b.c.vault.data.attempts[0]!.source)!;
 let release!: () => void, arrived!: () => void;
 const paused = new Promise<void>((r) => (arrived = r)),
   gate = new Promise<void>((r) => (release = r));
@@ -113,14 +121,41 @@ assert.equal(confirmed.state, 'confirmed');
 assert.equal(a.c.noteState(aNote), 'Spent');
 const output = a.c.vault.data.notes.find((n) => n.id === confirmed.output)!;
 assert.equal(a.c.noteState(output), 'Available');
-const outputWithdrawal = await a.c.spend(output.id, 'withdraw', a.local.account, () => {});
-assert.equal((await settled(a.c, outputWithdrawal.id)).state, 'confirmed');
+const restored = await Vault.restorePhrase(
+  store(),
+  'a completely new local password',
+  a.c.vault.data.recovery!.phrase,
+);
+const recovered = new Controller(d, restored, prover);
+await recovered.refresh();
+assert.equal(
+  restored.data.notes.length,
+  2,
+  'Only mined notes should be recovered across counter gaps',
+);
+assert.equal(restored.data.attempts.length, 0);
+assert.equal(restored.data.testWalletKey, undefined);
+const recoveredInput = restored.data.notes.find((n) => n.commitment === aNote.commitment)!;
+const recoveredOutput = restored.data.notes.find((n) => n.commitment === output.commitment)!;
+assert.equal(recoveredInput.recovery!.counter, 32);
+assert.equal(recoveredOutput.recovery!.counter, 64);
+assert.equal(recovered.noteState(recoveredInput), 'Spent');
+assert.equal(recovered.noteState(recoveredOutput), 'Available');
+const outputWithdrawal = await recovered.spend(
+  recoveredOutput.id,
+  'withdraw',
+  a.local.account,
+  () => {},
+);
+assert.equal((await settled(recovered, outputWithdrawal.id)).state, 'confirmed');
 const summary = {
   deployment: d.id,
   nonceConflict: true,
   lostResponseRecovered: true,
   outputNoteRecovered: true,
   withdrawalConfirmed: true,
+  phraseRestoreWithNewPassword: true,
+  counterGapRecovery: [32, 64],
   transactions: [loser.hash, first.hash, retry.hash, outputWithdrawal.hash],
 };
 writeFileSync('.local/evidence/client-reconciliation.json', JSON.stringify(summary, null, 2));
