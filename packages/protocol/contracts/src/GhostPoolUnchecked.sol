@@ -169,6 +169,7 @@ contract GhostPoolUnchecked {
     }
 
     function _insertNote(bytes32 commitment) private returns (uint32 leafIndex) {
+        require(uint256(commitment) < FIELD_SIZE, "deposit: noncanonical commitment");
         require(!commitments[commitment], "deposit: duplicate commitment");
         commitments[commitment] = true;
         leafIndex = _insert(commitment);
@@ -237,7 +238,7 @@ contract GhostPoolUnchecked {
 
     /// Spend a note straight into a swap, and mint the output as a new note in
     /// `outPool` -- all in one call, so there is no intermediate holder, no
-    /// allowance, and nothing to roll back separately.
+    /// persistent allowance, and nothing to roll back separately.
     ///
     /// The arguments are not proof signals, but they are covered by sig_hash,
     /// which the proof commits to: changing any of them invalidates the proof.

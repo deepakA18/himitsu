@@ -6,7 +6,7 @@ export interface Attempt {
   id: string; deployment: string; kind: 'deposit' | 'swap' | 'withdraw'; source: string; output?: string;
   sender: Hex; nonce?: string; deadline?: string; raw?: Hex; hash?: Hex; state: AttemptState; createdAt: number; detail?: string;
 }
-export interface VaultData { version: 1; notes: SavedNote[]; attempts: Attempt[]; }
+export interface VaultData { version: 1; notes: SavedNote[]; attempts: Attempt[]; testWalletKey?: Hex; }
 export interface Envelope { format: 'himitsu-vault'; version: 1; revision: number; salt: string; iv: string; ciphertext: string; }
 export interface VaultStore { read(): Promise<Envelope | undefined>; compareAndSet(expected: number | null, value: Envelope): Promise<void>; }
 const ITERATIONS = 310000;
@@ -19,6 +19,7 @@ function envelope(value: unknown): Envelope {
 }
 function validate(data: VaultData) {
   if (data?.version !== 1 || !Array.isArray(data.notes) || !Array.isArray(data.attempts) || data.notes.length > 4096 || data.attempts.length > 16384) throw new Error('Invalid vault data');
+  if (data.testWalletKey) assertHex(data.testWalletKey,32);
   const ids = new Set<string>();
   for (const n of data.notes) { validateSecretNote(n); assertHex(n.pool, 20); if (typeof n.id !== 'string' || ids.has(n.id) || typeof n.deployment !== 'string' || !Number.isSafeInteger(n.createdAt)) throw new Error('Invalid note record'); ids.add(n.id); }
   const attemptIds = new Set<string>();

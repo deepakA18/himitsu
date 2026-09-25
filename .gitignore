@@ -14,3 +14,10 @@ artifacts/
 !packages/protocol/circuits/pot_final.ptau
 coverage/
 .DS_Store
+app/.next/
+app/next-env.d.ts
+app/tsconfig.tsbuildinfo
+app/public/proving/
+app/public/deployment.json
+playwright-report/
+test-results/

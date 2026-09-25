@@ -9,9 +9,9 @@
     "app"
   ],
   "scripts": {
-    "test": "bun test",
+    "test": "bun test packages",
     "typecheck": "tsc --noEmit",
-    "check": "bun run typecheck && bun test",
+    "check": "bun run typecheck && bun test packages",
     "doctor": "bun scripts/doctor.ts",
     "build:paymaster": "bun build packages/contracts/src/paymaster.ts --target=node --format=esm --outfile=packages/protocol/generated/paymaster.mjs",
     "build:protocol": "bun run build:paymaster && bun run --cwd packages/protocol build:artifacts",
@@ -23,7 +23,8 @@
     "build:app": "bun run --cwd app build",
     "typecheck:app": "bun run --cwd app typecheck",
     "deploy:app": "bun run build:protocol && node packages/protocol/deploy-app.mjs",
-    "test:browser": "playwright test"
+    "test:browser": "node node_modules/@playwright/test/cli.js test",
+    "test:surplus": "node packages/protocol/surplus.mjs"
   },
   "dependencies": {
     "viem": "2.38.5",

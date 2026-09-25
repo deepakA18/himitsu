@@ -7,7 +7,7 @@ export class RpcError extends Error {
 /** Transport failures on eth_sendRawTransaction leave submission status UNKNOWN. */
 export class RpcClient {
   private id = 0;
-  constructor(readonly url: string, private readonly transport: typeof fetch = fetch) {
+  constructor(readonly url: string, private readonly transport: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response> = (input, init) => globalThis.fetch(input, init)) {
     const parsed = new URL(url);
     if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('HTTP(S) RPC required');
   }
