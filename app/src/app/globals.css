@@ -1,1 +1,227 @@
-:root{--bg:#f7f7f5;--surface:#fff;--text:#20231f;--muted:#60665d;--border:#c8cdc4;--primary:#2b5037;--error:#8b2020;--error-bg:#fff0ee;--focus:#2c6540;--radius:6px;--space:24px}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5}main{max-width:1100px;margin:0 auto;padding:40px 24px 64px}header,.row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}header,.between{justify-content:space-between}header{margin-bottom:24px}h1{font-size:36px;letter-spacing:-1px;margin:4px 0}h2{font-size:18px;margin:0 0 12px}h3{font-size:15px;margin-top:24px}.eyebrow,.badge{font-size:12px;letter-spacing:.05em}.badge{border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius)}.muted,.hint{color:var(--muted)}.hint{font-size:13px;margin:10px 0}.columns{display:grid;grid-template-columns:1fr 1fr;gap:20px}section{background:var(--surface);padding:var(--space);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:20px}label{display:block;margin:12px 0 6px;font-weight:600}input,select,button{font:inherit;border:1px solid var(--border);border-radius:var(--radius);min-height:44px;padding:10px 12px}input,select{background:var(--surface);color:var(--text);width:100%;min-width:0}.row input{flex:1;min-width:180px}.row{margin-top:12px}button{cursor:pointer;background:var(--primary);color:var(--surface);border-color:var(--primary);font-weight:600}.secondary{background:var(--surface);color:var(--text);border-color:var(--border)}button:disabled{opacity:.45;cursor:not-allowed}:focus-visible{outline:3px solid var(--focus);outline-offset:3px}.file{font-size:13px;font-weight:400;margin:0}.file input{display:block;padding:6px;max-width:290px;font-size:13px}.status{min-height:44px;color:var(--primary);margin-bottom:12px;overflow-wrap:anywhere}.error{background:var(--error-bg);color:var(--error);padding:16px;border:1px solid var(--error);margin-bottom:20px;border-radius:var(--radius)}table{width:100%;border-collapse:collapse;text-align:left}th,td{padding:12px 8px;border-bottom:1px solid var(--border)}th{font-size:13px;color:var(--muted)}.table-scroll{overflow:auto}.journal{padding:0;list-style:none}.journal li{padding:12px 0;border-bottom:1px solid var(--border)}code{display:block;font-size:13px;overflow-wrap:anywhere}footer{padding:16px 0}dl{display:grid;grid-template-columns:160px 1fr;gap:8px;font-size:13px}dt{color:var(--muted)}dd{margin:0;overflow-wrap:anywhere}@media(max-width:720px){main{padding:24px 16px}.columns{grid-template-columns:1fr;gap:0}section{padding:18px}dl{grid-template-columns:1fr;gap:3px}dd{margin-bottom:8px}.row button{flex-grow:1}}
+:root {
+  --bg: #f7f7f5;
+  --surface: #fff;
+  --text: #20231f;
+  --muted: #60665d;
+  --border: #c8cdc4;
+  --primary: #2b5037;
+  --error: #8b2020;
+  --error-bg: #fff0ee;
+  --focus: #2c6540;
+  --radius: 6px;
+  --space: 24px;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 40px 24px 64px;
+}
+header,
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+header,
+.between {
+  justify-content: space-between;
+}
+header {
+  margin-bottom: 24px;
+}
+h1 {
+  font-size: 36px;
+  letter-spacing: -1px;
+  margin: 4px 0;
+}
+h2 {
+  font-size: 18px;
+  margin: 0 0 12px;
+}
+h3 {
+  font-size: 15px;
+  margin-top: 24px;
+}
+.eyebrow,
+.badge {
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+.badge {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  border-radius: var(--radius);
+}
+.muted,
+.hint {
+  color: var(--muted);
+}
+.hint {
+  font-size: 13px;
+  margin: 10px 0;
+}
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+section {
+  background: var(--surface);
+  padding: var(--space);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+}
+label {
+  display: block;
+  margin: 12px 0 6px;
+  font-weight: 600;
+}
+input,
+select,
+button {
+  font: inherit;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  min-height: 44px;
+  padding: 10px 12px;
+}
+input,
+select {
+  background: var(--surface);
+  color: var(--text);
+  width: 100%;
+  min-width: 0;
+}
+.row input {
+  flex: 1;
+  min-width: 180px;
+}
+.row {
+  margin-top: 12px;
+}
+button {
+  cursor: pointer;
+  background: var(--primary);
+  color: var(--surface);
+  border-color: var(--primary);
+  font-weight: 600;
+}
+.secondary {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+.file {
+  font-size: 13px;
+  font-weight: 400;
+  margin: 0;
+}
+.file input {
+  display: block;
+  padding: 6px;
+  max-width: 290px;
+  font-size: 13px;
+}
+.status {
+  min-height: 44px;
+  color: var(--primary);
+  margin-bottom: 12px;
+  overflow-wrap: anywhere;
+}
+.error {
+  background: var(--error-bg);
+  color: var(--error);
+  padding: 16px;
+  border: 1px solid var(--error);
+  margin-bottom: 20px;
+  border-radius: var(--radius);
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+th,
+td {
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--border);
+}
+th {
+  font-size: 13px;
+  color: var(--muted);
+}
+.table-scroll {
+  overflow: auto;
+}
+.journal {
+  padding: 0;
+  list-style: none;
+}
+.journal li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+code {
+  display: block;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+footer {
+  padding: 16px 0;
+}
+dl {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 8px;
+  font-size: 13px;
+}
+dt {
+  color: var(--muted);
+}
+dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 720px) {
+  main {
+    padding: 24px 16px;
+  }
+  .columns {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  section {
+    padding: 18px;
+  }
+  dl {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+  dd {
+    margin-bottom: 8px;
+  }
+  .row button {
+    flex-grow: 1;
+  }
+}

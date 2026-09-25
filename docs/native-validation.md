@@ -23,4 +23,4 @@ A second discrepancy remains in the client: prefix simulation omits frame-entry 
 
 Bun manages dependencies and script orchestration; Node runs snarkjs because its workers crashed under Bun. Solidity builds use pinned solc-js (0.8.30 for pools, 0.5.16 for official Uniswap v2).
 
-This is a backend integration milestone, not the completed MVP. Browser proving, encrypted note persistence/export, canonical event reconstruction, and shared-sender nonce reconciliation remain. The imported public surplus-credit mechanism needs hardening; the development ceremony and sponsored-failure economics also preclude production claims. There is no assertion of EIP-8286 conformance or public-network mempool compatibility.
+This document records the earlier backend milestone. Browser proving, encrypted note persistence/export, canonical reconstruction, nonce reconciliation and surplus-credit hardening were subsequently implemented; see `app-validation.md`. The development ceremony and sponsored-failure economics still preclude production claims. There is no assertion of EIP-8286 conformance or public-network mempool compatibility.

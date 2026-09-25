@@ -1,33 +1,128 @@
 import assert from 'node:assert/strict';
-import { readFileSync,writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { Controller,Vault } from '../app/src/lib/controller';
-import type { Envelope,VaultStore,Attempt } from '../packages/client/src/vault';
+import { Controller, Vault } from '../app/src/lib/controller';
+import type { Envelope, VaultStore, Attempt } from '../packages/client/src/vault';
 import type { Deployment } from '../packages/client/src/chain';
 import type { Hex } from 'viem';
-import {createRequire} from 'node:module';
-const snarkjs=createRequire(process.cwd()+'/packages/protocol/package.json')('snarkjs');
-const {FUNDER_KEY}=await import(process.cwd()+'/packages/protocol/ghost.mjs');
-const d=JSON.parse(readFileSync('app/public/deployment.json','utf8')) as Deployment;
+import { createRequire } from 'node:module';
+const snarkjs = createRequire(process.cwd() + '/packages/protocol/package.json')('snarkjs');
+const { FUNDER_KEY } = await import(process.cwd() + '/packages/protocol/ghost.mjs');
+const d = JSON.parse(readFileSync('app/public/deployment.json', 'utf8')) as Deployment;
 // Two independent browser origins/profiles have separate Web Locks and vaults.
-Object.defineProperty(globalThis,'navigator',{value:{locks:{request:async(_name:string,fn:()=>unknown)=>fn()}},configurable:true});
-async function prover(_d:Deployment,input:unknown):Promise<Hex>{const {proof,publicSignals}=await snarkjs.groth16.fullProve(input,'packages/protocol/circuits/spend_js/spend.wasm','packages/protocol/circuits/spend_final.zkey',undefined,undefined,{singleThread:true});const encoded=await snarkjs.groth16.exportSolidityCallData(proof,publicSignals);return ('0x'+encoded.match(/0x[0-9a-fA-F]+/g).slice(0,8).map((w:string)=>BigInt(w).toString(16).padStart(64,'0')).join('')) as Hex;}
-function store():VaultStore{let value:Envelope|undefined;return {read:async()=>value,compareAndSet:async(expected,next)=>{assert.equal(value?.revision??null,expected);value=structuredClone(next);}};}
-async function client(){const v=await Vault.open(store(),'native integration test vault');const c=new Controller(d,v,prover);const local=await c.localTestWallet();execFileSync('cast',['send','--rpc-url',d.rpcUrl,'--private-key',FUNDER_KEY,'--value','1ether',local.account],{stdio:'pipe'});const deposit=await c.deposit(local.wallet,local.account);assert.equal(deposit.state,'submitted');return {c,local};}
-async function settled(c:Controller,id:string){for(let i=0;i<20;i++){await c.refresh();const a=c.vault.data.attempts.find(a=>a.id===id)!;if(['confirmed','conflict','failed','expired'].includes(a.state))return a;await new Promise(r=>setTimeout(r,600));}throw new Error('Reconciliation did not settle');}
-const a=await client(),b=await client();await settled(a.c,a.c.vault.data.attempts[0]!.id);await settled(b.c,b.c.vault.data.attempts[0]!.id);
-const aNote=a.c.vault.data.notes[0]!,bNote=b.c.vault.data.notes[0]!;
-let release!:()=>void,arrived!:()=>void;const paused=new Promise<void>(r=>arrived=r),gate=new Promise<void>(r=>release=r);
-const originalA=a.c.rpc.request.bind(a.c.rpc);
-a.c.rpc.request=async function<T>(method:string,params:unknown[]=[]):Promise<T>{if(method==='eth_sendRawTransaction'){arrived();await gate;}return originalA<T>(method,params);};
-const waiting=a.c.spend(aNote.id,'withdraw',a.local.account,()=>{});await paused;
-const first=await b.c.spend(bNote.id,'withdraw',b.local.account,()=>{});assert.equal((await settled(b.c,first.id)).state,'confirmed');release();
-const loser=await waiting;assert.equal(loser.state,'unknown');assert.equal((await settled(a.c,loser.id)).state,'conflict');assert.equal(a.c.noteState(aNote),'Available');
+Object.defineProperty(globalThis, 'navigator', {
+  value: { locks: { request: async (_name: string, fn: () => unknown) => fn() } },
+  configurable: true,
+});
+async function prover(_d: Deployment, input: unknown): Promise<Hex> {
+  const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+    input,
+    'packages/protocol/circuits/spend_js/spend.wasm',
+    'packages/protocol/circuits/spend_final.zkey',
+    undefined,
+    undefined,
+    { singleThread: true },
+  );
+  const encoded = await snarkjs.groth16.exportSolidityCallData(proof, publicSignals);
+  return ('0x' +
+    encoded
+      .match(/0x[0-9a-fA-F]+/g)
+      .slice(0, 8)
+      .map((w: string) => BigInt(w).toString(16).padStart(64, '0'))
+      .join('')) as Hex;
+}
+function store(): VaultStore {
+  let value: Envelope | undefined;
+  return {
+    read: async () => value,
+    compareAndSet: async (expected, next) => {
+      assert.equal(value?.revision ?? null, expected);
+      value = structuredClone(next);
+    },
+  };
+}
+async function client() {
+  const v = await Vault.open(store(), 'native integration test vault');
+  const c = new Controller(d, v, prover);
+  const local = await c.localTestWallet();
+  execFileSync(
+    'cast',
+    [
+      'send',
+      '--rpc-url',
+      d.rpcUrl,
+      '--private-key',
+      FUNDER_KEY,
+      '--value',
+      '1ether',
+      local.account,
+    ],
+    { stdio: 'pipe' },
+  );
+  const deposit = await c.deposit(local.wallet, local.account);
+  assert.equal(deposit.state, 'submitted');
+  return { c, local };
+}
+async function settled(c: Controller, id: string) {
+  for (let i = 0; i < 20; i++) {
+    await c.refresh();
+    const a = c.vault.data.attempts.find((a) => a.id === id)!;
+    if (['confirmed', 'conflict', 'failed', 'expired'].includes(a.state)) return a;
+    await new Promise((r) => setTimeout(r, 600));
+  }
+  throw new Error('Reconciliation did not settle');
+}
+const a = await client(),
+  b = await client();
+await settled(a.c, a.c.vault.data.attempts[0]!.id);
+await settled(b.c, b.c.vault.data.attempts[0]!.id);
+const aNote = a.c.vault.data.notes[0]!,
+  bNote = b.c.vault.data.notes[0]!;
+let release!: () => void, arrived!: () => void;
+const paused = new Promise<void>((r) => (arrived = r)),
+  gate = new Promise<void>((r) => (release = r));
+const originalA = a.c.rpc.request.bind(a.c.rpc);
+a.c.rpc.request = async function <T>(method: string, params: unknown[] = []): Promise<T> {
+  if (method === 'eth_sendRawTransaction') {
+    arrived();
+    await gate;
+  }
+  return originalA<T>(method, params);
+};
+const waiting = a.c.spend(aNote.id, 'withdraw', a.local.account, () => {});
+await paused;
+const first = await b.c.spend(bNote.id, 'withdraw', b.local.account, () => {});
+assert.equal((await settled(b.c, first.id)).state, 'confirmed');
+release();
+const loser = await waiting;
+assert.equal(loser.state, 'unknown');
+assert.equal((await settled(a.c, loser.id)).state, 'conflict');
+assert.equal(a.c.noteState(aNote), 'Available');
 // Explicit retry after canonical nonce conflict, with a deliberately lost RPC response.
-a.c.rpc.request=async function<T>(method:string,params:unknown[]=[]):Promise<T>{const result=await originalA<T>(method,params);if(method==='eth_sendRawTransaction')throw new Error('Simulated lost response after real acceptance');return result;};
-const retry=await a.c.spend(aNote.id,'swap',a.local.account,()=>{});assert.equal(retry.state,'unknown');assert.equal(a.c.noteState(aNote),'Reserved');
-const confirmed=await settled(a.c,retry.id);assert.equal(confirmed.state,'confirmed');assert.equal(a.c.noteState(aNote),'Spent');
-const output=a.c.vault.data.notes.find(n=>n.id===confirmed.output)!;assert.equal(a.c.noteState(output),'Available');
-const outputWithdrawal=await a.c.spend(output.id,'withdraw',a.local.account,()=>{});assert.equal((await settled(a.c,outputWithdrawal.id)).state,'confirmed');
-const summary={deployment:d.id,nonceConflict:true,lostResponseRecovered:true,outputNoteRecovered:true,withdrawalConfirmed:true,transactions:[loser.hash,first.hash,retry.hash,outputWithdrawal.hash]};
-writeFileSync('.local/evidence/client-reconciliation.json',JSON.stringify(summary,null,2));console.log(summary);process.exit(0);
+a.c.rpc.request = async function <T>(method: string, params: unknown[] = []): Promise<T> {
+  const result = await originalA<T>(method, params);
+  if (method === 'eth_sendRawTransaction')
+    throw new Error('Simulated lost response after real acceptance');
+  return result;
+};
+const retry = await a.c.spend(aNote.id, 'swap', a.local.account, () => {});
+assert.equal(retry.state, 'unknown');
+assert.equal(a.c.noteState(aNote), 'Reserved');
+const confirmed = await settled(a.c, retry.id);
+assert.equal(confirmed.state, 'confirmed');
+assert.equal(a.c.noteState(aNote), 'Spent');
+const output = a.c.vault.data.notes.find((n) => n.id === confirmed.output)!;
+assert.equal(a.c.noteState(output), 'Available');
+const outputWithdrawal = await a.c.spend(output.id, 'withdraw', a.local.account, () => {});
+assert.equal((await settled(a.c, outputWithdrawal.id)).state, 'confirmed');
+const summary = {
+  deployment: d.id,
+  nonceConflict: true,
+  lostResponseRecovered: true,
+  outputNoteRecovered: true,
+  withdrawalConfirmed: true,
+  transactions: [loser.hash, first.hash, retry.hash, outputWithdrawal.hash],
+};
+writeFileSync('.local/evidence/client-reconciliation.json', JSON.stringify(summary, null, 2));
+console.log(summary);
+process.exit(0);

@@ -12,7 +12,7 @@ The supplied implementation is preserved in `packages/protocol`, with import has
 - Immutable automatic-paymaster bytecode generator with explicit trusted-pool ABI shapes, fee/gas caps, prefix ordering, prior validation status, no sponsor signatures, and a separate ETH funding path.
 - Unit tests for envelope binding, receipt rollback, submission uncertainty, and paymaster policy control flow.
 
-**Not complete:** browser UI/prover, encrypted note persistence, canonical indexer, and contention/reconciliation workflow. The automatic paymaster passes the native private swap, output withdrawal, and failed-swap rollback flow on the locally patched Ethrex client. The imported circuit and lifecycle tests also pass locally. The paymaster test interpreter is deliberately limited: it does not establish EVM gas bounds, admission compatibility, or proof soundness. Never deploy it with real funds.
+**Implemented for local testing:** Next.js UI, browser Groth16 proving, encrypted IndexedDB vault with backup/restore, canonical event reconstruction, and shared-pool nonce reconciliation. The automatic paymaster passes the native private swap, output withdrawal, and failed-swap rollback flow on the locally patched Ethrex client. The imported circuit and lifecycle tests also pass locally. The paymaster test interpreter is deliberately limited: it does not establish EVM gas bounds, admission compatibility, or proof soundness. Never deploy it with real funds.
 
 ## Commands
 
@@ -37,6 +37,47 @@ The existing node can be started from its checkout without resetting its data:
 cd /Users/deepakagashe/Desktop/ethrex
 ./target/release/ethrex --dev --network fixtures/genesis/l1-hegota.json --mempool.max-verify-gas 1000000
 ```
+
+## Basic testing app
+
+`app/` contains a minimal Next.js interface. Proofs run in a browser worker with the existing Circom circuit and Groth16 key. The browser submits frame transactions directly to RPC; there is no signing server, relayer, or bundler. The prefunded contract pays gas.
+
+From the repository root, with the patched local node running:
+
+```sh
+bun install
+# First setup, or after a contract change / chain reset:
+RPC_URL=http://127.0.0.1:8567 bun run deploy:app
+# Ordinary app startup; reuse the existing deployment:
+bun run dev
+```
+
+Open http://127.0.0.1:3000. `deploy:app` writes `deployments/app.local.json`, the public deployment manifest, and browser proving assets. It deploys test pools, liquidity and a sponsor funded with 0.1 test ETH. Do not redeploy on every app start: old notes are bound to their original deployment. The manifest pins chain ID, genesis, a postdeployment anchor block, contract runtime hashes, and proving-asset hashes.
+
+1. Create a vault with a password of at least 12 characters, or restore an encrypted backup into an empty vault.
+2. Connect a deposit wallet, or choose **Use local test wallet**. The latter creates an encrypted dev-only key and displays its address; fund that address with local test ETH. It is limited to chain 9 at a loopback RPC. An injected wallet should also use the configured devnet.
+3. Deposit 0.1 ETH to receive a 0.1 WETH note. Use **Refresh / reconcile** after two blocks.
+4. Select the note and swap to a fixed 150 gUSD note. Proving may take several seconds. Export a fresh backup, then withdraw the output note to a test address.
+
+Private notes and the transaction journal are encrypted with AES-GCM using a password-derived PBKDF2 key. Notes and the full raw transaction are saved before broadcast. IndexedDB revision checks and Web Locks prevent stale tabs from overwriting the vault. Browser storage can still be cleared or evicted: export backups after creating notes and keep the password. Losing both storage and backup loses note access; losing the password prevents decryption. Encrypted storage does not protect an unlocked page from malicious scripts.
+
+Reconciliation rebuilds trees from canonical deposit events and checks nullifiers, pool nonces and receipts at a consistent block. Two-block confirmation is a devnet policy, not finality. Unknown broadcasts reserve the input note until chain evidence resolves them. Nonce conflicts release only unspent notes for an explicit retry; no automatic reproving or replacement occurs. A later reorg reopens cached outcomes for reconciliation.
+
+The current fixed quote deliberately leaves excess AMM output in the pair; this is a test flow, not a market-price swap interface. The UI is intentionally basic. `bun run build:app` produces a production build; `bun run --cwd app start` serves it. Development mode uses polling to avoid host file-watcher limits.
+
+Validation commands (integration commands spend only local test assets):
+
+```sh
+bun run check
+bun run typecheck:app
+bun run build:app
+RPC_URL=http://127.0.0.1:8567 bun run test:surplus
+bun run test:client
+# With the app running and a usable Playwright Chromium installation:
+bun run test:browser
+```
+
+`test:client` reads the existing app deployment. It exercises two independent vaults, a real nonce collision, an accepted transaction with a lost response, output recovery, and withdrawal. Full browser testing and host limitations are recorded in `docs/app-validation.md`.
 
 ## Version boundary
 
@@ -65,13 +106,13 @@ The pinned Ethrex checkout requires `patches/ethrex-prefix-frame-results.patch` 
 
 The supported transaction shape is exactly: expiry VERIFY → pool VERIFY (execution) → sponsor VERIFY (payment) → pool SENDER (restricted action). Sponsor calldata is `0x48494d49`. The pool must permit this exact sponsor frame and enforce the entire operation's authorization. Sponsor policy deliberately does not repeat the pairing check or read mutable sponsor storage.
 
-Native validation measured about 233k execution gas for proof validation and 4.7k for sponsorship. The expiry frame needs 5,000 declared gas to cover its cold account access (about 3,051 used); 1,000 can pass the pinned client's simulator but fail block execution. The swap needed about 674k execution and 881k state gas in this fixture. Evidence is written to `.local/evidence/automatic-roundtrip.json`. Next gate: browser integration, durable private notes, chain-event reconstruction, and two-client contention without a signing/coordinator backend.
+Native validation measured about 233k execution gas for proof validation and 4.7k for sponsorship. The expiry frame needs 5,000 declared gas to cover its cold account access (about 3,051 used); 1,000 can pass the pinned client's simulator but fail block execution. The hardened swap needed about 714k execution and 881k state gas in this fixture. Evidence is written to `.local/evidence/automatic-roundtrip.json`. The app and two-client reconciliation validation are documented in `docs/app-validation.md`.
 
 ## Scope and privacy
 
-The team funds test ETH sponsorship; users' notes are not charged gas. Included failed attempts still consume subsidy. A valid note holder can repeatedly burn subsidy; per-transaction limits only bound each attempt. No unlimited top-ups. The imported `depositCredited` also lets anyone claim unaccounted token surplus; harden its funding/credit mechanism before treating arbitrary transfers as protected deposits.
+The team funds test ETH sponsorship; users' notes are not charged gas. Included failed attempts still consume subsidy. A valid note holder can repeatedly burn subsidy; per-transaction limits only bound each attempt. No unlimited top-ups. The legacy `depositCredited` entry point now always reverts. Token notes require a fresh, exact `transferFrom`; unsolicited donations remain unaccounted and cannot be claimed as notes. Swap output is received and measured by the input pool, then atomically deposited into the output pool using an exact allowance that is cleared afterwards. Deposit and spend entry points use a transient reentrancy guard; noncanonical commitments are rejected.
 
-Deposits, withdrawals, AMM trade amounts, and network metadata remain observable. The intended privacy property hides which deposited note authorized an action. Public-network acceptance, reliable concurrency, audit-grade security, and sustainable gas economics are not established.
+Deposits, withdrawals, AMM trade amounts, and network metadata remain observable. The intended privacy property hides which deposited note authorized an action. Public-network acceptance, audit-grade security, and sustainable gas economics are not established. Independent-client nonce contention is tested, but competing users still share a pool nonce and may need explicit retries.
 
 `docs/implementation-plan-source.md` preserves the supplied GhostSwap-named plan unchanged for provenance. Himitsu is the product name for new implementation.
 
