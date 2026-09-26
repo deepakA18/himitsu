@@ -53,16 +53,16 @@ export default function Home() {
         <section className={styles.hero} aria-labelledby="hero-title">
           <div className={styles.heroCopy}>
             <p className={styles.eyebrow}>
-              <span className={styles.dot} /> PRIVATE SWAPS. OPEN LIQUIDITY.
+              <span className={styles.dot} /> PRIVATE NOTES · UNISWAP LIQUIDITY
             </p>
             <h1 id="hero-title">
-              Your trade.
+              Swap from a
               <br />
-              Your <span className={styles.serif}>secret.</span>
+              private note.
             </h1>
             <p className={styles.intro}>
-              Swap from your private balance.
-              <br className={styles.desktopBreak} /> Stay in control.
+              Prove the spend in your browser, trade through Uniswap V2,
+              <br className={styles.desktopBreak} /> and save the output in a new private note.
             </p>
             <div className={styles.actions}>
               <Link className={styles.button} href="/app" prefetch={false}>
