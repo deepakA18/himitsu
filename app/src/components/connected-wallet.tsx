@@ -26,3 +26,43 @@ export function ConnectedWallet({ fallbackAddress }: { fallbackAddress: `0x${str
     </ConnectKitButton.Custom>
   );
 }
+
+export function WalletButton() {
+  return (
+    <ConnectKitButton.Custom>
+      {({ show, isConnected, address, truncatedAddress }) =>
+        isConnected && address ? (
+          <button
+            type="button"
+            className={styles.wallet}
+            onClick={() => show?.()}
+            aria-label={`Connected wallet ${address}; open wallet options`}
+            title={address}
+          >
+            <Avatar address={address} size={30} radius={15} />
+            <span className={styles.walletAddress}>{truncatedAddress ?? address}</span>
+            <svg
+              className={styles.walletMenu}
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path d="m3.5 5.25 3.5 3.5 3.5-3.5" stroke="currentColor" strokeWidth="1.4" />
+            </svg>
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={styles.action}
+            onClick={() => show?.()}
+            aria-label="Connect wallet"
+          >
+            Connect Wallet
+          </button>
+        )
+      }
+    </ConnectKitButton.Custom>
+  );
+}

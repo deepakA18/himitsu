@@ -1,7 +1,7 @@
 'use client';
 import { SiteNav } from '../../components/site-nav';
 import Image from 'next/image';
-import { ConnectedWallet } from '../../components/connected-wallet';
+import { WalletButton } from '../../components/connected-wallet';
 import { useEffect, useRef, useState } from 'react';
 import { formatUnits, isAddress } from 'viem';
 import { ConnectKitButton } from 'connectkit';
@@ -553,7 +553,7 @@ export default function Page() {
     <>
       <SiteNav
         page="app"
-        wallet={isConnected && account ? <ConnectedWallet fallbackAddress={account} /> : undefined}
+        wallet={<WalletButton />}
       />
       <main data-action={tab}>
         <TransactionNotifications

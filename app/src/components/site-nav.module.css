@@ -91,6 +91,8 @@
   font-weight: 600;
   white-space: nowrap;
   text-decoration: none;
+  font-family: inherit;
+  cursor: pointer;
 }
 .nav .action:hover {
   background: #dcdcd8;
