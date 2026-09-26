@@ -6,6 +6,7 @@ import { defineChain } from 'viem';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConnectKitProvider, getDefaultConfig } from 'connectkit';
 import type { Deployment } from '../../../packages/client/src/chain';
+import styles from './wallet-provider.module.css';
 
 const DeploymentContext = createContext<Deployment | null>(null);
 export function useWalletDeployment() {
@@ -83,25 +84,40 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, [retry]);
   if (!loaded)
     return (
-      <main>
-        <h1>Himitsu</h1>
-        {error ? (
-          <>
-            <p role="alert" className="error">
-              {error}
-            </p>
-            <button
-              onClick={() => {
-                setError('');
-                setRetry((n) => n + 1);
-              }}
-            >
-              Retry
-            </button>
-          </>
-        ) : (
-          <p role="status">Loading pool and wallet connections…</p>
-        )}
+      <main className={styles.screen} aria-busy={!error}>
+        <div className={styles.content}>
+          <div className={styles.brand} aria-label="Himitsu">
+            <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+              <path d="M5 27V5h7v8h8V5h7v22h-7v-8h-8v8H5Z" fill="currentColor" />
+              <path d="m13 2 6 28" stroke="#080808" strokeWidth="2" />
+            </svg>
+            himitsu
+          </div>
+          {error ? (
+            <>
+              <p role="alert" className={styles.error}>
+                {error}
+              </p>
+              <button
+                className={styles.retry}
+                onClick={() => {
+                  setError('');
+                  setRetry((n) => n + 1);
+                }}
+              >
+                Retry
+              </button>
+            </>
+          ) : (
+            <>
+              <span className={styles.spinner} aria-hidden="true" />
+              <h1>Preparing your workspace</h1>
+              <p className={styles.message} role="status">
+                Connecting to the pool and wallet
+              </p>
+            </>
+          )}
+        </div>
       </main>
     );
   return (

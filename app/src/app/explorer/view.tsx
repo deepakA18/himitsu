@@ -39,12 +39,30 @@ export default function Explorer() {
     setDeployment(null);
     async function load() {
       if (pool && !/^0x[0-9a-fA-F]{40}$/.test(pool)) throw new Error('Invalid deployment pool');
-      const response = await fetch(
+      let response = await fetch(
         pool ? `/deployments/${pool.toLowerCase()}.json` : '/deployment.json',
         { cache: 'no-store' },
       );
-      if (!response.ok)
-        throw new Error('Deployment manifest unavailable. Check the app deployment files.');
+      if (!response.ok) {
+        const catalogResponse = await fetch('/deployments.json', { cache: 'no-store' });
+        if (!catalogResponse.ok)
+          throw new Error('No deployment manifest is available for the explorer.');
+        const catalog = (await catalogResponse.json()) as {
+          name: string;
+          url: string;
+          id?: string;
+        }[];
+        const selected = pool
+          ? catalog.find(
+              (entry) =>
+                entry.id?.split(':')[0]?.toLowerCase() === pool.toLowerCase() ||
+                entry.url.toLowerCase().includes(pool.toLowerCase()),
+            ) ?? catalog[0]
+          : catalog[0];
+        if (!selected?.url) throw new Error('No deployment is listed for the explorer.');
+        response = await fetch(selected.url, { cache: 'no-store' });
+      }
+      if (!response.ok) throw new Error('The deployment manifest could not be loaded.');
       const d = (await response.json()) as Deployment;
       const result = await loadExplorer(d, { tx, block, before });
       if (active) {

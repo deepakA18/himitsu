@@ -714,7 +714,10 @@ export default function Page() {
                 </p>
                 {draft.kind === 'deposit' && (
                   <p className="note-backup-amount">
-                    Deposit <strong>{money(draft.note.amount ?? config!.denomination)} ETH</strong>
+                    <span>Deposit</span>
+                    <strong>
+                      {money(draft.note.amount ?? config!.denomination)} <small>ETH</small>
+                    </strong>
                   </p>
                 )}
                 {draft.kind === 'swap' && (
@@ -858,7 +861,7 @@ export default function Page() {
                 {config && BigInt(config.denomination) > 0n
                   ? 'This pool accepts only its fixed denomination. '
                   : 'Choose a standard deposit amount. '}
-                ETH is wrapped into WETH. Your connected wallet pays deposit gas.
+                ETH is wrapped into WETH.
               </p>
               <div className="row">
                 {!isConnected ? (
@@ -919,8 +922,7 @@ export default function Page() {
                 </p>
               ))}
               <p className="hint">
-                You’ll save a private note before approving the deposit. No recovery phrase or vault
-                password.
+                You’ll save a private note before approving the deposit.
               </p>
             </section>
           ) : tab === 'swap' ? (
