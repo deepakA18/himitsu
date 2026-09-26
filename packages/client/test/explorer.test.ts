@@ -3,6 +3,7 @@ import {
   decodeLog,
   frameLabel,
   frameStatus,
+  transactionTypeLabel,
   parseSearch,
   type Frame,
 } from '../../../app/src/lib/explorer';
@@ -59,4 +60,10 @@ test('decodes zero allowance accurately and does not assign symbols to unknown t
   };
   expect(decodeLog(log, d)?.fields).toContainEqual(['Allowance', '0 hUSD']);
   expect(decodeLog({ ...log, address: `0x${'66'.repeat(20)}` }, d)).toBeNull();
+});
+
+test('transaction types reflect the RPC type, including unpadded quantities', () => {
+  expect(transactionTypeLabel('0x6')).toBe('EIP-8141 · Frame transaction (0x06)');
+  expect(transactionTypeLabel('0x06')).toBe(transactionTypeLabel('0x6'));
+  expect(transactionTypeLabel('0x2')).toBe('EIP-1559 · Fee-market transaction (0x02)');
 });

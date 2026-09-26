@@ -10,6 +10,7 @@ import {
   blockTimestamp,
   frameLabel,
   frameStatus,
+  transactionTypeLabel,
   loadExplorer,
   parseSearch,
   quantity,
@@ -267,9 +268,7 @@ export default function Explorer() {
                       <dl>
                         <dt>Type</dt>
                         <dd>
-                          {BigInt(transaction.type) === 6n
-                            ? 'EIP-8141 · Ordered-step transaction (0x06)'
-                            : `Ethereum transaction (${transaction.type})`}
+                          {transactionTypeLabel(transaction.type)}
                         </dd>
                         <dt>{BigInt(transaction.type) === 6n ? 'Sender · Himitsu contract' : 'Sender'}</dt>
                         <dd>{address(transaction.sender ?? transaction.from)}</dd>

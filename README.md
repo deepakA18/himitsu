@@ -411,7 +411,7 @@ are recorded in `deployments/bidirectional-evidence.json`.
 
 ### Fixed-denomination deposits and withdrawals
 
-Select **Fixed notes · 0.1 ETH deposit / 0.1 WETH withdrawal** in the app. Deposit exactly
+The archived **Fixed notes · 0.1 ETH deposit / 0.1 WETH withdrawal** deployment accepts exactly
 0.1 ETH, save the private note, then import it to withdraw exactly 0.1 WETH to a recipient.
 The paymaster funds the withdrawal gas, so the recipient needs no ETH balance. Withdrawals
 return WETH (not native ETH). Wrong amounts are rejected by the contract; spent notes cannot
@@ -423,12 +423,40 @@ They do not hide deposits, withdrawal recipients, amounts, timing, or network me
 not guarantee unlinkability. Practical privacy depends on other users and their activity; the
 local demo is not evidence of a meaningful anonymity set. Private notes must remain secret.
 
-This first UI supports ETH deposits into the fixed WETH pool. It does not convert variable swap
-outputs into fixed notes or handle swap remainders. The existing **Bidirectional swaps · v2**
-deployment remains selectable, with its original notes and variable outputs unchanged.
+The fixed WETH pool does not convert variable swap outputs into fixed notes or handle swap
+remainders. The current app defaults to the V2 market deployment described below; importing an
+older saved file selects its original deployment for withdrawal.
 
 Local deployment: `RPC_URL=http://127.0.0.1:8567 bun run deploy:app:fixed`.
 Integration test: `RPC_URL=http://127.0.0.1:8567 bun run test:fixed`.
 The test deposits three equal notes, imports each into a fresh cache, withdraws to unfunded
 addresses, checks exact balances, and rejects wrong amounts and repeated spends. Public test
 transaction hashes are saved in `deployments/fixed-evidence.json`.
+
+
+### Direct hUSD deposits
+
+The Deposit tab supports **ETH** (0.01, 0.1, 1, 10) and **hUSD** (10, 100, 1,000,
+10,000) on the current V2 deployment. These are client-side standard amounts; the market
+pool accepts variable amounts and swap outputs remain variable. They are not separate
+contract-enforced fixed-denomination pools.
+
+For hUSD, save the note first, then confirm an approval for exactly the selected amount
+to the hUSD privacy pool and confirm the deposit. The client waits for canonical approval
+confirmation, checks balance and allowance again, and records the approval separately from
+the deposit. No allowance is given to Uniswap. The wallet needs this deployment's hUSD
+and ETH for approval/deposit gas; a token from an older deployment is a different asset.
+The active token address is `token` in `app/public/deployment.json`.
+
+Imported hUSD deposit files recover their amount from confirmed pool events and support
+hUSD withdrawal or hUSD → WETH swap and withdrawal. Approval/deposit are wallet transactions;
+spends use native EIP-8141 type `0x06` transactions with the onchain paymaster. No relayer
+or bundler is added. Older saved files automatically resolve their archived deployment for
+withdrawal; new deposits use the current deployment.
+
+Run `bun run test:husd-deposits` against the local node. It funds a development test wallet,
+sends real test transactions, checks exact approval/deposit balances, imports the note into
+a fresh cache, and exercises withdrawal, private-output swap, and direct swap-and-withdraw.
+The latest public transaction hashes are in `deployments/husd-deposit-evidence.json`.
+`bun run sync:verifier:v2` regenerates verifier source and JSON from the existing proving key
+before V2 deployment, without changing the note format or starting a new trusted setup.

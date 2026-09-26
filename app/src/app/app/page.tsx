@@ -1,12 +1,12 @@
 'use client';
 import { SiteNav } from '../../components/site-nav';
-import Image from 'next/image';
 import { WalletButton } from '../../components/connected-wallet';
 import { useEffect, useRef, useState } from 'react';
 import { formatUnits, isAddress } from 'viem';
 import { ConnectKitButton } from 'connectkit';
 import { useAccount, useConfig } from 'wagmi';
 import { getAccount } from 'wagmi/actions';
+import { resolveNoteDeployment } from '../../lib/note-deployment';
 import { guardDepositWallet } from '../../lib/deposit-wallet';
 import { selectWalletNetwork } from '../../lib/wallet-network';
 import { useWalletDeployment } from '../../components/wallet-provider';
@@ -17,8 +17,8 @@ import { SwapPanel } from '../../components/swap-panel';
 import {
   createPrivateNote,
   DEPOSIT_AMOUNTS,
+  HUSD_DEPOSIT_AMOUNTS,
   exportPrivateNote,
-  importPrivateNote,
   privateNoteCacheKey,
 } from '../../../../packages/client/src/private-note';
 import type { SavedNote } from '../../../../packages/client/src/notes';
@@ -39,10 +39,17 @@ type Draft = {
 export default function Page() {
   const initialDeployment = useWalletDeployment();
   const [config, setConfig] = useState<Deployment | null>(initialDeployment);
+  const [depositAsset, setDepositAsset] = useState<'ETH' | 'hUSD'>('ETH');
   const [selectedDeposit, setSelectedDeposit] = useState('100000000000000000');
-  const depositValue =
-    config && BigInt(config.denomination) > 0n ? config.denomination : selectedDeposit;
+  const [selectedHusdDeposit, setSelectedHusdDeposit] = useState(HUSD_DEPOSIT_AMOUNTS[1]!);
   const fixedMode = config?.mode === 'fixed';
+  const supportsHusdDeposit = config?.noteVersion === 2 && !fixedMode;
+  const depositingHusd = supportsHusdDeposit && depositAsset === 'hUSD';
+  const depositSymbol = depositingHusd ? 'hUSD' : 'ETH';
+  const depositDenomination = depositingHusd ? config?.outputDenomination : config?.denomination;
+  const depositValue = depositDenomination && BigInt(depositDenomination) > 0n
+    ? depositDenomination : depositingHusd ? selectedHusdDeposit : selectedDeposit;
+  const depositPresets = depositingHusd ? HUSD_DEPOSIT_AMOUNTS : DEPOSIT_AMOUNTS;
   const wagmiConfig = useConfig();
   const { address: account, chainId: walletChainId, isConnected, connector } = useAccount();
   const walletReady = isConnected && walletChainId === Number(config?.chainId);
@@ -89,7 +96,10 @@ export default function Page() {
   const [backedUp, setBackedUp] = useState(false);
   const [busy, setBusy] = useState('');
   const [swapPreparing, setSwapPreparing] = useState(false);
-  const [status, setStatus] = useState('');
+  const [status, setStatusValue] = useState({ id: 0, message: '' });
+  function setStatus(message: string) {
+    setStatusValue((previous) => ({ id: previous.id + 1, message }));
+  }
   const [error, setError] = useState('');
   const [networkError, setNetworkError] = useState('');
   const [networkSwitching, setNetworkSwitching] = useState(false);
@@ -110,6 +120,7 @@ export default function Page() {
     if (working.current) return;
     working.current = true;
     setBusy(label);
+    setStatus('');
     setError('');
     try {
       await action();
@@ -194,12 +205,12 @@ export default function Page() {
       try {
         if (controller) await controller.refresh();
         const selected = controller?.vault.data.notes.find((n) => n.id === noteId);
-        const sourcePool = reverse ? config.outputPool : config.pool;
+        const sourcePool = tab === 'deposit' ? (depositingHusd ? config.outputPool : config.pool) : reverse ? config.outputPool : config.pool;
         const checked = await readiness(
           new RpcClient(config.rpcUrl),
           config,
           sourcePool,
-          selected?.pool.toLowerCase() === sourcePool.toLowerCase() && selected.amount
+          tab === 'deposit' ? depositValue : selected?.pool.toLowerCase() === sourcePool.toLowerCase() && selected.amount
             ? selected.amount
             : reverse
               ? '100000000000000000000'
@@ -227,7 +238,7 @@ export default function Page() {
       clearInterval(timer);
       window.removeEventListener('focus', update);
     };
-  }, [config, controller, noteId, reverse]);
+  }, [config, controller, noteId, reverse, tab, depositingHusd, depositValue]);
   const note = controller?.vault.data.notes.find((n) => n.id === noteId);
   const noteState = note ? controller!.noteState(note) : '';
   const attempts = controller?.vault.data.attempts ?? [];
@@ -240,7 +251,7 @@ export default function Page() {
     ? controller?.vault.data.notes.find((n) => n.id === latestSwap.output)?.amount
     : undefined;
   const asset = note?.pool.toLowerCase() === config?.pool.toLowerCase() ? 'WETH' : 'hUSD';
-  async function session(n: SavedNote, importing: boolean) {
+  async function session(n: SavedNote, importing: boolean, deployment = config!) {
     const v = await navigator.locks.request('himitsu-vault-actions', async () => {
       const v = await Vault.openPrivateNote(
         new IndexedVaultStore(`himitsu-note-cache-${n.id}`),
@@ -256,7 +267,7 @@ export default function Page() {
         await v.save({ ...v.data, notes: [...v.data.notes, n] });
       return v;
     });
-    const c = new Controller(config!, v);
+    const c = new Controller(deployment, v);
     await c.refresh();
     setController(c);
     setHealth(c.health);
@@ -264,17 +275,21 @@ export default function Page() {
   }
   async function loadNote(text: string) {
     if (!config) throw new Error('Wait for the deployment to load');
-    const n = importPrivateNote(text, config);
-    const c = await session(n, true);
+    const { note: n, deployment } = await resolveNoteDeployment(text, initialDeployment);
+    const c = await session(n, true, deployment);
+    setConfig(deployment);
     setNoteId(
       c.vault.data.notes.find(
         (x) => x.nullifierHash === n.nullifierHash && x.pool.toLowerCase() === n.pool.toLowerCase(),
       )!.id,
     );
-    setReverse(n.pool.toLowerCase() === config.outputPool.toLowerCase());
+    setReverse(n.pool.toLowerCase() === deployment.outputPool.toLowerCase());
     setHealth(null);
     setInput('');
-    setStatus('File checked with the network.');
+    if (deployment.id !== initialDeployment.id) {
+      setTab('withdraw');
+      setStatus('Previous deployment found. You can withdraw this saved file here.');
+    } else setStatus('File checked with the network.');
   }
   useEffect(() => {
     const text = input.trim();
@@ -298,8 +313,8 @@ export default function Page() {
     if (!config) throw new Error('Wait for the deployment to load');
     const n = createPrivateNote(
       config,
-      kind === 'deposit' ? config.pool : reverse ? config.pool : config.outputPool,
-      kind,
+      kind === 'deposit' ? (depositingHusd ? config.outputPool : config.pool) : reverse ? config.pool : config.outputPool,
+      kind === 'deposit' && depositingHusd ? 'token-deposit' : kind,
       kind === 'deposit' ? depositValue : undefined,
     );
     const text = exportPrivateNote(n, config);
@@ -327,7 +342,6 @@ export default function Page() {
     const current = draft;
     // Remove the submission control before awaiting; retries must prepare a fresh output note.
     setDraft(null);
-    let result;
     if (current.kind === 'deposit') {
       const connection = getAccount(wagmiConfig);
       if (!connection.address || !connection.connector || connection.status !== 'connected')
@@ -341,7 +355,7 @@ export default function Page() {
       const provider = await connection.connector.getProvider();
       if (!provider || typeof (provider as Wallet).request !== 'function')
         throw new Error('Selected wallet cannot submit deposits');
-      result = await current.controller.deposit(
+      await current.controller.deposit(
         guardDepositWallet(
           provider as Wallet,
           {
@@ -362,13 +376,15 @@ export default function Page() {
         ),
         connection.address,
         current.note,
+        setBusy,
       );
       setNoteId(current.note.id);
+      setReverse(current.note.pool.toLowerCase() === current.controller.deployment.outputPool.toLowerCase());
     } else {
       if (!health) throw new Error('Wait for the current price');
       setSwapPreparing(true);
       try {
-        result = await current.controller.spend(
+        await current.controller.spend(
           current.source!,
           'swap',
           '',
@@ -387,11 +403,7 @@ export default function Page() {
       }
     }
     setController(current.controller);
-    setStatus(
-      result.state === 'submitted'
-        ? 'Submitted.'
-        : 'The network has not confirmed the swap yet. Keep both saved files and check its status before trying again.',
-    );
+    setStatus('');
   }
   const inputAsset = reverse ? 'hUSD' : 'WETH';
   const outputAsset = reverse ? 'WETH' : 'hUSD';
@@ -410,7 +422,7 @@ export default function Page() {
   const noteEntry = (
     <>
       <h2>Your saved file</h2>
-      <p className="muted">Choose the saved file for the funds you want to use.</p>
+      <p className="muted">Choose the saved file for the funds you want to use</p>
       <div>
         <label htmlFor="private-note">Paste your saved file</label>
         <textarea
@@ -429,13 +441,13 @@ export default function Page() {
         <p id="note-check-status" className={noteError ? 'error' : 'hint'} role="status" aria-live="polite">
           {busy === 'Checking your saved file…'
             ? 'Checking your file with the network…'
-            : noteError || (note ? 'File checked with the network.' : input.trim() ? 'Checking your file…' : 'Paste or upload your file to check your balance.')}
+            : noteError || (note ? 'File checked with the network.' : input.trim() ? 'Checking your file…' : 'Paste or upload your file to check your balance')}
         </p>
         <div className="note-upload-row">
           <label className="note-upload" data-disabled={!config || disabled}>
             <span className="note-upload-copy">
               <strong>Upload your saved file</strong>
-              <span>Choose your saved .txt file · up to 4 KB</span>
+              <span>Choose your saved .txt file up to 4 KB</span>
             </span>
             <span className="note-upload-browse" aria-hidden="true">
               Browse
@@ -534,7 +546,7 @@ export default function Page() {
         <p id="withdraw-privacy-warning" className="withdraw-privacy-warning">
           <strong>Privacy:</strong> Withdrawing to the same address you used to deposit can
           link your deposit and withdrawal. Use a fresh address you control to reduce address-based
-          linkage.
+          linkage
         </p>
         <button
           disabled={
@@ -545,7 +557,7 @@ export default function Page() {
             !!health.withdrawalIssues.length
           }
         >
-          Withdraw note
+          Withdraw
         </button>
       </form>
       {health?.withdrawalIssues.map((x) => (
@@ -567,25 +579,23 @@ export default function Page() {
           attempts={attempts}
           pool={config?.pool ?? ''}
           error={error}
+          status={status}
+          busy={busy}
         />
 
-        {tab === 'swap' && (
-          <div className="trade-intro">
-            <div className="uniswap-credit" aria-label="Powered by Uniswap">
-              <Image src="/uniswap-logo.svg" alt="" width={22} height={22} />
-              <span>Powered by Uniswap</span>
-            </div>
-          </div>
-        )}
         {fixedMode && (
           <p className="hint">
             This setup uses a fixed amount: deposit 0.1 ETH and withdraw 0.1 WETH. Matching amounts
             can make deposits harder to tell apart, but addresses and timing stay public. Activity
-            may still be linked, especially when few people use the pool. Keep your saved file safe.
+            may still be linked, especially when few people use the pool. Keep your saved file safe
           </p>
         )}
-        <nav className="note-tabs" aria-label="Actions">
-          {(['deposit', 'swap', 'withdraw'] as const)
+        <div className="action-shell">
+        <nav className="note-tabs" aria-label="Actions" data-active={tab} data-count={fixedMode ? 2 : 3}>
+          <span className="note-tabs-track" aria-hidden="true">
+            <span className="note-tabs-indicator" />
+          </span>
+          {(['deposit', 'withdraw', 'swap'] as const)
             .filter((t) => !fixedMode || t !== 'swap')
             .map((t) => (
               <button
@@ -594,22 +604,33 @@ export default function Page() {
                 aria-pressed={tab === t}
                 disabled={!!busy || !!draft}
                 onClick={() => {
+                  if (t === 'swap' && config?.id !== initialDeployment.id) {
+                    setError('Withdraw this older saved file first. New deposits support the current swap flow.');
+                    return;
+                  }
+                  if (t === 'deposit' && config?.id !== initialDeployment.id) {
+                    updateNoteInput('');
+                    setConfig(initialDeployment);
+                    setReverse(false);
+                  }
                   setTab(t);
                   setError('');
                 }}
               >
-                {t === 'swap' ? 'Swap & withdraw' : t[0].toUpperCase() + t.slice(1)}
+                <svg className="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="square" strokeLinejoin="miter" aria-hidden="true">
+                  {t === 'swap' ? (
+                    <><path d="M4 7h15m-4-4 4 4-4 4M20 17H5m4-4-4 4 4 4" /></>
+                  ) : t === 'deposit' ? (
+                    <><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5" /></>
+                  ) : (
+                    <><path d="M12 15V3m-5 5 5-5 5 5M4 16v5h16v-5" /></>
+                  )}
+                </svg>
+                <span>{t === 'swap' ? 'Swap & withdraw' : t[0].toUpperCase() + t.slice(1)}</span>
               </button>
             ))}
         </nav>
-        <p className="status" role="status">
-          {busy || status}
-        </p>
-        {error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
-        )}
+        <div className="action-content">
         {networkError && (
           <p className="error">Network unavailable: {networkError}. Retrying automatically.</p>
         )}
@@ -662,13 +683,12 @@ export default function Page() {
                     const review = withdrawReview;
                     setWithdrawReview(null);
                     void run('Preparing withdrawal…', async () => {
-                      const a = await review.controller.spend(
+                      await review.controller.spend(
                         review.source,
                         'withdraw',
                         review.recipient,
                         setBusy,
                       );
-                      setStatus(`Withdrawal ${a.state}. Watching the chain automatically.`);
                     });
                   }}
                 >
@@ -737,7 +757,7 @@ export default function Page() {
                     void run('Preparing your swap and withdrawal…', async () => {
                       setSwapPreparing(true);
                       try {
-                        const result = await review.controller.spend(
+                        await review.controller.spend(
                           review.source,
                           'swap-withdraw',
                           review.recipient,
@@ -749,11 +769,6 @@ export default function Page() {
                           },
                         );
                         setController(review.controller);
-                        setStatus(
-                          result.state === 'submitted'
-                            ? 'Swap and withdrawal submitted.'
-                            : 'The network has not confirmed this transaction yet. Check its status before retrying.',
-                        );
                       } finally {
                         setSwapPreparing(false);
                       }
@@ -875,19 +890,26 @@ export default function Page() {
               </section>
             </NoteDialog>
           )}
-          {tab === 'deposit' ? (
-            <section className="note-action">
-              {draft?.kind === 'deposit' ? (
-                <div className="note-backup deposit-inline-backup">
-                  <h3>Save your secret file</h3>
-                  <p className="note-backup-warning">
-                    Save a file to use or withdraw your WETH later. Anyone with this file can spend
+          {draft?.kind === 'deposit' && (
+            <NoteDialog
+              busy={!!busy}
+              titleId="deposit-backup-heading"
+              descriptionId="deposit-backup-description"
+              onClose={() => {
+                setDraft(null);
+                setStatus('Cancelled. No transaction submitted.');
+              }}
+            >
+                <section className="note-backup deposit-note-backup">
+                  <h2 id="deposit-backup-heading" tabIndex={-1}>Save your secret file</h2>
+                  <p id="deposit-backup-description" className="note-backup-warning">
+                    Save a file to use or withdraw your {depositingHusd ? 'hUSD' : 'WETH'} later. Anyone with this file can spend
                     these funds. Keep it safe; we cannot restore it if it is lost.
                   </p>
                   <p className="note-backup-amount">
                     <span>Deposit</span>
                     <strong>
-                      {money(draft.note.amount ?? config!.denomination)} <small>ETH</small>
+                      {money(draft.note.amount ?? config!.denomination)} <small>{depositSymbol}</small>
                     </strong>
                   </p>
                   <label className="note-backup-label" htmlFor="deposit-note-file">
@@ -952,7 +974,7 @@ export default function Page() {
                     I saved the file and understand it controls my funds.
                   </label>
                   <div className="note-backup-footer">
-                    <p>Review the network fee in your wallet.</p>
+                    <p>{depositingHusd ? 'Approve only this hUSD amount to the privacy pool, then confirm the deposit. Your wallet pays gas for both transactions.' : 'Review the network fee in your wallet.'}</p>
                     <div className="row">
                       <button
                         disabled={
@@ -966,7 +988,7 @@ export default function Page() {
                           void run('Approve the deposit in your wallet…', submitDraft)
                         }
                       >
-                        Deposit {money(draft.note.amount ?? config!.denomination)} ETH
+                        Deposit {money(draft.note.amount ?? config!.denomination)} {depositSymbol}
                       </button>
                       <button
                         className="secondary"
@@ -980,18 +1002,34 @@ export default function Page() {
                       </button>
                     </div>
                   </div>
-                </div>
-              ) : (
-                <>
+                </section>
+            </NoteDialog>
+          )}
+          {tab === 'deposit' ? (
+            <section className="note-action">
+              <select
+                className="deposit-asset-selector"
+                aria-label="Deposit token"
+                value={depositSymbol}
+                disabled={disabled}
+                onChange={(event) => {
+                  setDepositAsset(event.target.value as 'ETH' | 'hUSD');
+                  setHealth(null);
+                  setError('');
+                }}
+              >
+                <option value="ETH">ETH</option>
+                <option value="hUSD" disabled={!supportsHusdDeposit}>hUSD</option>
+              </select>
               {fixedMode && <p>Each saved file gives access to 0.1 WETH. Keep it to withdraw later.</p>}
               <input
                 id="deposit-amount"
-                aria-label="Deposit amount in ETH"
+                aria-label={`Deposit amount in ${depositSymbol}`}
                 value={config ? money(depositValue) : ''}
                 readOnly
               />
-              <div className="deposit-presets" role="group" aria-label="Deposit amount in ETH">
-                {DEPOSIT_AMOUNTS.map((amount) => (
+              <div className="deposit-presets" role="group" aria-label={`Deposit amount in ${depositSymbol}`}>
+                {depositPresets.map((amount) => (
                   <button
                     key={amount}
                     type="button"
@@ -999,18 +1037,19 @@ export default function Page() {
                     disabled={
                       disabled ||
                       !config ||
-                      (BigInt(config.denomination) > 0n && config.denomination !== amount)
+                      (!!depositDenomination && BigInt(depositDenomination) > 0n && depositDenomination !== amount)
                     }
-                    onClick={() => setSelectedDeposit(amount)}
+                    onClick={() => depositingHusd ? setSelectedHusdDeposit(amount) : setSelectedDeposit(amount)}
                   >
-                    {money(amount)} ETH
+                    {money(amount)} {depositSymbol}
                   </button>
                 ))}
               </div>
               <p className="hint">
-                {config && BigInt(config.denomination) > 0n
+                {depositDenomination && BigInt(depositDenomination) > 0n
                   ? 'This deposit must use the amount shown.'
-                  : 'Choose a standard deposit amount.'}
+                  : 'Choose a standard deposit amount'}
+                {depositingHusd && ' Your wallet needs hUSD and ETH for gas. Approval is limited to this amount and goes to the privacy pool'}
               </p>
               <div className="row">
                 {!isConnected ? (
@@ -1070,8 +1109,6 @@ export default function Page() {
                   {issue}
                 </p>
               ))}
-                </>
-              )}
             </section>
           ) : tab === 'swap' ? (
             <section className="combined-swap-card" aria-label="Swap and withdraw using your saved file">
@@ -1168,6 +1205,8 @@ export default function Page() {
               <div className="withdrawal-destination">{withdrawalFields}</div>
             </section>
           )}
+        </div>
+        </div>
         </div>
       </main>
     </>

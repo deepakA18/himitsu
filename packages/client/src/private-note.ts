@@ -10,6 +10,17 @@ export const DEPOSIT_AMOUNTS = [
   '1000000000000000000',
   '10000000000000000000',
 ] as const;
+export const HUSD_DEPOSIT_AMOUNTS = [10n, 100n, 1000n, 10000n].map((n) => (n * 10n ** 18n).toString());
+export function tokenDepositAmount(d: Deployment, requested = HUSD_DEPOSIT_AMOUNTS[1]!): string {
+  if (d.noteVersion !== 2 || d.mode === 'fixed') throw new Error('hUSD deposits require the V2 swap deployment');
+  if (BigInt(d.outputDenomination) > 0n) {
+    if (requested !== d.outputDenomination) throw new Error('This hUSD pool requires its fixed deposit amount');
+  } else if (!HUSD_DEPOSIT_AMOUNTS.includes(requested)) {
+    throw new Error('Choose 10, 100, 1,000 or 10,000 hUSD');
+  }
+  return requested;
+}
+
 export function depositAmount(
   d: Deployment,
   requested = d.defaultDepositAmount ?? d.denomination,
@@ -31,9 +42,11 @@ function identity(d: Deployment, pool: Hex, nullifierHash: Hex) {
 export function createPrivateNote(
   d: Deployment,
   pool: Hex,
-  purpose: 'deposit' | 'swap' = 'deposit',
+  purpose: 'deposit' | 'swap' | 'token-deposit' = 'deposit',
   amount?: string,
 ): SavedNote {
+  if (purpose === 'token-deposit' && pool.toLowerCase() !== d.outputPool.toLowerCase())
+    throw new Error('hUSD deposits must use the hUSD pool');
   const secret = createSecretNote();
   const note = {
     ...secret,
@@ -42,6 +55,7 @@ export function createPrivateNote(
     pool,
     createdAt: Date.now(),
   };
+  if (purpose === 'token-deposit') return withAmount(note, tokenDepositAmount(d, amount));
   return d.noteVersion === 2 && purpose === 'deposit' && pool.toLowerCase() === d.pool.toLowerCase()
     ? withAmount(note, depositAmount(d, amount))
     : note;

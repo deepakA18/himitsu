@@ -81,7 +81,14 @@ async function settled(c: Controller, id: string) {
   for (let i = 0; i < 40; i++) {
     await c.refresh();
     const a = c.vault.data.attempts.find((a) => a.id === id)!;
-    if (['confirmed', 'failed', 'conflict', 'expired'].includes(a.state)) return a;
+    if (['confirmed', 'failed', 'conflict', 'expired'].includes(a.state)) {
+      if (a.state === 'confirmed' && a.kind !== 'deposit') {
+        assert(a.raw?.startsWith('0x06'), 'Private spend must serialize as EIP-8141');
+        const mined = await c.rpc.request<{ type: Hex }>('eth_getTransactionByHash', [a.hash]);
+        assert.equal(BigInt(mined.type), 6n, 'Mined private spend must be type 0x06');
+      }
+      return a;
+    }
     await new Promise((r) => setTimeout(r, 1000));
   }
   const pending = c.vault.data.attempts.find((a) => a.id === id);

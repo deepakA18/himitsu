@@ -165,3 +165,12 @@ export async function loadExplorer(
     throw new Error('Block data changed or is unavailable. Refresh to retry.');
   return { head, blocks: blocks as Block[], transaction: null, receipt: null, canonical: false };
 }
+
+/** RPC quantities may omit the leading zero; keep the displayed type canonical. */
+export function transactionTypeLabel(type: Hex): string {
+  const value = BigInt(type);
+  if (value === 6n) return 'EIP-8141 · Frame transaction (0x06)';
+  if (value === 2n) return 'EIP-1559 · Fee-market transaction (0x02)';
+  if (value === 0n) return 'Legacy transaction (0x00)';
+  return `Ethereum transaction (${type})`;
+}

@@ -269,6 +269,8 @@ export function reconcileAttempt(
   if (a.kind === 'deposit') {
     if (e.depositPresent)
       return { state: 'confirmed', detail: 'Deposit found in canonical events' };
+    if (a.depositBroadcast === false)
+      return { state: a.state, detail: a.detail ?? 'Deposit not submitted; check token approval in your wallet' };
     if (e.receipt?.confirmed && !e.receipt.success)
       return { state: 'failed', detail: 'Deposit reverted' };
     return {

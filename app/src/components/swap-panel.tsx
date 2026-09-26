@@ -1,4 +1,5 @@
 'use client';
+import Image from 'next/image';
 import { useEffect, useRef } from 'react';
 
 type Props = {
@@ -32,6 +33,8 @@ type Props = {
 };
 
 export function SwapPanel(p: Props) {
+  const feedback = p.status ||
+    (p.reason === `Add your saved ${p.inputAsset} file above to swap.` ? '' : p.reason);
   const stage = useRef<HTMLDivElement>(null);
   const progress = useRef(0);
   const previousKey = useRef(p.animationKey);
@@ -89,10 +92,12 @@ export function SwapPanel(p: Props) {
     <section className="swap-card" aria-labelledby="swap-heading">
       <div className="swap-heading">
         <div>
-          <p className="eyebrow">02 / SWAP AND WITHDRAW</p>
-          <h2 id="swap-heading">{p.completed ? 'Swap and withdrawal confirmed.' : 'Swap and withdraw.'}</h2>
+          <h2 id="swap-heading">{p.completed ? 'Swap and withdrawal confirmed.' : 'Swap and withdraw'}</h2>
         </div>
-        <span className="badge">Uniswap V2</span>
+        <div className="uniswap-credit" aria-label="Powered by Uniswap V2">
+          <Image src="/uniswap-logo.svg" alt="" width={22} height={22} />
+          <span>Powered by Uniswap V2</span>
+        </div>
       </div>
       <form
         onSubmit={(e) => {
@@ -109,13 +114,21 @@ export function SwapPanel(p: Props) {
           <div className="swap-route">
             <div className="route-caption">
               <span>YOUR SWAP</span>
-              <span>
-                {p.completed
-                  ? 'Arrived ✓'
-                  : p.rolling
-                    ? 'In motion · awaiting confirmation'
-                    : `${p.inputAsset} → ${p.outputAsset}`}
-              </span>
+              {!p.completed && (
+                <label className="route-slippage" htmlFor="slippage">
+                  <span>Slippage</span>
+                  <select
+                    id="slippage"
+                    value={p.slippage}
+                    onChange={(e) => p.onSlippage(e.target.value)}
+                    disabled={p.busy || p.rolling || !p.market}
+                  >
+                    <option value="10">0.1%</option>
+                    <option value="50">0.5%</option>
+                    <option value="100">1%</option>
+                  </select>
+                </label>
+              )}
             </div>
             <div className="coin-track" aria-hidden="true">
               <svg
@@ -164,7 +177,9 @@ export function SwapPanel(p: Props) {
             aria-label={`Switch to ${p.outputAsset} to ${p.inputAsset}`}
             title={`Switch to ${p.outputAsset} to ${p.inputAsset}`}
           >
-            <span>Switch pair</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4" />
+            </svg>
           </button>
           <div className="swap-amount-panel">
             <span className="swap-token-name">{p.completed ? p.outputAsset : p.inputAsset}</span>
@@ -234,19 +249,6 @@ export function SwapPanel(p: Props) {
         )}
         {!p.completed && (
           <div className="swap-settings">
-            <div>
-              <label htmlFor="slippage">Price movement limit</label>
-              <select
-                id="slippage"
-                value={p.slippage}
-                onChange={(e) => p.onSlippage(e.target.value)}
-                disabled={p.busy || !p.market}
-              >
-                <option value="10">0.1%</option>
-                <option value="50">0.5%</option>
-                <option value="100">1%</option>
-              </select>
-            </div>
             <div className="swap-minimum">
               <span className="hint">At least</span>
               <strong>{p.minimum ? `${p.minimum} ${p.outputAsset}` : '—'}</strong>
@@ -260,14 +262,11 @@ export function SwapPanel(p: Props) {
               id="swap-recipient"
               value={p.recipient}
               onChange={(e) => p.onRecipient(e.target.value)}
-              placeholder="Recipient address · 0x…"
+              placeholder="Recipient address"
               autoComplete="off"
               spellCheck={false}
               disabled={p.busy}
             />
-            <p className="withdraw-privacy-warning">
-              The swap output goes to this public address; it is not placed in another private pool.
-            </p>
           </div>
         )}
         <button className="swap-submit" type="submit" disabled={p.disabled} aria-busy={p.rolling}>
@@ -277,14 +276,12 @@ export function SwapPanel(p: Props) {
               ? 'Swap confirmed'
               : `Swap and withdraw ${p.outputAsset}`}
         </button>
-        <p className="swap-feedback" role="status" aria-live="polite">
-          {p.status || p.reason || 'Ready when you are.'}
-        </p>
+        {feedback && (
+          <p className="swap-feedback" role="status" aria-live="polite">
+            {feedback}
+          </p>
+        )}
         {p.error && <p className="error">{p.error}</p>}
-        <div className="swap-benefits">
-          <span>Only the approved amount goes to Uniswap</span>
-          <span>Network fee covered by sponsor</span>
-        </div>
       </form>
     </section>
   );

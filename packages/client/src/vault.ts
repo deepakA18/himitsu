@@ -13,6 +13,9 @@ export type AttemptState =
   | 'conflict'
   | 'expired';
 export interface Attempt {
+  /** Approval hashes are never treated as deposit receipts. */
+  approvalHashes?: Hex[];
+  depositBroadcast?: boolean;
   frameDetails?: {
     mode: string;
     purpose: string;
@@ -165,6 +168,11 @@ function validate(data: VaultData) {
       throw new Error('Invalid saved quote');
     attemptIds.add(a.id);
     assertHex(a.sender, 20);
+    if (a.depositBroadcast !== undefined && typeof a.depositBroadcast !== 'boolean') throw new Error('Invalid deposit stage');
+    if (a.approvalHashes !== undefined) {
+      if (!Array.isArray(a.approvalHashes) || a.approvalHashes.length > 4) throw new Error('Invalid approvals');
+      a.approvalHashes.forEach((hash) => assertHex(hash, 32));
+    }
     if (a.hash) assertHex(a.hash, 32);
     if (a.raw) assertHex(a.raw);
     for (const v of [a.nonce, a.deadline])

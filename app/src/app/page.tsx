@@ -58,7 +58,7 @@ export default function Home() {
           <div className={styles.heroCopy}>
             <h1 id="hero-title">A more private way to swap</h1>
             <p className={styles.intro}>
-              Trade from a saved balance through Uniswap without sending the swap from your wallet.
+              Trade from a saved balance through Uniswap without sending the swap from your wallet
             </p>
             <div className={styles.actions}>
               <Link className={styles.button} href="/app" prefetch={false}>
@@ -145,7 +145,7 @@ export default function Home() {
             <p>
               Himitsu lets you use a saved private note file to swap through Uniswap. The network
               checks that the file can spend the funds, while a separate funded account can pay
-              some network fees.
+              some network fees
             </p>
           </div>
           <div className={styles.featureGrid}>
@@ -156,7 +156,7 @@ export default function Home() {
               <h3>Your browser sends the swap.</h3>
               <p>
                 Your browser sends the transaction straight to the network. A built-in fee sponsor
-                checks whether it will cover the network cost. No swap service submits it for you.
+                checks whether it will cover the network cost. No swap service submits it for you
               </p>
               <span className={styles.featureTag}>DIRECT SUBMISSION · SEPARATE FEE SPONSOR</span>
             </article>
@@ -167,7 +167,7 @@ export default function Home() {
               <h3>Only the amount you approve.</h3>
               <p>
                 Himitsu sends the amount you approve to Uniswap. The exchange cannot pull extra
-                tokens from your wallet.
+                tokens from your wallet
               </p>
               <span className={styles.featureTag}>WETH → UNISWAP → hUSD</span>
             </article>
@@ -178,7 +178,7 @@ export default function Home() {
               <h3>Save the file for your new tokens.</h3>
               <p>
                 The network checks that your file can spend the funds without showing which deposit
-                is yours. Save the new file to access the tokens you receive.
+                is yours. Save the new file to access the tokens you receive
               </p>
               <span className={styles.featureTag}>YOUR FILE CONTROLS YOUR FUNDS</span>
             </article>
@@ -203,7 +203,7 @@ export default function Home() {
                 <h3>Deposit ETH and save your file</h3>
                 <p>
                   Connect your wallet and deposit 0.1 ETH. Download the secret file before you
-                  approve the deposit. It is the only way to access those funds.
+                  approve the deposit. It is the only way to access those funds
                 </p>
               </div>
             </li>

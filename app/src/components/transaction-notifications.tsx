@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Attempt } from '../../../packages/client/src/vault';
 import styles from './transaction-notifications.module.css';
 
-type Notice = { id: string; title: string; message: string; failure: boolean; hash?: string };
+type Notice = { id: string; title: string; message: string; failure: boolean; hash?: string; expiresAt?: number };
 function describe(a: Attempt): Notice | null {
   const action =
     a.kind === 'withdraw'
@@ -35,7 +35,7 @@ function describe(a: Attempt): Notice | null {
         failure: true,
         title: `${action} failed`,
         message:
-          'The transaction did not complete successfully. Check the transaction details and refresh your note status before retrying.',
+          a.detail || 'The transaction did not complete successfully. Check the transaction details and refresh your note status before retrying.',
       };
     case 'conflict':
       return {
@@ -84,10 +84,14 @@ export function TransactionNotifications({
   attempts,
   pool,
   error,
+  status,
+  busy,
 }: {
   attempts: Attempt[];
   pool: string;
   error: string;
+  status: { id: number; message: string };
+  busy: string;
 }) {
   const [notices, setNotices] = useState<Notice[]>([]);
   const mountedAt = useRef(Date.now());
@@ -107,7 +111,7 @@ export function TransactionNotifications({
       )
         continue;
       const notice = describe(attempt);
-      if (notice) updates.push(notice);
+      if (notice) updates.push({ ...notice, expiresAt: ['confirmed', 'failed', 'conflict', 'expired'].includes(attempt.state) ? Date.now() + 10000 : undefined });
     }
     if (updates.length)
       setNotices((current) =>
@@ -120,11 +124,40 @@ export function TransactionNotifications({
       return error
         ? [
             ...remaining,
-            { id: 'action-error', title: 'Action could not finish', message: error, failure: true },
+            { id: 'action-error', title: 'Action could not finish', message: error, failure: true, expiresAt: Date.now() + 10000 },
           ].slice(-4)
         : remaining;
     });
   }, [error]);
+  useEffect(() => {
+    setNotices((current) => {
+      const remaining = current.filter((notice) => notice.id !== 'action-status');
+      if (!status.message) return remaining;
+      return [...remaining, {
+        id: 'action-status',
+        title: status.message.startsWith('Cancelled.') ? 'Cancelled' : 'Update',
+        message: status.message.replace(/^Cancelled\.\s*/, ''),
+        failure: false,
+        expiresAt: Date.now() + 6000,
+      }].slice(-4);
+    });
+  }, [status]);
+  useEffect(() => {
+    setNotices((current) => {
+      const remaining = current.filter((notice) => notice.id !== 'action-progress');
+      return busy ? [...remaining, {
+        id: 'action-progress', title: 'In progress', message: busy, failure: false,
+      }].slice(-4) : remaining;
+    });
+  }, [busy]);
+  useEffect(() => {
+    const expirations = notices.flatMap((notice) => notice.expiresAt ? [notice.expiresAt] : []);
+    if (!expirations.length) return;
+    const timer = setTimeout(() => {
+      setNotices((current) => current.filter((notice) => !notice.expiresAt || notice.expiresAt > Date.now()));
+    }, Math.max(0, Math.min(...expirations) - Date.now()));
+    return () => clearTimeout(timer);
+  }, [notices]);
   return (
     <aside className={styles.stack} aria-label="Transaction notifications">
       {notices.map((n) => (

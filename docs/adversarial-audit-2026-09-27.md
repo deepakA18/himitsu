@@ -64,3 +64,19 @@ The pool is the frame transaction sender. The client checks its nonce before pro
 Audit scripts and derived key are under ignored `.local/audit-*`; detailed logs are `/tmp/himitsu-audit-*.log`. Local test transactions were mined, disposable contracts deployed, and the active test pair's reserves changed as part of the slippage test. No Vercel or public-network deployment was changed.
 
 References: [EIP-8141](https://eips.ethereum.org/EIPS/eip-8141), [Ethrex](https://github.com/lambdaclass/ethrex). Compatibility statements above refer to this inspected revision and tested node, not guaranteed future EIP behavior.
+
+
+### Follow-up: hUSD deposits and deployment alignment
+
+The V2 verifier JSON and Solidity source have been regenerated from the existing proving
+key. Deployment scripts now run this synchronization before compiling. A new local deployment
+at `0x93b2f02f14397d7dde0ac4960664be8c94de4174` uses the current contracts and matching
+verifier; the app manifest now points to it. The old deployment remains archived for note
+withdrawals. This resolves the source/proving-key mismatch and active deployment drift for
+the new deployment, without modifying the old contracts.
+
+Live tests passed hUSD deposit → withdrawal, hUSD deposit → private swap → WETH withdrawal,
+and hUSD deposit → direct swap-and-withdraw. The ETH bidirectional regression suite also
+passed, including atomic slippage failure, fresh-file recovery, and direct recipient payment.
+See `deployments/husd-deposit-evidence.json` and `deployments/bidirectional-evidence.json`.
+The Ethrex gas-accounting and shared nonce findings are not resolved by this change.

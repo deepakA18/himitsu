@@ -1,4 +1,5 @@
-import { depositAmount } from '../../../packages/client/src/private-note';
+import { prepareTokenDeposit, tokenDepositAbi } from './token-deposit';
+import { depositAmount, tokenDepositAmount } from '../../../packages/client/src/private-note';
 import {
   readiness,
   fundingRequired,
@@ -16,6 +17,7 @@ import {
   defineChain,
   http,
   encodeFunctionData,
+  decodeFunctionData,
   isAddress,
   keccak256,
   type Hex,
@@ -185,10 +187,16 @@ export class Controller {
       throw new Error('Output note must not assume the received amount');
     return note;
   }
-  async deposit(wallet: Wallet, account: Hex, prepared?: SavedNote) {
+  async deposit(wallet: Wallet, account: Hex, prepared?: SavedNote, onProgress: (message: string) => void = () => {}) {
     return this.exclusive(async () => {
       await this.sync();
-      await this.requireReady('deposit');
+      const tokenDeposit = prepared?.pool.toLowerCase() === this.deployment.outputPool.toLowerCase();
+      const depositPool = tokenDeposit ? this.deployment.outputPool : this.deployment.pool;
+      const amount = tokenDeposit
+        ? tokenDepositAmount(this.deployment, prepared?.amount)
+        : depositAmount(this.deployment, prepared?.amount);
+      if (tokenDeposit && !prepared?.amount) throw new Error('hUSD deposit note must bind its amount');
+      await this.requireReady('deposit', depositPool, amount);
       if (
         BigInt((await wallet.request({ method: 'eth_chainId' })) as string) !==
         BigInt(this.deployment.chainId)
@@ -198,12 +206,13 @@ export class Controller {
       if (!accounts.some((a) => a.toLowerCase() === account.toLowerCase()))
         throw new Error('Wallet account changed; reconnect');
       const note = prepared
-          ? this.preparedNote(prepared, this.deployment.pool)
+          ? this.preparedNote(prepared, depositPool)
           : await this.newNote(this.deployment.pool),
         attempt: Attempt = {
           id: crypto.randomUUID(),
           deployment: this.deployment.id,
           kind: 'deposit',
+          depositBroadcast: false,
           source: note.id,
           sender: account,
           state: 'broadcasting',
@@ -216,14 +225,31 @@ export class Controller {
       });
       let result: Attempt;
       try {
+        if (tokenDeposit) {
+          await prepareTokenDeposit(this.rpc, wallet, account, this.deployment.token, note.pool, BigInt(amount), async (hash) => {
+            attempt.approvalHashes = [...(attempt.approvalHashes ?? []), hash];
+            attempt.detail = 'Token approval submitted; deposit has not been sent';
+            await this.replaceAttempt({ ...attempt });
+          }, onProgress);
+          await this.requireReady('deposit', note.pool, amount);
+        }
+        // Persist the transition before opening the deposit wallet request.
+        attempt.depositBroadcast = true;
+        attempt.detail = 'Waiting for deposit wallet confirmation';
+        await this.replaceAttempt({ ...attempt });
+        onProgress('Confirm the deposit in your wallet…');
         const hash = (await wallet.request({
           method: 'eth_sendTransaction',
           params: [
             {
               from: account,
               to: note.pool,
-              value: `0x${BigInt(depositAmount(this.deployment, note.amount)).toString(16)}`,
-              data: encodeFunctionData({
+              value: tokenDeposit ? '0x0' : `0x${BigInt(amount).toString(16)}`,
+              data: tokenDeposit ? encodeFunctionData({
+                abi: poolV2Abi,
+                functionName: 'depositTokenAmount',
+                args: [note.baseCommitment ?? note.commitment, BigInt(amount)],
+              }) : encodeFunctionData({
                 abi: poolAbi,
                 functionName: 'depositETH',
                 args: [note.baseCommitment ?? note.commitment],
@@ -233,11 +259,13 @@ export class Controller {
         })) as Hex;
         if (!/^0x[0-9a-fA-F]{64}$/.test(hash)) throw new Error('Invalid wallet hash');
         result = { ...attempt, hash, state: 'submitted' };
-      } catch {
+      } catch (e) {
         result = {
           ...attempt,
-          state: 'unknown',
-          detail: 'Wallet result uncertain. Refresh to look for the saved commitment.',
+          state: attempt.depositBroadcast ? 'unknown' : 'failed',
+          detail: attempt.depositBroadcast
+            ? 'Wallet result uncertain. Refresh to look for the saved commitment.'
+            : `No deposit was sent. ${e instanceof Error ? e.message : 'Token approval failed'}. Any pool allowance remains until used or revoked.`,
         };
       }
       await this.replaceAttempt(result);
@@ -270,11 +298,22 @@ export class Controller {
             return [account.address];
           if (method === 'eth_sendTransaction') {
             const tx = params?.[0] as { from: Hex; to: Hex; data: Hex; value: Hex };
-            if (
-              tx.from.toLowerCase() !== account.address.toLowerCase() ||
-              tx.to.toLowerCase() !== d.pool.toLowerCase()
-            )
-              throw new Error('This wallet can only sign deposits to this pool');
+            if (tx.from.toLowerCase() !== account.address.toLowerCase())
+              throw new Error('Test wallet account mismatch');
+            if (tx.to.toLowerCase() === d.token.toLowerCase()) {
+              const call = decodeFunctionData({ abi: tokenDepositAbi, data: tx.data });
+              if (call.functionName !== 'approve' ||
+                  String(call.args?.[0]).toLowerCase() !== d.outputPool.toLowerCase() || BigInt(tx.value) !== 0n)
+                throw new Error('Test wallet only approves the hUSD pool');
+              tokenDepositAmount(d, String(call.args?.[1]));
+            } else if (tx.to.toLowerCase() === d.outputPool.toLowerCase()) {
+              const call = decodeFunctionData({ abi: poolV2Abi, data: tx.data });
+              if (call.functionName !== 'depositTokenAmount' || BigInt(tx.value) !== 0n)
+                throw new Error('Test wallet only sends token deposits to the hUSD pool');
+              tokenDepositAmount(d, String(call.args?.[1]));
+            } else if (tx.to.toLowerCase() !== d.pool.toLowerCase()) {
+              throw new Error('This wallet can only sign deposits to configured pools');
+            }
             return client.sendTransaction({ to: tx.to, data: tx.data, value: BigInt(tx.value) });
           }
           throw new Error('Unsupported wallet operation');
