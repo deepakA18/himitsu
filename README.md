@@ -1,154 +1,353 @@
 # Himitsu
 
-Private Uniswap swaps using proof-authorized native frame transactions and a prefunded, automatic onchain paymaster. Test assets only.
+Private-note swaps through Uniswap, authorized by native frame transactions.
 
-## Current implementation
+Himitsu lets a user spend a private balance without an application-operated relayer or bundler,
+and without granting the exchange a token allowance. The browser generates a zero-knowledge proof,
+constructs an EIP-8141 frame transaction, and submits it directly to RPC. The pool authorizes the
+spend; a prefunded onchain paymaster independently authorizes gas payment. Neither step requires an
+operator's per-transaction signature.
 
-The supplied implementation is preserved in `packages/protocol`, with import hashes in `docs/import-provenance.json`. The original scratchpad is unchanged. Live circuit artifacts were retained; stale `pot13_*` ceremony files were excluded.
+The swap goes directly through a Uniswap V2 pair. Himitsu transfers the exact authorized input to
+the pair and deposits the entire received output into a second privacy pool. The user saves a new
+private note before submission and can later import it to recover or withdraw the actual output.
 
-- Bun workspace with pinned dependencies and lockfile.
-- EIP-8141 transaction serialization, canonical authorization hash, lossless digest limbs, and rollback-aware frame outcome interpretation.
-- Browser-compatible JSON-RPC client, chain/genesis verification, and durable-before-broadcast submission primitive. Ambiguous submissions require reconciliation, never blind reproving/replacement.
-- Immutable automatic-paymaster bytecode generator with explicit trusted-pool ABI shapes, fee/gas caps, prefix ordering, prior validation status, no sponsor signatures, and a separate ETH funding path.
-- Unit tests for envelope binding, receipt rollback, submission uncertainty, and paymaster policy control flow.
+Built with **EIP-8141, Uniswap V2, Circom + Groth16, Poseidon, Ethrex, Next.js, and Family ConnectKit**.
+The current implementation runs on a pinned, patched Ethrex devnet with test assets. It is not
+audited or intended for real funds.
 
-**Implemented for local testing:** Next.js UI, browser Groth16 proving, portable private-note files with encrypted per-note IndexedDB transaction caches, canonical event reconstruction, and shared-pool nonce reconciliation. The automatic paymaster passes the native private swap, output withdrawal, and failed-swap rollback flow on the locally patched Ethrex client. The imported circuit and lifecycle tests also pass locally. The paymaster test interpreter is deliberately limited: it does not establish EVM gas bounds, admission compatibility, or proof soundness. Never deploy it with real funds.
+## How it works
 
-## Commands
+1. **Deposit and save a note.** Connect a wallet through ConnectKit, generate a private note, and
+   download it before approving a 0.1 ETH deposit. The input pool wraps ETH into WETH and inserts an
+   amount-bound commitment into its Merkle tree.
+2. **Choose the trade.** Import the WETH note, review the live Uniswap quote and slippage tolerance,
+   and save a fresh output note. No phrase or vault-password onboarding is required.
+3. **Prove and authorize.** A browser worker generates a Groth16 proof of note membership and
+   spending authority, bound to the transaction digest. Verification frames check expiry, validate
+   the proof, and approve gas payment under the paymaster's policy.
+4. **Swap atomically.** A sender frame consumes the input nullifier, transfers WETH directly to the
+   pair, executes the swap, and deposits all received gUSD into the output pool. If the swap or
+   output deposit fails, the spending operation rolls back.
+5. **Recover or withdraw.** Import the saved output note. Canonical pool events reveal its actual
+   amount, and nullifier checks establish whether it is unspent. A withdrawal pays the full amount
+   to a public recipient; WETH notes withdraw as WETH, not native ETH.
 
-```sh
+The wallet pays deposit gas. The prefunded paymaster pays eligible private-spend gas, including gas
+consumed by included failed attempts. Private swaps and withdrawals do not request wallet signatures.
+
+## Architecture
+
+```mermaid
+flowchart TD
+    WALLET(["Deposit wallet · ConnectKit"])
+    NOTE(["User-held private note"])
+
+    NOTE -->|"import spending secrets"| APP["Himitsu browser app · Next.js"]
+    APP -->|"generate locally"| PROOF["Groth16 proof + frame transaction"]
+    APP ---|"save new note before submission"| BACKUP["Downloaded output note"]
+    PROOF -->|"save before broadcast"| CACHE[("Encrypted transaction journal")]
+    PROOF -->|"submit directly · no app relayer or bundler"| RPC["Ethrex RPC · frame-enabled devnet"]
+
+    RPC --> EXP["VERIFY · Check expiry<br/>Scope: APPROVE_NONE [0x0]"]
+    EXP --> AUTH["VERIFY · Pool validates ZK proof<br/>TXPARAM [0xb0] · SIGDATACOPY [0xb5]<br/>FRAMEPARAM [0xb3] · APPROVE [0xaa]<br/>Scope: APPROVE_EXECUTION [0x2]"]
+    AUTH --> GAS["VERIFY · Paymaster checks policy<br/>TXPARAM [0xb0] · FRAMEPARAM [0xb3]<br/>FRAMEDATALOAD [0xb1] · SIGPARAM [0xb4]<br/>APPROVE [0xaa] · Scope: APPROVE_PAYMENT [0x1]"]
+    GAS -->|"SENDER · execute authorized spend"| POOL[["Himitsu WETH pool<br/>TXPARAM [0xb0] · FRAMEPARAM [0xb3]<br/>FRAMEDATACOPY [0xb2]<br/>Sender-frame scope: APPROVE_NONE [0x0]"]]
+    WALLET -->|"deposit ETH · wrap into WETH"| POOL
+
+    POOL -->|"push exact input · call swap<br/>no exchange allowance"| UNI[["Uniswap V2 · WETH / gUSD"]]
+    UNI -->|"return actual gUSD output"| SETTLE["Input pool settlement<br/>Exact output-pool approval · deposit · clear approval"]
+    SETTLE -->|"full output · atomic settlement"| OUT[("Himitsu gUSD pool")]
+    OUT -->|"scan confirmed events using saved note"| RECOVER(["Recover private balance · withdraw"])
+
+    classDef wallet fill:#dbeafe,stroke:#2563eb,color:#1e3a8a;
+    classDef note fill:#fef3c7,stroke:#d97706,color:#78350f;
+    classDef client fill:#ede9fe,stroke:#7c3aed,color:#4c1d95;
+    classDef infra fill:#f3f4f6,stroke:#6b7280,color:#374151;
+    classDef verify fill:#cffafe,stroke:#0891b2,color:#164e63;
+    classDef sponsor fill:#dcfce7,stroke:#16a34a,color:#14532d;
+    classDef pool fill:#1f2937,stroke:#111827,color:#f9fafb;
+    classDef uniswap fill:#fce7f3,stroke:#db2777,color:#831843;
+    classDef result fill:#ccfbf1,stroke:#0d9488,color:#134e4a;
+
+    class WALLET wallet;
+    class NOTE,BACKUP note;
+    class APP,PROOF client;
+    class RPC,CACHE infra;
+    class EXP,AUTH verify;
+    class GAS sponsor;
+    class POOL,OUT pool;
+    class UNI uniswap;
+    class SETTLE,RECOVER result;
+```
+
+Read top to bottom: prepare locally, authorize onchain, then swap and settle. The wallet deposit
+feeds the same WETH pool through a separate path. The input pool appears again as a settlement step
+to show the token flow without a backward arrow; it is the same contract, not an additional service.
+
+**Diagram notation:** brackets after instruction names identify opcode bytes. Approval-scope values
+are separate operands/permissions, not additional opcodes. `VERIFY` and `SENDER` are frame modes.
+The expiry verifier at address `0x8141` is a contract target, not an opcode.
+
+| Approval scope | Value | Use in this flow |
+| --- | --- | --- |
+| `APPROVE_NONE` | `0x0` | Expiry and sender frames cannot grant approval; they do not call `APPROVE` with zero scope. |
+| `APPROVE_PAYMENT` | `0x1` | Paymaster approves the transaction's gas payment. |
+| `APPROVE_EXECUTION` | `0x2` | Pool approves execution; the resolved verification target must equal the transaction sender. |
+| `APPROVE_EXECUTION_AND_PAYMENT` | `0x3` | Combined authorization, not used in this sponsored flow: pool and paymaster approve separately. |
+
+See the [EIP-8141 approval specification](https://eips.ethereum.org/EIPS/eip-8141#approve-instruction-0xaa).
+
+Note secrets and Merkle witnesses stay on the user device. Only proofs and public transaction data
+are submitted. Tree reconstruction and note recovery use RPC directly; the MVP has no hosted
+indexer, proving server, or application database. RPC infrastructure and block production remain
+necessary.
+
+## Native authorization with EIP-8141
+
+The transaction sender is the privacy pool contract. Execution authority comes from the note proof;
+gas-payment authority comes from a separate contract. Both decisions are made within the transaction.
+
+| Instruction | Role in Himitsu |
+| --- | --- |
+| `APPROVE` (`0xaa`) | Pool authorizes execution with scope `0x02`; paymaster authorizes payment with scope `0x01`. |
+| `TXPARAM` (`0xb0`) | Reads the canonical authorization digest, sender, fee bounds, maximum cost, and frame context. |
+| `FRAMEDATALOAD` (`0xb1`) | Paymaster checks function selectors in other frames. |
+| `FRAMEDATACOPY` (`0xb2`) | Execution retrieves the nullifier, recipient, and amount from the successful verification frame. |
+| `FRAMEPARAM` (`0xb3`) | Checks frame targets, modes, budgets, scopes, and earlier verification results. |
+| `SIGPARAM` (`0xb4`) | Checks the arbitrary-signature entry's scheme, message selection, and proof length. |
+| `SIGDATACOPY` (`0xb5`) | Retrieves the Groth16 proof carried in that entry. |
+
+The validator binds the full 256-bit transaction digest as two 128-bit public inputs. The canonical
+authorization digest omits the raw proof bytes, avoiding self-reference. A valid
+proof does not authorize arbitrary pool operations: the pool and sponsor constrain the frame layout
+and permitted actions before granting approval.
+
+Native `APPROVE` is **not** ERC-20 `approve()`. The former authorizes transaction execution or payment;
+the latter grants token spending permission. Our swap atomicity comes from one contract call, not
+from using the cross-frame atomic-batch flag.
+
+Implementation targets: **Ethrex `d587cf9ff0996315381c4b2784a4d7d499decc0f` (`frames-devnet-0`)** and
+**EIP encoding/introspection revision `ethereum/EIPs@b75cbe6115`**. The proposal is evolving; these
+pins describe the tested implementation. There is no claim of EIP-8286 conformance.
+
+## Uniswap integration
+
+Himitsu uses the official `@uniswap/v2-core` contracts deployed with local test liquidity. The current
+route is WETH → gUSD; it is not an arbitrary-token router.
+
+| Integration | Review the implementation |
+| --- | --- |
+| Exact-input swap, minimum output, direct pair transfer, full output redeposit | [`HimitsuPoolV2.sol`, `spendAndSwapQuoted()`](packages/protocol/contracts/src/HimitsuPoolV2.sol#L259) |
+| Proof validation and permitted execution layout | [`HimitsuPoolV2.sol`, `validateSpend()`](packages/protocol/contracts/src/HimitsuPoolV2.sol#L193) |
+| Fresh token backing for deposited notes | [`HimitsuPoolV2.sol`, `depositTokenAmount()`](packages/protocol/contracts/src/HimitsuPoolV2.sol#L153) |
+| Browser frame construction and submission | [`controller.ts`, `spend()`](app/src/lib/controller.ts#L284) |
+| Onchain sponsorship policy | [`paymaster.ts`, `buildPaymaster()`](packages/contracts/src/paymaster.ts#L55) |
+| Pair deployment and initial liquidity | [`deploy-app-v2.mjs`](packages/protocol/deploy-app-v2.mjs) |
+| Reserve-based quotes and readiness checks | [`market.ts`](packages/client/src/market.ts) |
+
+There is no allowance to the Uniswap pair or router. The input pool temporarily approves the
+**output privacy pool** for the exact received amount, deposits it, and clears that approval in the
+same call. Initial ERC-20 deposits can also require an allowance; the ETH deposit flow does not.
+Direct pair transfers are an existing Uniswap capability. Himitsu combines them with private-note
+spending and native frame authorization.
+
+## Enforced properties and limits
+
+- **Specific authorization.** The proof binds the transaction, note amount, recipient, and nullifier.
+  Spent-nullifier tracking prevents double-spending.
+- **Bounded sponsorship.** Immutable policy restricts eligible pools, transaction shape, and fee/gas
+  limits. No operator signs each sponsorship approval. These bounds do not prevent repeated subsidy
+  consumption by a valid note holder.
+- **Atomic settlement.** A failed swap or output deposit leaves the input unspent. Included failures
+  can still cost sponsor gas. Fresh backing checks prevent unsolicited donations being claimed as notes.
+- **Recoverable confirmed funds.** A downloaded note can recover its confirmed deposit and amount in
+  a fresh browser. The checksum detects file damage; it does not authenticate ownership or encrypt it.
+- **Conservative retries.** The raw transaction is encrypted and saved before broadcast. Uncertain
+  outcomes remain reserved until reconciliation; there is no automatic reproving or replacement.
+
+**Privacy boundary.** The proof does not directly identify which deposited commitment authorized a
+spend. Amounts, timings, AMM activity, withdrawal addresses, and network metadata remain observable
+and can enable correlation. Direct RPC submission does not provide network anonymity.
+
+**Custody boundary.** Tokens are held by pool contracts; downloaded notes are unencrypted bearer
+secrets. Anyone holding a note can spend it, and losing it can lose access. Local AES-GCM caches are
+unlocked from note-derived key material, not a user password. Clearing browser data loses pending
+history even when saved files can recover confirmed funds. Use one active browser per note.
+
+**MVP boundary.** Trees have depth 10 and hold at most 1,024 commitments each; spent notes do not free
+slots. Users share a pool nonce, so concurrent spends can require explicit retries. Two-block
+confirmation is a devnet policy, not finality. The proving setup is development-only, and the system
+has not received an independent security audit.
+
+## Repository layout
+
+```text
+app/                         Next.js UI, ConnectKit, proof worker, browser transaction controller.
+packages/client/             RPC verification, private-note format, Merkle trees, encrypted storage,
+                             quotes, event reconstruction, and receipt/nonce reconciliation.
+packages/frame-codec/        Frame encoding, authorization hashes, and rollback-aware outcomes.
+packages/contracts/          Immutable native paymaster bytecode generator and policy tests.
+packages/protocol/           Solidity pools/verifiers, Circom circuits, frame helpers, Uniswap
+                             artifacts, and deployment/integration scripts.
+scripts/                     Readiness checks and native client, market, and private-note tests.
+deployments/                 Deployment records and public transaction evidence.
+patches/                     Required patch for the pinned Ethrex mempool simulator.
+docs/                        Recovery, accounting, implementation provenance, and validation details.
+```
+
+Bun manages the workspace. Protocol/proving scripts run under Node because snarkjs worker execution
+crashed under the tested Bun runtime. Historical Ghost names and commitment domains remain where
+required for compatibility; unchecked pools and stock verifiers are comparison fixtures, not app
+deployment choices.
+
+## Running locally
+
+### Prerequisites
+
+- Bun **1.3.9**, Node.js, and Foundry's `cast` for deployment/native integration scripts.
+- The pinned Ethrex checkout with [`ethrex-prefix-frame-results.patch`](patches/ethrex-prefix-frame-results.patch)
+  applied and rebuilt. It fixes missing prior-frame results in mempool simulation, needed by our sponsor.
+- Matching circuit WASM, proving keys, and generated protocol artifacts. Circom is required if
+  regenerating circuits; Solidity builds use pinned solc-js versions.
+
+### Start the existing demo chain
+
+Run from the Himitsu repository root. Adjust `ETHREX_DIR` to your checkout. Use the same data directory
+to retain deployed contracts and notes; do not run two nodes against it.
+
+```bash
 bun install
-bun run check
-bun run doctor
-```
-
-Use Bun for dependency installation and script orchestration. Protocol scripts run under Node because snarkjs's web-worker dependency crashes under the tested Bun runtime. Node, Circom and Foundry `cast` are required. Solidity artifacts build with pinned solc-js packages, so `forge build` is optional. If a sandbox prevents Bun's default cache/temp access:
-
-```sh
-mkdir -p .cache/tmp
-TMPDIR="$PWD/.cache/tmp" BUN_INSTALL_CACHE_DIR="$PWD/.cache/bun" bun install
-```
-
-Copy `.env.example` to `.env` and set the verified genesis hash before binding a deployment. `doctor` checks RPC identity; it does not prove native opcode execution. The observed local identity is in `deployments/local.observed.json` and must be refreshed after a reset.
-
-The existing node can be started from its checkout without resetting its data:
-
-```sh
-cd /Users/deepakagashe/Desktop/ethrex
-./target/release/ethrex --dev --network fixtures/genesis/l1-hegota.json --mempool.max-verify-gas 1000000
-```
-
-## Basic testing app
-
-The latest app defaults to **Market swaps · v2**, with live Uniswap quotes, slippage limits and the full swap output in one amount-bound private note. Use the deployment selector for original fixed-size v1 notes. See `docs/market-swaps-v2.md` for accounting, recovery, privacy limits and validation.
-
-
-`app/` contains a minimal Next.js interface. Proofs run in a browser worker with the existing Circom circuit and Groth16 key. The browser submits frame transactions directly to RPC; there is no signing server, relayer, or bundler. The prefunded contract pays gas.
-
-From the repository root, with the patched local node running:
-
-```sh
-bun install
-# First setup, or after a contract change / chain reset:
-RPC_URL=http://127.0.0.1:8567 bun run deploy:app
-# Ordinary app startup; reuse the existing deployment:
-bun run dev
-```
-
-Open http://127.0.0.1:3000. `deploy:app` writes `deployments/app.local.json`, the public deployment manifest, and browser proving assets. It deploys test pools, liquidity and a sponsor funded with 0.1 test ETH. Do not redeploy on every app start: old notes are bound to their original deployment. The manifest pins chain ID, genesis, a postdeployment anchor block, contract runtime hashes, and proving-asset hashes.
-
-1. **Deposit:** connect a wallet through Family ConnectKit on chain 9, choose **Create deposit note**, download the private note, and confirm that you saved it. Only then approve the ETH deposit in your wallet. No phrase or local password is required.
-2. **Swap:** paste/import the WETH note, review the live quote and slippage, then download and confirm a **new output note before submission**. The entire actual gUSD output becomes that note. Retain the input note until confirmation; a failed swap leaves it unspent.
-3. **Withdraw:** paste/import an unspent input or output note and enter the recipient. The full note amount is withdrawn; WETH notes pay WETH, not native ETH. No connected wallet is required to authorize a private spend.
-The pool selector is under **Pool details & network status**. The app supports private-note files only; the legacy phrase-recovery page has been removed.
-
-Each downloaded file is an **unencrypted bearer secret**. Anyone holding it can spend its note. Save a new file for every deposit and swap output; there is no master recovery phrase for these random notes. A pre-swap output file contains the recovery tag preimage; its exact amount is reconstructed and verified against canonical pool events. Notes are bound to chain ID, genesis, immutable deployment identity, pool, and circuit version. Imported files cannot choose the RPC endpoint.
-
-The browser keeps AES-GCM encrypted per-note transaction records. The supplied note derives the cache key, so there is no separate password. Secrets are not stored in plaintext in browser storage. The raw signed transaction is saved before broadcast, and re-importing the source note in the same browser recovers pending history. Browser cleanup removes this journal; the file still recovers confirmed note ownership on a fresh device. Use one active browser per note and do not retry an uncertain submission from another device. Keep both source and output files until confirmation. Encrypted storage does not protect an open page from malicious scripts.
-
-See `docs/private-notes.md` for the format and flow, and run `bun run test:private-notes` for the real devnet note-file round trip. This uses the existing deployment; do not redeploy to test the UI.
-
-### Wallet connections (Family ConnectKit)
-
-The deposit button uses ConnectKit 1.9.1, Wagmi 2.15.6 and TanStack Query. The custom chain and RPC come from the public deployment manifest. Injected browser wallets work without an API key; the button also opens account/disconnect controls. A wrong-network connection exposes **Switch to Himitsu devnet**. Account, connector and network changes are checked again before wallet requests. Private-note swaps and withdrawals do not request wallet signatures.
-
-To enable WalletConnect QR/mobile connections, create `app/.env.local` using `app/.env.example` and set:
-
-```dotenv
-NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id
-```
-
-Obtain a project ID through the service linked in [Family's ConnectKit setup guide](https://family.co/docs/connectkit/getting-started), then restart `bun run dev`. The ID is public client configuration. No placeholder project ID is shipped. Mobile wallets cannot reach the laptop's loopback RPC: use a devnet endpoint reachable by the wallet before testing mobile connections. WalletConnect transports deposit-wallet requests only; private frame transactions still go directly from the browser to the deployment RPC.
-
-ConnectKit's declared React peer range is 17/18, while this app uses React 19.3.0. Build/type checks do not establish modal runtime compatibility; actual wallet connection, switching, disconnect and deposit approval remain part of the user's local browser verification. Wagmi 2.15.6 is pinned because the newer 2.19.5 connector bundle pulled in unresolved Coinbase x402 modules during the Next build.
-
-Reconciliation rebuilds trees from canonical deposit events and checks nullifiers, pool nonces and receipts at a consistent block. Two-block confirmation is a devnet policy, not finality. Unknown broadcasts reserve the input note until chain evidence resolves them. Nonce conflicts release only unspent notes for an explicit retry; no automatic reproving or replacement occurs. A later reorg reopens cached outcomes for reconciliation.
-
-The original v1 fixed quote leaves excess AMM output in the pair. V2 replaces that path with exact-input market swaps and full-output private notes; it enforces slippage atomically. The UI is intentionally basic. `bun run build:app` produces a production build; `bun run --cwd app start` serves it. Development mode uses polling to avoid host file-watcher limits.
-
-Validation commands (integration commands spend only local test assets):
-
-```sh
-bun run check
-bun run typecheck:app
-bun run build:app
-RPC_URL=http://127.0.0.1:8567 bun run test:surplus
-bun run test:client
-bun run test:market
-# With the app running and a usable Playwright Chromium installation:
-```
-
-`test:client` is a historical client-library regression suite, not the current UI workflow. It reads the existing app deployment. It exercises two independent vaults, a real nonce collision, an accepted transaction with a lost response, phrase-only restoration with a new password across counter gaps, output recovery, and withdrawal. Full browser testing and host limitations are recorded in `docs/app-validation.md`.
-
-## Version boundary
-
-- Ethrex: `d587cf9ff0996315381c4b2784a4d7d499decc0f`, `frames-devnet-0`.
-- EIP encoding/introspection: `ethereum/EIPs@b75cbe6115`.
-- The codec intentionally rejects blobs. It performs application-level structural checks, not all consensus/admission checks or cryptographic signature verification.
-- There are no claims of ERC-8286 conformance yet. Avoid mixing the draft's evolving interfaces with the pinned client.
-
-## Integrating the existing implementation
-
-The stable integration surface is `packages/protocol/ghost.mjs`; `automatic-sponsor.mjs` adds the generated Himitsu sponsor policy. `GhostPoolUnchecked`, the stock verifier, and toy circuits are attack/comparison fixtures, not deployment choices for the app. The Himitsu Merkle zero-leaf domain is defined consistently in the client and contract sources; deployments created with the former domain are incompatible.
-
-```sh
-bun run build:protocol
-bun run test:circuit
-RPC_URL=http://127.0.0.1:8567 bun run test:lifecycle
-RPC_URL=http://127.0.0.1:8567 bun run test:automatic
-RPC_URL=http://127.0.0.1:8567 bun run test:attack
-```
-
-These integration commands deploy contracts and spend local test ETH. Never point them at a real-money chain. Use the existing matching proving key; do not rerun `setup-ceremony.sh` during ordinary builds. The development ceremony is not a production trusted setup.
-
-The pinned Ethrex checkout requires `patches/ethrex-prefix-frame-results.patch` for the automatic sponsor's prior-frame status checks: its original mempool simulator did not populate `frame_results`. Apply to the pinned commit and rebuild before running automatic sponsorship. This local client change is separate from the EIP itself.
-
-`buildPaymaster(policy)` in `packages/contracts/src/paymaster.ts` returns creation code, runtime code, and runtime hash. Supply actual immutable pool addresses, exact verification/execution calldata sizes and selectors, proof length, and measured budgets. Both the input pool and output pool used for withdrawal must be covered. Trusted pools must have pinned, non-upgradeable validation policy or an equivalent explicitly reviewed trust model.
-
-The supported transaction shape is exactly: expiry VERIFY → pool VERIFY (execution) → sponsor VERIFY (payment) → pool SENDER (restricted action). Sponsor calldata is `0x48494d49`. The pool must permit this exact sponsor frame and enforce the entire operation's authorization. Sponsor policy deliberately does not repeat the pairing check or read mutable sponsor storage.
-
-Native validation measured about 233k execution gas for proof validation and 4.7k for sponsorship. The expiry frame needs 5,000 declared gas to cover its cold account access (about 3,051 used); 1,000 can pass the pinned client's simulator but fail block execution. The hardened swap needed about 714k execution and 881k state gas in this fixture. Evidence is written to `.local/evidence/automatic-roundtrip.json`. The app and two-client reconciliation validation are documented in `docs/app-validation.md`.
-
-## Scope and privacy
-
-The team funds test ETH sponsorship; users' notes are not charged gas. Included failed attempts still consume subsidy. A valid note holder can repeatedly burn subsidy; per-transaction limits only bound each attempt. No unlimited top-ups. The legacy `depositCredited` entry point now always reverts. Token notes require a fresh, exact `transferFrom`; unsolicited donations remain unaccounted and cannot be claimed as notes. Swap output is received and measured by the input pool, then atomically deposited into the output pool using an exact allowance that is cleared afterwards. Deposit and spend entry points use a transient reentrancy guard; noncanonical commitments are rejected.
-
-Deposits, withdrawals, AMM trade amounts, and network metadata remain observable. The intended privacy property hides which deposited note authorized an action. Public-network acceptance, audit-grade security, and sustainable gas economics are not established. Independent-client nonce contention is tested, but competing users still share a pool nonce and may need explicit retries.
-
-`docs/implementation-plan-source.md` preserves the supplied original plan with Himitsu naming for provenance.
-
-## Local test node
-
-The current integration run uses a separate devnet at `http://127.0.0.1:8567`, with data in `.local/ethrex-debug`. It does not reset the original Ethrex data. Reproduce it with:
-
-```sh
+export ETHREX_DIR="$HOME/Desktop/ethrex"
 mkdir -p .local
-/Users/deepakagashe/Desktop/ethrex/target/release/ethrex --dev \
-  --network /Users/deepakagashe/Desktop/ethrex/fixtures/genesis/l1-hegota.json \
+"$ETHREX_DIR/target/release/ethrex" --dev \
+  --network "$ETHREX_DIR/fixtures/genesis/l1-hegota.json" \
   --datadir "$PWD/.local/ethrex-debug" \
   --authrpc.jwtsecret "$PWD/.local/jwt-debug.hex" \
   --http.port 8567 --authrpc.port 8573 \
   --mempool.max-verify-gas 1000000
 ```
 
-The initial diagnostic nodes used ports 8547 and 8557 with separate `.local` data directories. Do not start another process against a data directory that is already in use.
+In another terminal, reuse the published deployment:
+
+```bash
+bun run doctor --app
+bun run dev
+```
+
+Open **http://127.0.0.1:3000** for the homepage, then select **Launch app**
+(or go directly to **http://127.0.0.1:3000/app**) for the private swap demo.
+The homepage works without a wallet connection or a running node. The manifest at `app/public/deployment.json` pins the RPC, chain/genesis,
+deployment anchor, contract runtime hashes, and proving-asset hashes. `doctor --app` checks identity,
+liquidity, backing, and sponsor funding; it does not reserve those resources.
+
+### Deploy onto a fresh demo chain
+
+Only use this path for an intentional new deployment. Deployment scripts use local test funding
+fixtures and must not target real funds. Existing notes remain tied to their original pools.
+
+```bash
+bun run build:protocol
+# Bootstrap the V1 manifest required by the current V2 publisher on a fresh workspace.
+RPC_URL=http://127.0.0.1:8567 bun run deploy:app
+# Publish the V2 pools, Uniswap liquidity, automatic sponsor, and browser proving files.
+RPC_URL=http://127.0.0.1:8567 bun run deploy:app:v2
+bun run doctor --app
+```
+
+This expects the matching V2 circuit artifacts to exist. If rebuilding the development setup is
+necessary, see [`setup-v2.mjs`](packages/protocol/setup-v2.mjs) and run `bun run setup:v2` before V2
+deployment. Do not regenerate ceremony files during ordinary startup or mix keys with an existing
+verifier. Deployment supplies test liquidity and funds sponsorship; keep the node data afterward.
+
+### Wallet configuration
+
+Injected browser wallets work without an API key. To enable WalletConnect, create `app/.env.local`
+from [`app/.env.example`](app/.env.example) and supply your public project ID:
+
+```dotenv
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id
+```
+
+Restart the app after setting it. ConnectKit supports account/disconnect controls and switching to
+the configured devnet. Deposit requests recheck the active account, connector, and network. A mobile
+wallet needs a reachable RPC; the laptop's `127.0.0.1` endpoint is not reachable from a phone.
+
+The integration pins ConnectKit 1.9.1, Wagmi 2.15.6, and TanStack Query 5.103.2. ConnectKit declares
+React 17/18 peers while the app uses React 19.3.0: builds pass, but wallet-modal runtime compatibility
+still needs local browser verification. See [Family's setup guide](https://family.co/docs/connectkit/getting-started).
+
+### Hosting the demo
+
+The intended topology is a static/frontend host such as Vercel plus a persistent Ethrex node behind
+HTTPS RPC. This is a deployment plan, not a claim of an already-hosted service. Publish the correct
+RPC and matching manifest/proving assets with the frontend; generated files excluded from Git must
+be supplied to the hosting build. No separate application backend is required.
+
+User secrets stay on user devices. Deployer/funding keys and the Engine API JWT stay outside frontend
+assets. The WalletConnect project ID, circuit WASM, proving key, and verification key are public.
+A fresh hosted chain requires fresh contract deployment; switching RPC URLs does not migrate state.
+
+## Tests and evidence
+
+Static checks and unit tests:
+
+```bash
+bun run check
+bun run typecheck:app
+bun run build:app
+```
+
+Native tests against the existing local V2 deployment, using test assets:
+
+```bash
+bun run test:private-notes
+bun run test:market
+bun run test:readiness
+RPC_URL=http://127.0.0.1:8567 bun run test:v2-deposits
+```
+
+- **Private notes:** deposit, fresh-file import, real proof-based swap, simulated loss of an accepted
+  RPC response, note-only reopening of the encrypted journal, output-amount recovery, withdrawal,
+  and spent/duplicate-note rejection.
+- **Market execution:** slippage failure after an intervening trade, rollback, explicit retry, full
+  output recovery, and withdrawal.
+- **Readiness and backing:** wrong chain/code, stalled head, wrong pair, insufficient sponsorship,
+  unclaimable donations, amount bounds, and cleared output-pool allowance.
+- **Unit coverage:** frame hashes, receipt rollback, sponsorship policy, encrypted persistence,
+  note parsing, canonical recovery, nonce reconciliation, and wallet-change guards.
+
+The latest recorded unit run passed **67 tests / 145 assertions**. TypeScript checks and the
+production build passed. Public native-flow evidence is in
+[`private-note-evidence.json`](deployments/private-note-evidence.json),
+[`app.v2-market-evidence.json`](deployments/app.v2-market-evidence.json), and
+[`app.v2-deposit-evidence.json`](deployments/app.v2-deposit-evidence.json).
+
+The current private-note UI and ConnectKit flow have **not** been exercised end to end in a browser.
+Earlier browser evidence covers the previous UI. See [`app-validation.md`](docs/app-validation.md)
+for the distinction. `test:client` retains historical phrase-recovery and nonce-contention regression
+coverage; phrase recovery is no longer an app workflow. Tests are evidence of the checked behavior,
+not an audit or a proof of production safety.
+
+## Future scope
+
+- **Concurrent spending.** Reduce shared-pool nonce contention without weakening replay protection.
+- **Sustainable gas payment.** Replace open-ended demo subsidy with a reviewed funding and abuse-control model.
+- **Broader Uniswap integration.** Explore newer routing and pool versions while preserving exact authorization and private output recovery.
+- **Privacy and usability.** Address amount/timing correlation and improve note custody without introducing a secret-holding backend.
+- **Larger pools.** Extend tree capacity and recovery performance beyond the current fixed-depth demo.
+- **Production readiness.** Independent audits, an appropriate proving ceremony, supported network execution, and operational validation.
+
+## Further reading
+
+- [Private-note format, storage, and recovery](docs/private-notes.md)
+- [V2 accounting and market-swap behavior](docs/market-swaps-v2.md)
+- [Validation history and limitations](docs/app-validation.md)
+- [Original implementation provenance](docs/import-provenance.json)
+- [EIP-8141 proposal](https://eips.ethereum.org/EIPS/eip-8141)
+
+### Deployment compatibility
+
+The Himitsu Merkle zero-leaf domain is defined consistently in the client and contract sources.
+Deployments created with the former domain are incompatible; use matching artifacts and a fresh deployment.
+`docs/implementation-plan-source.md` preserves the original plan with Himitsu naming for provenance.
