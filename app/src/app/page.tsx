@@ -9,9 +9,6 @@ function Mark() {
     </svg>
   );
 }
-function Arrow() {
-  return <span aria-hidden="true">↗</span>;
-}
 function Eth() {
   return (
     <svg width="24" height="38" viewBox="0 0 24 38" fill="none" aria-hidden="true">
@@ -61,7 +58,7 @@ export default function Home() {
           <a href="#faq">FAQ</a>
         </nav>
         <Link className={styles.button} href="/app" prefetch={false}>
-          Launch app <Arrow />
+          Launch app
         </Link>
       </header>
       <main id="main" className={styles.main}>
@@ -81,10 +78,10 @@ export default function Home() {
             </p>
             <div className={styles.actions}>
               <Link className={styles.button} href="/app" prefetch={false}>
-                Try Himitsu <Arrow />
+                Try Himitsu
               </Link>
               <a className={styles.textLink} href="#how-it-works">
-                See how it works <span aria-hidden="true">↓</span>
+                See how it works
               </a>
             </div>
             <p className={styles.demoNote}>
@@ -140,7 +137,7 @@ export default function Home() {
                 <strong>Uniswap V2 ↗</strong>
               </div>
               <div className={styles.previewSubmit}>
-                Your proof. Your permission. <span>↗</span>
+                Your proof. Your permission.
               </div>
               <p className={styles.previewFoot}>No exchange allowance · No app relayer</p>
             </div>
@@ -230,7 +227,7 @@ export default function Home() {
               Your next move.
             </h2>
             <Link className={styles.textLink} href="/app" prefetch={false}>
-              Open the app <Arrow />
+              Open the app
             </Link>
           </div>
           <ol className={styles.steps}>
@@ -293,7 +290,7 @@ export default function Home() {
             <p className={styles.eyebrow}>PUBLIC LIQUIDITY. PRIVATE POSSIBILITIES.</p>
             <h2 id="closing-title">Make your move.</h2>
             <Link className={styles.button} href="/app" prefetch={false}>
-              Launch Himitsu <Arrow />
+              Launch Himitsu
             </Link>
           </div>
           <span className={styles.closingGlyph} aria-hidden="true">
@@ -311,7 +308,7 @@ export default function Home() {
           <a href="#how-it-works">How it works</a>
           <a href="#faq">FAQ</a>
           <Link href="/app" prefetch={false}>
-            Open app ↗
+            Open app
           </Link>
         </div>
       </footer>
