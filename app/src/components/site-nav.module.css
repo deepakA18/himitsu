@@ -32,6 +32,32 @@
   letter-spacing: 1px;
   margin-left: 8px;
 }
+.wallet {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 5px 11px 5px 6px;
+  border: 1px solid #303030;
+  border-radius: 999px;
+  background: transparent;
+  color: #e7e7e3;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease;
+}
+.wallet:hover {
+  border-color: #777;
+  color: #fff;
+}
+.walletAddress {
+  color: inherit;
+  font: 500 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+.walletMenu {
+  color: #999;
+}
 .links {
   display: flex;
   align-items: center;

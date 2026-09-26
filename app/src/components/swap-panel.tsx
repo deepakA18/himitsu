@@ -162,7 +162,7 @@ export function SwapPanel(p: Props) {
             aria-label={`Switch to ${p.outputAsset} to ${p.inputAsset}`}
             title={`Switch to ${p.outputAsset} to ${p.inputAsset}`}
           >
-            <span aria-hidden="true">⇄</span>
+            <span>Switch pair</span>
           </button>
           <div className="swap-amount-panel">
             <span className="swap-token-name">{p.completed ? p.outputAsset : p.inputAsset}</span>

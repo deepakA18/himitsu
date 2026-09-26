@@ -1,11 +1,13 @@
 'use client';
 import { SiteNav } from '../../components/site-nav';
+import { ConnectedWallet } from '../../components/connected-wallet';
 import { useEffect, useRef, useState } from 'react';
 import { formatUnits, isAddress } from 'viem';
 import { ConnectKitButton } from 'connectkit';
-import { useAccount, useConfig, useSwitchChain } from 'wagmi';
+import { useAccount, useConfig } from 'wagmi';
 import { getAccount } from 'wagmi/actions';
 import { guardDepositWallet } from '../../lib/deposit-wallet';
+import { selectWalletNetwork } from '../../lib/wallet-network';
 import { useWalletDeployment } from '../../components/wallet-provider';
 import { Controller, Vault, IndexedVaultStore, type Wallet } from '../../lib/controller';
 import { TransactionNotifications } from '../../components/transaction-notifications';
@@ -41,8 +43,7 @@ export default function Page() {
     config && BigInt(config.denomination) > 0n ? config.denomination : selectedDeposit;
   const fixedMode = config?.mode === 'fixed';
   const wagmiConfig = useConfig();
-  const { address: account, chainId: walletChainId, isConnected } = useAccount();
-  const { switchChainAsync } = useSwitchChain();
+  const { address: account, chainId: walletChainId, isConnected, connector } = useAccount();
   const walletReady = isConnected && walletChainId === Number(config?.chainId);
   const [tab, setTab] = useState<'deposit' | 'swap' | 'withdraw'>('deposit');
   const [health, setHealth] = useState<Readiness | null>(null);
@@ -79,9 +80,12 @@ export default function Page() {
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [networkError, setNetworkError] = useState('');
+  const [networkSwitching, setNetworkSwitching] = useState(false);
+  const [networkSwitchError, setNetworkSwitchError] = useState('');
   const [, rerender] = useState(0);
   const working = useRef(false),
     syncing = useRef(false);
+  const networkSwitchAttempt = useRef('');
   const download = (text: string, name: string) => {
     const url = URL.createObjectURL(new Blob([text + '\n'], { type: 'text/plain' }));
     const a = document.createElement('a');
@@ -105,6 +109,70 @@ export default function Page() {
       rerender((v) => v + 1);
     }
   }
+  async function requestNetworkSwitch() {
+    if (!config) return;
+    const connection = getAccount(wagmiConfig);
+    if (!connection.isConnected || !connection.connector) return;
+    setNetworkSwitching(true);
+    setNetworkSwitchError('');
+    try {
+      const provider = await connection.connector.getProvider();
+      if (!provider || typeof (provider as Wallet).request !== 'function')
+        throw new Error('The selected wallet cannot switch networks.');
+      await selectWalletNetwork(provider as Wallet, config);
+    } catch (e) {
+      const code = e && typeof e === 'object' ? (e as { code?: unknown }).code : undefined;
+      setNetworkSwitchError(
+        code === 4001
+          ? 'Network change was declined. Approve the switch in your wallet to continue.'
+          : e instanceof Error
+            ? e.message
+            : 'Could not switch networks. Approve the network request in your wallet and retry.',
+      );
+    } finally {
+      setNetworkSwitching(false);
+    }
+  }
+  async function connectWallet(show: () => void) {
+    const injectedConnector = wagmiConfig.connectors.find((item) => item.id === 'injected');
+    const hasWalletConnect = !!process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID?.trim();
+    if (!config || !injectedConnector || hasWalletConnect) {
+      show();
+      return;
+    }
+    setNetworkSwitching(true);
+    setNetworkSwitchError('');
+    try {
+      const provider = await injectedConnector.getProvider();
+      if (!provider || typeof (provider as Wallet).request !== 'function') {
+        show();
+        return;
+      }
+      await selectWalletNetwork(provider as Wallet, config);
+      show();
+    } catch (e) {
+      const code = e && typeof e === 'object' ? (e as { code?: unknown }).code : undefined;
+      setNetworkSwitchError(
+        code === 4001
+          ? 'Network change was declined. Approve the switch in your wallet to continue.'
+          : e instanceof Error
+            ? e.message
+            : 'Could not select the configured network. Retry the wallet connection.',
+      );
+    } finally {
+      setNetworkSwitching(false);
+    }
+  }
+  useEffect(() => {
+    if (!isConnected || !account || !connector || !config || walletReady) {
+      if (!isConnected || walletReady) networkSwitchAttempt.current = '';
+      return;
+    }
+    const attempt = `${connector.id}:${account.toLowerCase()}:${config.chainId}`;
+    if (networkSwitchAttempt.current === attempt) return;
+    networkSwitchAttempt.current = attempt;
+    void requestNetworkSwitch();
+  }, [account, config, connector, isConnected, walletReady]);
   useEffect(() => {
     if (!config) return;
     let stopped = false;
@@ -482,7 +550,10 @@ export default function Page() {
   );
   return (
     <>
-      <SiteNav page="app" />
+      <SiteNav
+        page="app"
+        wallet={isConnected && account ? <ConnectedWallet fallbackAddress={account} /> : undefined}
+      />
       <main data-action={tab}>
         <TransactionNotifications
           key={config?.id ?? 'loading'}
@@ -634,30 +705,25 @@ export default function Page() {
               }}
             >
               <section className="note-backup">
-                <p className="eyebrow">KEEP THIS SAFE</p>
                 <h2 id="backup-heading" tabIndex={-1}>
-                  Your private note
+                  Save your private note
                 </h2>
-                <p id="backup-description">
-                  Back up this note. You will need it to{' '}
-                  {draft.kind === 'swap'
-                    ? 'spend or withdraw your swap output'
-                    : 'swap or withdraw your deposit'}
-                  . Treat it like a private key: anyone with this note can spend the funds. Never
-                  share it, including with the Himitsu team. A lost note cannot be replaced.
+                <p id="backup-description" className="note-backup-warning">
+                  Anyone with this note can spend these funds. Keep it private; it cannot be
+                  recovered if lost.
                 </p>
-                {draft.kind === 'swap' && (
-                  <p>
-                    The new note recovers the actual swap output. Keep your input note too until the
-                    swap confirms. If it fails, the input note remains yours.
-                  </p>
-                )}
                 {draft.kind === 'deposit' && (
-                  <p>
-                    <strong>Deposit: {money(draft.note.amount ?? config!.denomination)} ETH</strong>
+                  <p className="note-backup-amount">
+                    Deposit <strong>{money(draft.note.amount ?? config!.denomination)} ETH</strong>
                   </p>
                 )}
-                <label htmlFor="new-note">Private note</label>
+                {draft.kind === 'swap' && (
+                  <details className="note-backup-detail">
+                    <summary>About this swap note</summary>
+                    <p>It holds your actual swap output. Keep the input note until the swap confirms.</p>
+                  </details>
+                )}
+                <label className="note-backup-label" htmlFor="new-note">Private note</label>
                 <textarea
                   id="new-note"
                   className="private-note-value"
@@ -675,13 +741,9 @@ export default function Page() {
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(draft.text);
-                        setCopyMessage(
-                          'Copied. Keep it private and save the backup file before continuing.',
-                        );
+                        setCopyMessage('Copied to clipboard.');
                       } catch {
-                        setCopyMessage(
-                          'Could not copy. Select the note manually or download the file.',
-                        );
+                        setCopyMessage('Copy failed. Download the note instead.');
                       }
                     }}
                   >
@@ -700,22 +762,11 @@ export default function Page() {
                     Download note
                   </button>
                 </div>
-                <p className="hint" role="status">
-                  {copyMessage}
-                </p>
-                <p className="note-filename">
-                  Backup file:{' '}
-                  <code>{`himitsu-${draft.kind}-${draft.note.id.slice(2, 10)}.txt`}</code>
-                </p>
-                <p className="hint">
+                {copyMessage && <p className="note-copy-status" role="status">{copyMessage}</p>}
+                <p className="note-backup-hint" role="status">
                   {downloaded
-                    ? 'Download requested. Check that the file was saved before confirming below.'
-                    : 'Download the backup file, then confirm you have saved it safely.'}
-                </p>
-                <p className="note-gas-info">
-                  {draft.kind === 'deposit'
-                    ? 'Your connected wallet pays the deposit gas fee. Review the fee in your wallet.'
-                    : 'The paymaster pays swap gas. Keep both notes until the swap is confirmed.'}
+                    ? `Backup file: himitsu-${draft.kind}-${draft.note.id.slice(2, 10)}.txt`
+                    : 'Download the note before continuing.'}
                 </p>
                 {draft.kind === 'deposit' &&
                   (!walletReady ||
@@ -726,16 +777,18 @@ export default function Page() {
                       note.
                     </p>
                   )}
-                <label className="check-label">
+                <label className="check-label note-backup-confirm">
                   <input
                     type="checkbox"
                     checked={backedUp}
                     disabled={!downloaded}
                     onChange={(e) => setBackedUp(e.target.checked)}
                   />
-                  I saved the file somewhere safe and understand it controls my funds.
+                  I saved the backup and understand it controls my funds.
                 </label>
-                <div className="row">
+                <div className="note-backup-footer">
+                  <p>{draft.kind === 'deposit' ? 'Review the gas fee in your wallet.' : 'Keep your input note until the swap confirms.'}</p>
+                  <div className="row">
                   <button
                     disabled={
                       !downloaded ||
@@ -754,7 +807,9 @@ export default function Page() {
                       )
                     }
                   >
-                    {draft.kind === 'deposit' ? 'Send deposit' : 'Confirm swap'}
+                    {draft.kind === 'deposit'
+                      ? `Deposit ${money(draft.note.amount ?? config!.denomination)} ETH`
+                      : 'Confirm swap'}
                   </button>
                   <button
                     className="secondary"
@@ -766,6 +821,7 @@ export default function Page() {
                   >
                     Cancel
                   </button>
+                  </div>
                 </div>
               </section>
             </NoteDialog>
@@ -808,23 +864,43 @@ export default function Page() {
                 {!isConnected ? (
                   <ConnectKitButton.Custom>
                     {({ show }) => (
-                      <button type="button" disabled={disabled || !show} onClick={show}>
-                        Connect wallet
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          disabled={disabled || networkSwitching || !show}
+                          onClick={() => {
+                            if (show) void connectWallet(show);
+                          }}
+                        >
+                          {networkSwitching
+                            ? 'Selecting network…'
+                            : networkSwitchError
+                              ? 'Retry wallet setup'
+                              : 'Connect wallet'}
+                        </button>
+                        {networkSwitchError && (
+                          <p className="hint" role="status">
+                            {networkSwitchError}
+                          </p>
+                        )}
+                      </>
                     )}
                   </ConnectKitButton.Custom>
                 ) : !walletReady ? (
-                  <button
-                    type="button"
-                    disabled={disabled || !config}
-                    onClick={() =>
-                      void run('Switching wallet network…', async () => {
-                        await switchChainAsync({ chainId: Number(config!.chainId) });
-                      })
-                    }
-                  >
-                    Switch network
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      disabled={disabled || networkSwitching || !config}
+                      onClick={() => void requestNetworkSwitch()}
+                    >
+                      {networkSwitching ? 'Selecting network…' : 'Switch network'}
+                    </button>
+                    {networkSwitchError && (
+                      <p className="hint" role="status">
+                        {networkSwitchError}
+                      </p>
+                    )}
+                  </>
                 ) : (
                   <button
                     type="button"

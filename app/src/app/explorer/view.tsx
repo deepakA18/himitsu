@@ -124,7 +124,7 @@ export default function Explorer() {
               maxLength={66}
               aria-describedby={searchError ? 'search-error' : undefined}
             />
-            <button>Search ↗</button>
+            <button>Search</button>
           </div>
           {searchError && (
             <p id="search-error" role="alert">

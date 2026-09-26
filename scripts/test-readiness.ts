@@ -11,7 +11,7 @@ rpc.request = async function <T>(method: string, params: unknown[] = []): Promis
   if (method === 'eth_getBalance') return '0x0' as T;
   return original<T>(method, params);
 };
-assert.ok((await readiness(rpc, d)).swapIssues.includes('Paymaster needs more test ETH'));
+assert.ok((await readiness(rpc, d)).swapIssues.includes('Paymaster needs more ETH'));
 rpc.request = async function <T>(method: string, params: unknown[] = []): Promise<T> {
   if (method === 'eth_getCode') return '0x' as T;
   return original<T>(method, params);
