@@ -1,47 +1,93 @@
 'use client';
+import { useEffect, useRef } from 'react';
 
 type Props = {
+  privateNoteMode?: boolean;
   inputAmount: string;
   outputAmount: string;
+  balance: string;
+  notes: { id: string; label: string }[];
+  selected: string;
+  onSelect: (id: string) => void;
   slippage: string;
   onSlippage: (value: string) => void;
   minimum: string;
   market: boolean;
+  locked: boolean;
   busy: boolean;
+  rolling: boolean;
+  completed?: boolean;
+  animationKey?: string;
+  settledOutput?: string;
   status: string;
+  error: string;
   reason: string;
   disabled: boolean;
   onSwap: () => void;
 };
 
 export function SwapPanel(p: Props) {
+  const stage = useRef<HTMLDivElement>(null);
+  const progress = useRef(0);
+  const previousKey = useRef(p.animationKey);
+  useEffect(() => {
+    const node = stage.current;
+    if (!node) return;
+    if (previousKey.current !== p.animationKey) {
+      previousKey.current = p.animationKey;
+      progress.current = 0;
+    }
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let frame = 0;
+    const start = performance.now(),
+      from = progress.current;
+    const paint = (value: number) => {
+      progress.current = value;
+      // Match the two visible cubic SVG tracks exactly, at any container width.
+      const u = 1 - value;
+      const x =
+        88 * u ** 3 + 3 * 150 * u ** 2 * value + 3 * 250 * u * value ** 2 + 312 * value ** 3;
+      node.style.setProperty('--coin-x', `${x / 4}%`);
+      node.style.setProperty('--coin-lift', `${240 * value * u}px`);
+      node.style.setProperty('--coin-turn', `${value * 360}deg`);
+    };
+    const tick = (now: number) => {
+      const elapsed = now - start;
+      if (reduced.matches) {
+        paint(p.completed ? 1 : 0);
+        return;
+      }
+      if (p.rolling) {
+        // Illustrative motion, not a transaction progress estimate. Never reaches
+        // the final position until the canonical journal confirms the swap.
+        const value = from + (0.88 - from) * (1 - Math.exp(-elapsed / 18000));
+        paint(value);
+      } else {
+        const t = Math.min(elapsed / (p.completed ? 1400 : 500), 1);
+        paint(from + ((p.completed ? 1 : 0) - from) * (1 - Math.pow(1 - t, 3)));
+        if (t === 1) return;
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    const onPreference = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(tick);
+    };
+    reduced.addEventListener('change', onPreference);
+    frame = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(frame);
+      reduced.removeEventListener('change', onPreference);
+    };
+  }, [p.rolling, p.completed, p.animationKey]);
   return (
     <section className="swap-card" aria-labelledby="swap-heading">
       <div className="swap-heading">
         <div>
-          <h2 id="swap-heading">Move WETH privately</h2>
-          <p>Uniswap V2 · output saved as a new note</p>
+          <p className="eyebrow">02 / MAKE YOUR MOVE</p>
+          <h2 id="swap-heading">{p.completed ? 'Swap confirmed.' : 'Make the swap.'}</h2>
         </div>
-      </div>
-      <div className="swap-motion-scene" aria-hidden="true">
-        <div className="swap-scene-grid" />
-        <span className="swap-scene-label">PRIVATE NOTE → PUBLIC LIQUIDITY</span>
-        <div className="swap-scene-note swap-scene-input">
-          <span>YOUR INPUT NOTE</span>
-          <strong>•••• •••• ••••</strong>
-          <small>WETH · AMOUNT BOUND</small>
-        </div>
-        <span className="swap-scene-path" />
-        <div className="swap-scene-flight">
-          <span>◆</span>
-          <span>↗</span>
-        </div>
-        <div className="swap-scene-note swap-scene-output">
-          <span>YOUR NEW NOTE</span>
-          <strong>•••• •••• ••••</strong>
-          <small>hUSD · SAVED BEFORE SEND</small>
-        </div>
-        <span className="swap-scene-caption">WETH → UNISWAP V2 → hUSD</span>
+        <span className="badge">Uniswap V2</span>
       </div>
       <form
         onSubmit={(e) => {
@@ -49,46 +95,173 @@ export function SwapPanel(p: Props) {
           if (!p.disabled) p.onSwap();
         }}
       >
-        <div className="swap-stage">
-          <div className="swap-amount-panel">
-            <div className="swap-token-row">
-              <label htmlFor="swap-input">You pay</label>
-              <span className="swap-token-name">WETH</span>
+        <div
+          ref={stage}
+          className="swap-stage animated-swap-stage"
+          data-moving={p.rolling}
+          data-complete={!!p.completed}
+        >
+          <div className="swap-route">
+            <div className="route-caption">
+              <span>THE SWAP PATH</span>
+              <span>
+                {p.completed
+                  ? 'Arrived ✓'
+                  : p.rolling
+                    ? 'In motion · awaiting confirmation'
+                    : 'WETH ↔ gUSD'}
+              </span>
             </div>
-            <input id="swap-input" type="text" inputMode="decimal" readOnly value={p.inputAmount} />
-            <p className="hint">From your imported private note</p>
+            <div className="coin-track" aria-hidden="true">
+              <svg
+                className="coin-route-lines"
+                viewBox="0 0 400 180"
+                preserveAspectRatio="none"
+                fill="none"
+              >
+                <path
+                  className="route-rail"
+                  d="M88 90 C150 10 250 10 312 90"
+                  vectorEffect="non-scaling-stroke"
+                />
+                <path
+                  className="route-rail route-rail-return"
+                  d="M312 90 C250 170 150 170 88 90"
+                  vectorEffect="non-scaling-stroke"
+                />
+                <path
+                  className="route-direction"
+                  d="m196 25 6 5-6 5 M204 145l-6 5 6 5"
+                  vectorEffect="non-scaling-stroke"
+                />
+              </svg>
+              <span className="coin-dock dock-left" />
+              <span className="coin-dock dock-right" />
+              <div className="coin-carrier coin-from">
+                <div className="token-coin eth-coin">
+                  <svg viewBox="0 0 32 48" fill="none">
+                    <path d="M16 2 2 24l14 8 14-8L16 2Z" fill="currentColor" />
+                    <path d="m2 27 14 19 14-19-14 8L2 27Z" fill="currentColor" />
+                    <path d="M16 2v30l14-8L16 2Z" fill="var(--coin-facet)" />
+                  </svg>
+                </div>
+              </div>
+              <div className="coin-carrier coin-to">
+                <div className="token-coin usd-coin">
+                  <span>$</span>
+                </div>
+              </div>
+            </div>
+            <div className="route-destinations">
+              <span>{p.completed ? 'gUSD received' : 'WETH starts here'}</span>
+              <span>{p.completed ? 'WETH spent' : 'gUSD starts here'}</span>
+            </div>
           </div>
-          <span className="swap-bridge" aria-hidden="true">↓</span>
+          <div className="swap-amount-panel">
+            <span className="swap-token-name">{p.completed ? 'gUSD' : 'WETH'}</span>
+            <label htmlFor="swap-input">{p.completed ? 'You received' : 'You pay'}</label>
+            <input
+              id="swap-input"
+              type="text"
+              inputMode="decimal"
+              readOnly
+              value={p.completed ? p.settledOutput || '—' : p.inputAmount}
+              aria-describedby="swap-input-hint"
+            />
+            <p id="swap-input-hint" className="hint">
+              {p.completed ? 'Your new private note' : 'One private note'}
+            </p>
+          </div>
           <div className="swap-amount-panel receive-panel">
-            <div className="swap-token-row">
-              <label htmlFor="swap-output">You receive{p.market ? ' ≈' : ''}</label>
-              <span className="swap-token-name">hUSD</span>
-            </div>
+            <span className="swap-token-name">{p.completed ? 'WETH' : 'gUSD'}</span>
+            <label htmlFor="swap-output">
+              {p.completed ? 'You spent' : `You receive${p.market ? ' ≈' : ''}`}{' '}
+            </label>
             <input
               id="swap-output"
               type="text"
+              inputMode="decimal"
               readOnly
-              value={p.outputAmount}
-              placeholder="Waiting for quote"
+              value={p.completed ? p.inputAmount : p.outputAmount}
+              placeholder="—"
+              aria-describedby="swap-output-hint"
             />
-            <p className="hint">Into a new private note</p>
+            <p id="swap-output-hint" className="hint">
+              {p.completed
+                ? 'Input note spent'
+                : p.outputAmount
+                  ? 'Into your private balance'
+                  : 'Waiting for a quote'}
+            </p>
           </div>
         </div>
-        <div className="swap-settings">
-          <label htmlFor="slippage">Slippage</label>
-          <select id="slippage" value={p.slippage} onChange={(e) => p.onSlippage(e.target.value)} disabled={p.busy || !p.market}>
-            <option value="10">0.1%</option>
-            <option value="50">0.5%</option>
-            <option value="100">1%</option>
-          </select>
-          <span className="swap-minimum-label">Minimum received</span>
-          <strong className="swap-minimum">{p.minimum ? `${p.minimum} hUSD` : '—'}</strong>
-        </div>
-        <button className="swap-submit" type="submit" disabled={p.disabled} aria-busy={p.busy}>
-          {p.busy ? 'Preparing note…' : 'Create output note'}
+        {!p.privateNoteMode && (
+          <>
+            <div className="swap-balance">
+              <span>Available private balance</span>
+              <strong>{p.locked ? 'Unlock to view' : `${p.balance} WETH`}</strong>
+            </div>
+            <label htmlFor="swap-note">Spend from</label>
+            <select
+              id="swap-note"
+              value={p.selected}
+              onChange={(e) => p.onSelect(e.target.value)}
+              disabled={p.locked || p.busy || !p.notes.length}
+            >
+              <option value="">
+                {p.locked
+                  ? 'Unlock your private wallet'
+                  : p.notes.length
+                    ? 'Choose a private note'
+                    : 'No available WETH notes'}
+              </option>
+              {p.notes.map((n) => (
+                <option key={n.id} value={n.id}>
+                  {n.label}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+        {!p.completed && (
+          <div className="swap-settings">
+            <div>
+              <label htmlFor="slippage">Slippage tolerance</label>
+              <select
+                id="slippage"
+                value={p.slippage}
+                onChange={(e) => p.onSlippage(e.target.value)}
+                disabled={p.busy || !p.market}
+              >
+                <option value="10">0.1%</option>
+                <option value="50">0.5%</option>
+                <option value="100">1%</option>
+              </select>
+            </div>
+            <div className="swap-minimum">
+              <span className="hint">Minimum received</span>
+              <strong>{p.minimum ? `${p.minimum} gUSD` : '—'}</strong>
+            </div>
+          </div>
+        )}
+        <button className="swap-submit" type="submit" disabled={p.disabled} aria-busy={p.rolling}>
+          {p.rolling ? 'Swapping…' : p.completed ? 'Swap confirmed' : 'Swap to private gUSD'}
+          <span aria-hidden="true"> ↗</span>
         </button>
-        <p className="swap-feedback" role="status" aria-live="polite">{p.status || p.reason}</p>
-        <p className="swap-disclosure">Exact WETH input · No exchange allowance · Paymaster covers eligible gas</p>
+        <p className="swap-feedback" role="status" aria-live="polite">
+          {p.status || p.reason || 'Ready when you are.'}
+        </p>
+        {p.error && <p className="error">{p.error}</p>}
+        <div className="swap-benefits">
+          <span>No exchange allowance</span>
+          <span>Gas paid by paymaster</span>
+        </div>
+        <p className="hint swap-disclosure">
+          {p.market
+            ? 'Full output returns as a private note. Swap amounts are public.'
+            : 'Legacy fixed-output pool. Select Market swaps v2 for full output.'}{' '}
+          ETH deposits are wrapped into WETH.
+        </p>
       </form>
     </section>
   );

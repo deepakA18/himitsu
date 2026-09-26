@@ -1,0 +1,514 @@
+/* Scoped to /app so the homepage and explorer retain their own layouts. */
+.trade {
+  --bg: #080808;
+  --surface: #141414;
+  --text: #f2f2ef;
+  --muted: #ababab;
+  --border: #353535;
+  --primary: #f2f2ef;
+  --error: #f2f2ef;
+  --error-bg: #222;
+  --focus: #f2f2ef;
+  --radius: 12px;
+  --space: 32px;
+  --coin-eth: #f2f2ef;
+  --coin-eth-ink: #171717;
+  --coin-facet: #999;
+  --coin-usd: #252525;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+.trade main {
+  max-width: 1200px;
+  padding: 28px 40px 48px;
+}
+.trade a {
+  color: inherit;
+  text-underline-offset: 5px;
+}
+.trade h1,
+.trade h2,
+.trade h3 {
+  font-weight: 400;
+}
+.trade h2 {
+  font-size: 27px;
+  line-height: 1.2;
+  letter-spacing: -0.8px;
+}
+.trade p {
+  line-height: 1.7;
+  text-wrap: pretty;
+}
+.trade button {
+  border-radius: 99px;
+  padding: 12px 22px;
+  min-height: 48px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.trade button:hover:not(:disabled) {
+  filter: brightness(0.86);
+}
+.trade button:disabled {
+  opacity: 0.5;
+}
+.trade :global(.secondary) {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+.trade :focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
+}
+.trade input,
+.trade textarea,
+.trade select {
+  border-radius: 10px;
+  background: var(--bg);
+  font-size: 14px;
+}
+.trade input:read-only {
+  cursor: default;
+}
+.trade input[type='checkbox'] {
+  accent-color: var(--text);
+}
+.trade textarea {
+  font-family: monospace;
+  font-size: 12px;
+  padding: 16px;
+  line-height: 1.7;
+}
+.trade label {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+  margin: 20px 0 8px;
+}
+.trade section {
+  border-radius: 20px;
+}
+.trade :global(.trade-header) {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 24px;
+  margin-bottom: 0;
+}
+.trade :global(.trade-brand) {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 28px;
+  letter-spacing: -1.4px;
+  text-decoration: none;
+  font-weight: 600;
+  min-height: 44px;
+}
+.trade :global(.trade-brand) span {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  margin-left: 8px;
+}
+.trade :global(.trade-header) nav {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.trade :global(.trade-header) nav a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+.trade :global(.trade-header) nav a:hover {
+  text-decoration: underline;
+}
+.trade :global(.network-pill) {
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 8px 12px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.trade :global(.trade-intro) {
+  text-align: center;
+  padding: 56px 0 28px;
+}
+.trade :global(.eyebrow) {
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  margin: 0 0 16px;
+}
+.trade :global(.trade-intro) h1 {
+  font-size: clamp(36px, 5vw, 64px);
+  line-height: 1.12;
+  letter-spacing: -0.055em;
+  margin: 0 0 18px;
+}
+.trade :global(.trade-intro) em {
+  font-family: Georgia, 'Times New Roman', serif;
+}
+.trade :global(.trade-intro) > p:last-child {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0;
+}
+.trade :global(.note-tabs) {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto 8px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  gap: 4px;
+  background: var(--surface);
+}
+.trade :global(.note-tabs) button {
+  padding: 10px 28px;
+  border: 0;
+  min-height: 44px;
+}
+.trade :global(.note-tabs) button[aria-pressed='false'] {
+  color: var(--muted);
+}
+.trade :global(.status) {
+  color: var(--muted);
+  text-align: center;
+  font-size: 12px;
+  min-height: 28px;
+  margin: 8px 0 16px;
+  overflow-wrap: anywhere;
+}
+.trade :global(.error) {
+  border-left: 3px solid var(--text);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+}
+.trade :global(.trade-workspace) {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 24px;
+  align-items: start;
+}
+.trade main[data-action='deposit'] :global(.trade-workspace) {
+  grid-template-columns: minmax(0, 640px);
+  justify-content: center;
+}
+.trade :global(.trade-workspace) > section {
+  width: 100%;
+  margin: 0;
+  min-width: 0;
+}
+.trade :global(.note-action) > p:not(:global(.eyebrow)),
+.trade :global(.note-backup) > p {
+  color: var(--muted);
+  font-size: 13px;
+}
+.trade :global(.note-action) :global(.row) {
+  gap: 12px;
+  margin: 20px 0;
+}
+.trade :global(.note-action) :global(.row) > button {
+  flex-grow: 1;
+}
+.trade :global(.file) {
+  width: 100%;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+  margin-top: 4px;
+}
+.trade :global(.file) input {
+  max-width: none;
+  margin-top: 8px;
+  border-style: dashed;
+  padding: 8px;
+  font-size: 11px;
+}
+.trade input::file-selector-button {
+  background: var(--text);
+  color: var(--bg);
+  border: 0;
+  border-radius: 99px;
+  padding: 8px 12px;
+  margin-right: 12px;
+  cursor: pointer;
+}
+.trade :global(.note-summary) {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+  gap: 12px;
+  font-size: 12px;
+}
+.trade :global(.note-summary) strong {
+  font-size: 24px;
+  font-weight: 400;
+  width: 100%;
+  letter-spacing: -0.7px;
+}
+.trade :global(.note-summary) button {
+  margin-left: auto;
+}
+.trade :global(.hint) {
+  font-size: 11px;
+  line-height: 1.8;
+}
+.trade input[id='deposit-amount'] {
+  font-size: 48px;
+  padding: 24px;
+  letter-spacing: -2px;
+  background: var(--bg);
+}
+.trade :global(.note-backup) {
+  grid-column: 1 / -1;
+  border: 1px solid var(--text);
+  background: #1b1b1b;
+}
+.trade :global(.check-label) {
+  color: var(--text);
+  align-items: center;
+  gap: 12px;
+}
+.trade :global(.check-label) input {
+  accent-color: var(--text);
+}
+/* The light swap surface echoes the homepage's product preview. */
+.trade :global(.swap-card) {
+  --bg: #e6e6e3;
+  --surface: #f2f2ef;
+  --text: #171717;
+  --muted: #606060;
+  --border: #cdcdca;
+  --primary: #171717;
+  --error: #171717;
+  --error-bg: #e4e4e1;
+  --focus: #171717;
+  color: var(--text);
+  background: var(--surface);
+  padding: 32px;
+  border: 1px solid var(--surface);
+}
+.trade :global(.swap-heading) {
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.trade :global(.swap-heading) h2 {
+  font-size: 29px;
+}
+.trade :global(.badge) {
+  border-radius: 99px;
+  font-size: 10px;
+  white-space: nowrap;
+  padding: 6px 10px;
+}
+.trade :global(.swap-amount-panel) {
+  padding: 24px 12px 20px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--bg);
+}
+.trade :global(.swap-amount-panel) input {
+  background: transparent;
+  font-size: clamp(26px, 3vw, 38px);
+}
+.trade :global(.swap-token-name) {
+  font-size: 14px;
+  font-weight: 500;
+}
+.trade :global(.swap-amount-panel) label {
+  margin-top: 16px;
+  font-size: 11px;
+}
+.trade :global(.token-coin) {
+  border-color: #b8b8b5;
+  outline-color: #c9c9c6;
+}
+.trade :global(.usd-coin) {
+  color: #f2f2ef;
+  outline-color: #666;
+  border-color: #252525;
+}
+.trade :global(.swap-bridge) {
+  top: 152px;
+  width: 32px;
+  height: 32px;
+  font-size: 17px;
+}
+.trade :global(.swap-settings) {
+  margin: 16px 0 24px;
+  gap: 16px;
+}
+.trade :global(.swap-settings) select {
+  min-height: 44px;
+  font-size: 12px;
+  border-radius: 99px;
+  padding: 8px 16px;
+  background: transparent;
+}
+.trade :global(.swap-minimum) {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  max-width: 55%;
+}
+.trade :global(.swap-submit) {
+  border-radius: 99px;
+  font-size: 14px;
+  min-height: 52px;
+}
+.trade :global(.swap-benefits) {
+  gap: 8px 20px;
+  font-size: 10px;
+  margin-top: 8px;
+}
+.trade :global(.swap-feedback) {
+  font-size: 11px;
+}
+.trade :global(.trade-activity) {
+  margin-top: 32px;
+}
+.trade :global(.journal) li {
+  padding: 20px 0;
+}
+.trade :global(.journal) strong {
+  font-weight: 500;
+  font-size: 14px;
+  text-transform: capitalize;
+}
+.trade :global(.journal) code {
+  color: var(--muted);
+  margin: 12px 0 4px;
+  font-size: 11px;
+}
+.trade :global(.journal) a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 12px;
+}
+.trade :global(.journal) p {
+  font-size: 12px;
+  color: var(--muted);
+}
+.trade :global(.trade-network) {
+  margin-top: 32px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.trade :global(.trade-network) > summary {
+  padding: 20px 0;
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--muted);
+}
+.trade :global(.trade-network) section {
+  margin-bottom: 20px;
+}
+.trade footer {
+  text-align: center;
+  padding-top: 24px;
+}
+@media (max-width: 850px) {
+  .trade main {
+    padding: 24px;
+  }
+  .trade :global(.trade-workspace) {
+    grid-template-columns: 1fr;
+    max-width: 640px;
+    margin: auto;
+  }
+  .trade :global(.trade-header) nav {
+    gap: 20px;
+  }
+  .trade :global(.trade-activity),
+  .trade :global(.trade-network) {
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .trade :global(.swap-amount-panel) input {
+    font-size: 36px;
+  }
+}
+@media (max-width: 540px) {
+  .trade main {
+    padding: 20px 16px 40px;
+  }
+  .trade :global(.trade-header) {
+    gap: 12px;
+  }
+  .trade :global(.trade-header) nav {
+    width: 100%;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .trade :global(.trade-intro) {
+    padding: 36px 0 24px;
+  }
+  .trade :global(.trade-intro) h1 {
+    font-size: 38px;
+  }
+  .trade :global(.note-tabs) button {
+    padding: 10px 24px;
+  }
+  .trade section,
+  .trade :global(.swap-card) {
+    padding: 24px 20px;
+    border-radius: 16px;
+  }
+  .trade :global(.swap-heading) h2 {
+    font-size: 25px;
+  }
+  .trade :global(.swap-heading) :global(.badge) {
+    display: block;
+    font-size: 9px;
+    padding: 5px 8px;
+  }
+  .trade :global(.swap-amount-panel) {
+    padding: 20px 8px 16px;
+  }
+  .trade :global(.swap-amount-panel) input {
+    font-size: 27px;
+  }
+  .trade :global(.swap-bridge) {
+    top: 134px;
+  }
+  .trade :global(.swap-settings) {
+    align-items: center;
+  }
+  .trade :global(.swap-settings) select {
+    min-width: 90px;
+  }
+  .trade input[id='deposit-amount'] {
+    font-size: 40px;
+    padding: 20px;
+  }
+}
+
+.trade :global(.swap-route) {
+  background: var(--surface);
+}
+.trade :global(.swap-route) {
+  --coin-size: 64px;
+}
+.trade :global(.swap-route) :global(.token-coin) {
+  box-shadow: 0 4px 8px #00000012;
+}
+.trade :global(.swap-route) :global(.usd-coin) span {
+  font-size: 32px;
+}
+.trade :global(.swap-route) :global(.eth-coin) svg {
+  width: 24px;
+  height: 36px;
+}
+@media (max-width: 540px) {
+  .trade :global(.swap-route) {
+    --coin-size: 56px;
+  }
+}

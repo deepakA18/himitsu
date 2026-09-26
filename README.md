@@ -233,6 +233,19 @@ Bun manages the workspace. Protocol/proving scripts run under Node because snark
 crashed under the tested Bun runtime. The client and contracts use the Himitsu commitment domain.
 Unchecked pools and stock verifiers are comparison fixtures, not app deployment choices.
 
+## Local transaction explorer
+
+Open **http://127.0.0.1:3000/explorer** while the configured Ethrex node is running.
+Search by transaction hash or decimal block number, browse recent blocks, or select
+**View transaction** in the app's transaction history. The explorer reads the selected deployment's
+RPC directly and verifies its chain ID and genesis. No indexer, wallet connection, or private-note
+storage is needed.
+
+Transaction details include the actual gas payer, receipt status, per-frame execution/state gas,
+allowed approval scopes, token transfers, allowance changes, and public note commitments.
+Missing receipts and skipped frames are not shown as successful. Use **Refresh** for updated data;
+recent blocks are a paginated snapshot rather than a complete transaction index.
+
 ## Running locally
 
 ### Prerequisites
