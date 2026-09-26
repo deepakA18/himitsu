@@ -56,9 +56,6 @@ export default function Home() {
       <main id="main" className={styles.main}>
         <section className={styles.hero} aria-labelledby="hero-title">
           <div className={styles.heroCopy}>
-            <p className={styles.eyebrow}>
-              <span className={styles.dot} /> PRIVATE DEPOSITS · TOKEN SWAPS
-            </p>
             <h1 id="hero-title">
               Swap tokens
               <br />
