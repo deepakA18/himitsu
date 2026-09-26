@@ -58,7 +58,7 @@ export default function Home() {
           <div className={styles.heroCopy}>
             <h1 id="hero-title">A more private way to swap</h1>
             <p className={styles.intro}>
-              Use a saved file to trade through Uniswap. Amounts and timing stay public.
+              Trade from a saved balance through Uniswap without sending the swap from your wallet.
             </p>
             <div className={styles.actions}>
               <Link className={styles.button} href="/app" prefetch={false}>

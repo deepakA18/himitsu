@@ -5,7 +5,7 @@ import styles from './site-nav.module.css';
 export function SiteNav({ page, wallet }: { page: 'home' | 'app' | 'explorer'; wallet?: ReactNode }) {
   const home = page === 'home' ? '' : '/';
   return (
-    <header className={styles.nav}>
+    <header className={page === 'home' ? styles.nav + ' ' + styles.landingNav : styles.nav}>
       {page === 'app' ? <span className={styles.brand}>
         <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true">
           <path d="M5 27V5h7v8h8V5h7v22h-7v-8h-8v8H5Z" fill="currentColor" />
