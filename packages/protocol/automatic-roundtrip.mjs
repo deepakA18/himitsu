@@ -2,7 +2,7 @@
 // The full private asset round trip.
 //
 //   R1  deposit        ETH -> WETH -> private WETH note
-//   R2  ghost swap     WETH note -> pair -> private gUSD note   (one SENDER frame)
+//   R2  Himitsu swap   WETH note -> pair -> private gUSD note   (one SENDER frame)
 //   R3  withdraw       gUSD note -> a fresh recipient           (separate transaction)
 //   R4  atomicity      make the swap fail; the WETH note must survive intact
 //

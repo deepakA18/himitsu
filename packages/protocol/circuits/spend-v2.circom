@@ -5,7 +5,7 @@ pragma circom 2.0.0;
 include "poseidon.circom";
 include "bitify.circom";
 
-// The GhostSwap spend circuit: a Tornado-style shielded note.
+// The Himitsu spend circuit: a Tornado-style shielded note.
 //
 //   commitment    = Poseidon(nullifier, secret)      the leaf in the pool's tree
 //   nullifierHash = Poseidon(nullifier)              published once, on spend

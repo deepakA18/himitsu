@@ -135,7 +135,7 @@ The team funds test ETH sponsorship; users' notes are not charged gas. Included 
 
 Deposits, withdrawals, AMM trade amounts, and network metadata remain observable. The intended privacy property hides which deposited note authorized an action. Public-network acceptance, audit-grade security, and sustainable gas economics are not established. Independent-client nonce contention is tested, but competing users still share a pool nonce and may need explicit retries.
 
-`docs/implementation-plan-source.md` preserves the supplied GhostSwap-named plan unchanged for provenance. Himitsu is the product name for new implementation.
+`docs/implementation-plan-source.md` preserves the supplied original plan unchanged for provenance. Himitsu is the product name for the implementation.
 
 ## Local test node
 

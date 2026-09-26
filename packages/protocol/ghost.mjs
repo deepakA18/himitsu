@@ -1,4 +1,4 @@
-// Shared wiring for the GhostSwap demos: deploy the system, build spend
+// Shared wiring for the Himitsu demos: deploy the system, build spend
 // transactions, submit them.
 
 import { readFileSync } from 'node:fs'

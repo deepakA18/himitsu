@@ -2,7 +2,7 @@
 // The full private asset round trip.
 //
 //   R1  deposit        ETH -> WETH -> private WETH note
-//   R2  ghost swap     WETH note -> pair -> private gUSD note   (one SENDER frame)
+//   R2  Himitsu swap   WETH note -> pair -> private gUSD note   (one SENDER frame)
 //   R3  withdraw       gUSD note -> a fresh recipient           (separate transaction)
 //   R4  atomicity      make the swap fail; the WETH note must survive intact
 //
@@ -64,7 +64,7 @@ async function main() {
   console.log(`  pool backs it with ${eth(balanceOf(system.weth, system.pool))} WETH`)
 
   // ---------------------------------------------------------------- R2
-  header('R2. GhostSwap: private WETH note -> swap -> private gUSD note')
+  header('R2. Himitsu: private WETH note -> swap -> private gUSD note')
   const gusdTree = await MerkleTree.create()
   const outputNote = await createNote()
   const reserves = cast('call', '--rpc-url', RPC_URL, pair, 'getReserves()(uint112,uint112)')

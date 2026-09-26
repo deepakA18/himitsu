@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The swap half of GhostSwap, then the two halves joined.
+// The Himitsu swap flow, joining deposit and spend.
 //
 //   S1  plain atomic swap     WETH -> gUSD with no allowance anywhere
 //

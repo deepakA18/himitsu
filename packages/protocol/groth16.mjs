@@ -1,6 +1,6 @@
 // A real Groth16 implementation over BN254 (alt_bn128), small enough to read.
 //
-// The circuit is the GhostSwap *placeholder* spend circuit:
+// The circuit is Himitsu's *placeholder* spend circuit:
 //
 //   signals: [ONE, y, txHash | x1, x2, txSq]      (3 public, 3 private)
 //   C1:  x1 * x2     = y        knowledge of a factorisation of the public commitment

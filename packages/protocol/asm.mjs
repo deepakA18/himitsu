@@ -1,4 +1,4 @@
-// A 60-line EVM assembler with labels. The GhostSwap account's code has to use
+// A 60-line EVM assembler with labels. The Himitsu account's code has to use
 // opcodes solc has never heard of (TXPARAM, FRAMEPARAM, SIGDATACOPY, APPROVE),
 // and `verbatim` is only available in standalone Yul, so the account is written
 // here directly. Two passes: size the instructions, then resolve labels.

@@ -1,4 +1,4 @@
-// The two EIP-8141 accounts of the GhostSwap milestone, in EVM assembly.
+// The two EIP-8141 accounts of the Himitsu milestone, in EVM assembly.
 //
 // Operand order note: every handler in levm pops its operands top-of-stack
 // first, so `let [a, b, c] = stack.pop()` means `a` was pushed LAST. Each
@@ -28,7 +28,7 @@ const RET_AT = 0x0200
 const PROOF_LEN = 256
 
 /**
- * The GhostSwap account. Its code IS the account's validation logic: a VERIFY
+ * The Himitsu account. Its code IS the account's validation logic: a VERIFY
  * frame targeting this address runs it, and it grants approval only when a
  * Groth16 proof bound to this exact transaction verifies.
  *

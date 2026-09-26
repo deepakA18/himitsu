@@ -3,7 +3,7 @@
 // serialised to disk and any run is reproducible.
 //
 // Deterministic toxic waste means anyone can forge proofs for this key. That is
-// the one part of the pipeline a production GhostSwap must replace (a real
+// the one part of the pipeline a production Himitsu deployment must replace (a real
 // multi-party ceremony, e.g. snarkjs powersOfTau + zkey contributions). The
 // algebra, the proof and the on-chain pairing check do not change when it is.
 
