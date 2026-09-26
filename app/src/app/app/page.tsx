@@ -1,5 +1,6 @@
 'use client';
 import { SiteNav } from '../../components/site-nav';
+import Image from 'next/image';
 import { ConnectedWallet } from '../../components/connected-wallet';
 import { useEffect, useRef, useState } from 'react';
 import { formatUnits, isAddress } from 'viem';
@@ -380,7 +381,7 @@ export default function Page() {
     setController(current.controller);
     setStatus(
       result.state === 'submitted'
-        ? 'Submitted. Watching for confirmation; keep your downloaded note.'
+        ? 'Submitted.'
         : 'Submission uncertain. Keep both notes and check status before retrying.',
     );
   }
@@ -578,13 +579,18 @@ export default function Page() {
               </>
             )}
           </h1>
-          <p>
-            {tab === 'deposit'
-              ? 'Deposit ETH. Save a note. Keep control of what comes next.'
-              : tab === 'swap'
-                ? 'Trade through Uniswap, straight from your private balance.'
+          {tab === 'swap' ? (
+            <div className="uniswap-credit" aria-label="Powered by Uniswap">
+              <Image src="/uniswap-logo.svg" alt="" width={26} height={26} />
+              <span>Powered by Uniswap</span>
+            </div>
+          ) : (
+            <p>
+              {tab === 'deposit'
+                ? 'Deposit ETH. Save a note. Keep control of what comes next.'
                 : 'Bring your private balance back to an address you choose.'}
-          </p>
+            </p>
+          )}
         </div>
         {fixedMode && (
           <p className="hint">

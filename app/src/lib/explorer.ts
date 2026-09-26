@@ -42,6 +42,11 @@ export type Block = {
 };
 export const quantity = (v?: string | null) =>
   v == null ? '—' : BigInt(v).toLocaleString('en-US');
+export const blockTimestamp = (timestamp?: string | null) => {
+  if (timestamp == null) return '—';
+  const milliseconds = Number(BigInt(timestamp) * 1000n);
+  return Number.isFinite(milliseconds) ? new Date(milliseconds).toLocaleString() : '—';
+};
 export const short = (v: string) => `${v.slice(0, 10)}…${v.slice(-6)}`;
 export function frameStatus(status?: Hex) {
   return status == null
@@ -139,6 +144,7 @@ export async function loadExplorer(
       transaction,
       receipt,
       canonical: !!receipt && canonical?.hash === receipt.blockHash,
+      canonicalBlock: canonical,
       blocks: [] as Block[],
     };
   }

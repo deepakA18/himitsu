@@ -7,6 +7,7 @@ import { formatEther } from 'viem';
 import type { Deployment } from '../../../../packages/client/src/chain';
 import {
   decodeLog,
+  blockTimestamp,
   frameLabel,
   frameStatus,
   loadExplorer,
@@ -191,6 +192,20 @@ export default function Explorer() {
                   </section>
                 ) : (
                   <>
+                    {receipt &&
+                      data.canonical &&
+                      BigInt(receipt.status) === 1n && (
+                        <div className={styles.success} role="status">
+                          <span className={styles.successMark} aria-hidden="true">✓</span>
+                          <span>
+                            <strong>Transaction successful</strong>
+                            <small>
+                              Included in block {quantity(receipt.blockNumber)} ·{' '}
+                              {blockTimestamp(data.canonicalBlock?.timestamp)}
+                            </small>
+                          </span>
+                        </div>
+                      )}
                     <section>
                       <div className={styles.sectionTitle}>
                         <h2>Transaction</h2>
@@ -234,6 +249,8 @@ export default function Explorer() {
                             'Awaiting inclusion'
                           )}
                         </dd>
+                        <dt>Timestamp</dt>
+                        <dd>{blockTimestamp(data.canonicalBlock?.timestamp)}</dd>
                         <dt>Confirmations</dt>
                         <dd>
                           {receipt && data.canonical
@@ -399,7 +416,7 @@ export default function Explorer() {
                         Block {quantity(b.number)} ↗
                       </Link>
                       <span>
-                        {new Date(Number(BigInt(b.timestamp)) * 1000).toLocaleString()} ·{' '}
+                        {blockTimestamp(b.timestamp)} ·{' '}
                         {b.transactions.length} transactions
                       </span>
                     </div>

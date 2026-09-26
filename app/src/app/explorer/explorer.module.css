@@ -102,6 +102,37 @@
   color: var(--muted);
   overflow-wrap: anywhere;
 }
+.success {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 24px;
+  padding: 18px 22px;
+  border: 1px solid #287d50;
+  border-radius: 12px;
+  background: linear-gradient(100deg, #102a1c, #102018 65%, #111714);
+  color: #b8f2ce;
+}
+.successMark {
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #287d50;
+  color: #fff;
+  font-weight: 700;
+}
+.success strong,
+.success small {
+  display: block;
+}
+.success small {
+  margin-top: 2px;
+  color: #9ac9ab;
+  font-size: 12px;
+}
 .explorer section {
   padding: 28px;
   border-radius: 12px;

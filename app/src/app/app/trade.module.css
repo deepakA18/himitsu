@@ -160,6 +160,20 @@
   font-size: 14px;
   margin: 0;
 }
+.trade :global(.uniswap-credit) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin: 0 0 4px;
+  color: #f4f0f1;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}
+.trade :global(.uniswap-credit img) {
+  width: 26px;
+  height: 26px;
+}
 .trade :global(.note-tabs) {
   width: fit-content;
   max-width: 100%;
