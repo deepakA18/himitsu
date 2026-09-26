@@ -9,6 +9,8 @@
   display: flow-root;
   position: relative;
   isolation: isolate;
+  /* Keep the oversized, rotated background from widening the document. */
+  overflow-x: clip;
   min-height: 100vh;
   color: var(--home-paper);
   font-family: Arial, Helvetica, sans-serif;
