@@ -42,7 +42,7 @@ const faqs = [
   ],
   [
     'Why does Himitsu use EIP-8141?',
-    'EIP-8141 lets one transaction run the funds check, fee sponsor, and swap in order. Himitsu uses it instead of ERC-4337, which sends smart account actions through a separate entry contract and submission service. ERC-4337 can also cover fees; EIP-8141 fits the transaction flow we built.',
+    'EIP-8141 lets one transaction run the funds check, fee sponsor, and swap in order. Himitsu uses it instead of ERC-4337, which sends smart account actions through a separate entry contract and submission service. ERC-4337 can also cover fees, EIP-8141 fits the transaction flow we built.',
   ],
 ];
 

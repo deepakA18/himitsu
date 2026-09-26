@@ -12,7 +12,6 @@ export function SiteFooter() {
           </svg>
           himitsu
         </Link>
-        <span>Swap tokens while keeping your deposit private</span>
         <nav aria-label="Footer navigation">
           <Link href="/#how-it-works">How it works</Link>
           <Link href="/#faq">FAQ</Link>
