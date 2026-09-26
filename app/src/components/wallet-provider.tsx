@@ -86,15 +86,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     return (
       <main className={styles.screen} aria-busy={!error}>
         <div className={styles.content}>
-          <div className={styles.brand} aria-label="Himitsu">
-            <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
-              <path d="M5 27V5h7v8h8V5h7v22h-7v-8h-8v8H5Z" fill="currentColor" />
-              <path d="m13 2 6 28" stroke="#080808" strokeWidth="2" />
-            </svg>
-            himitsu
-          </div>
           {error ? (
             <>
+              <div className={styles.brand} aria-label="Himitsu">
+                <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                  <path d="M5 27V5h7v8h8V5h7v22h-7v-8h-8v8H5Z" fill="currentColor" />
+                  <path d="m13 2 6 28" stroke="#080808" strokeWidth="2" />
+                </svg>
+                himitsu
+              </div>
               <p role="alert" className={styles.error}>
                 {error}
               </p>
@@ -109,13 +109,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
               </button>
             </>
           ) : (
-            <>
-              <span className={styles.spinner} aria-hidden="true" />
-              <h1>Preparing your workspace</h1>
-              <p className={styles.message} role="status">
-                Connecting to the pool and wallet
-              </p>
-            </>
+            <span className={styles.spinner} role="status" aria-label="Loading" />
           )}
         </div>
       </main>
