@@ -56,17 +56,9 @@ export default function Home() {
       <main id="main" className={styles.main}>
         <section className={styles.hero} aria-labelledby="hero-title">
           <div className={styles.heroCopy}>
-            <h1 id="hero-title">
-              Swap tokens
-              <br />
-              without revealing
-              <br />
-              which deposit
-              <br />
-              you spent
-            </h1>
+            <h1 id="hero-title">A more private way to swap</h1>
             <p className={styles.intro}>
-              Use a saved file to swap WETH for hUSD through Uniswap.
+              Use a saved file to trade through Uniswap. Amounts and timing stay public.
             </p>
             <div className={styles.actions}>
               <Link className={styles.button} href="/app" prefetch={false}>
@@ -140,9 +132,6 @@ export default function Home() {
           </span>
           <span>
             Uniswap <small>Shared liquidity</small>
-          </span>
-          <span>
-            Private balance checks <small>No wallet address in the check</small>
           </span>
         </div>
         <section id="why-himitsu" className={styles.features} aria-labelledby="features-title">

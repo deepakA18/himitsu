@@ -119,11 +119,15 @@
 .home .hero {
   display: grid;
   grid-template-columns: 1.04fr 1fr;
+  height: calc(100svh - 100px);
   padding: 0;
   border-bottom: 1px solid var(--home-line);
 }
 .heroCopy {
-  padding: 108px 24px 72px var(--home-gutter);
+  padding: 64px 24px 64px var(--home-gutter);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 .eyebrow {
   font-size: 10px;
@@ -176,7 +180,8 @@
 }
 .stage {
   position: relative;
-  min-height: 700px;
+  min-height: 0;
+  height: 100%;
   overflow: hidden;
   background: #171717;
   border-left: 1px solid var(--home-line);
@@ -366,7 +371,7 @@
 }
 .stack {
   display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr 1fr;
+  grid-template-columns: 1.2fr 1fr 1fr;
   border-bottom: 1px solid var(--home-line);
 }
 .stack > span {
@@ -641,14 +646,14 @@
     display: none;
   }
   .heroCopy {
-    padding-top: 80px;
-    padding-bottom: 50px;
+    padding-top: 40px;
+    padding-bottom: 40px;
   }
   .hero h1 {
     font-size: 76px;
   }
   .stage {
-    min-height: 680px;
+    min-height: 0;
   }
   .swapPreview {
     width: 85%;
@@ -690,18 +695,28 @@
   }
   .home .hero {
     grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: calc(100svh - 146px);
   }
   .heroCopy {
-    padding: 64px var(--home-gutter) 48px;
+    padding: 20px var(--home-gutter);
   }
   .hero h1 {
-    font-size: clamp(64px, 12vw, 90px);
+    font-size: clamp(42px, 10vw, 68px);
+    margin: 14px 0 16px;
+  }
+  .hero .intro {
+    font-size: 16px;
+    line-height: 1.45;
+  }
+  .actions {
+    margin-top: 20px;
   }
   .hero .demoNote {
     margin-top: 30px;
   }
   .stage {
-    min-height: 660px;
+    min-height: 0;
     border-left: 0;
     border-top: 1px solid var(--home-line);
   }
@@ -713,10 +728,32 @@
     width: 70%;
     max-width: 390px;
     right: 12%;
-    top: 220px;
+    top: 96px;
+    padding: 14px;
+  }
+  .previewPair {
+    margin-top: 12px;
+  }
+  .previewPair > div {
+    padding: 12px 8px 10px;
+  }
+  .coin {
+    width: 46px;
+    height: 46px;
+    font-size: 30px;
+  }
+  .pairArrow {
+    top: 66px;
+  }
+  .previewRoute {
+    padding: 10px 0;
+  }
+  .noteCard {
+    top: 22px;
+    padding: 14px;
   }
   .stack {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
   .stack > span {
     font-size: 16px;
@@ -813,13 +850,13 @@
     font-size: 24px;
   }
   .hero h1 {
-    font-size: 64px;
+    font-size: 42px;
   }
   .desktopBreak {
     display: none;
   }
   .stage {
-    min-height: 620px;
+    min-height: 0;
   }
   .swapPreview {
     width: 84%;
