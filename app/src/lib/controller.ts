@@ -78,8 +78,12 @@ export class Controller {
       return result;
     });
   }
-  private async requireReady(action: 'deposit' | 'swap' | 'withdrawal') {
-    this.health = await readiness(this.rpc, this.deployment);
+  private async requireReady(
+    action: 'deposit' | 'swap' | 'withdrawal',
+    sourcePool?: Hex,
+    inputAmount?: string,
+  ) {
+    this.health = await readiness(this.rpc, this.deployment, sourcePool, inputAmount);
     const issues = this.health[`${action}Issues`];
     if (issues.length) throw new Error(issues.join('. '));
   }
@@ -143,7 +147,7 @@ export class Controller {
       return 'Reserved';
     return p?.indices.has(n.commitment.toLowerCase()) ? 'Available' : 'Awaiting deposit';
   }
-  private async newNote(pool: Hex): Promise<SavedNote> {
+  private async newNote(pool: Hex, output = false): Promise<SavedNote> {
     if (!this.vault.data.recovery?.confirmed || !this.candidates)
       throw new Error('Back up and confirm your recovery phrase before creating notes');
     const note = await deriveNote(
@@ -153,12 +157,14 @@ export class Controller {
       nextCounter(this.vault.data.notes, this.deployment.id, pool),
     );
     const valued =
-      this.deployment.noteVersion === 2 && pool.toLowerCase() === this.deployment.pool.toLowerCase()
-        ? withAmount(note, this.deployment.denomination)
+      !output &&
+      this.deployment.noteVersion === 2 &&
+      pool.toLowerCase() === this.deployment.pool.toLowerCase()
+        ? withAmount(note, this.deployment.defaultDepositAmount ?? this.deployment.denomination)
         : note;
     return { ...valued, createdAt: Date.now() };
   }
-  private preparedNote(note: SavedNote, pool: Hex): SavedNote {
+  private preparedNote(note: SavedNote, pool: Hex, output = false): SavedNote {
     validateSecretNote(note);
     const d = this.deployment;
     if (note.deployment !== d.id || note.pool.toLowerCase() !== pool.toLowerCase())
@@ -168,12 +174,13 @@ export class Controller {
     )
       throw new Error('This output note was already used. Generate and save a fresh note.');
     if (
+      !output &&
       d.noteVersion === 2 &&
       pool.toLowerCase() === d.pool.toLowerCase() &&
-      note.amount !== d.denomination
+      note.amount !== (d.defaultDepositAmount ?? d.denomination)
     )
       throw new Error('Wrong input note amount');
-    if (pool.toLowerCase() === d.outputPool.toLowerCase() && note.amount !== undefined)
+    if (output && note.amount !== undefined)
       throw new Error('Output note must not assume the received amount');
     return note;
   }
@@ -214,7 +221,7 @@ export class Controller {
             {
               from: account,
               to: note.pool,
-              value: `0x${BigInt(this.deployment.denomination).toString(16)}`,
+              value: `0x${BigInt(this.deployment.defaultDepositAmount ?? this.deployment.denomination).toString(16)}`,
               data: encodeFunctionData({
                 abi: poolAbi,
                 functionName: 'depositETH',
@@ -296,8 +303,10 @@ export class Controller {
         note = this.vault.data.notes.find((n) => n.id === id);
       if (!note || this.noteState(note) !== 'Available')
         throw new Error('Select an available note after synchronization');
-      if (kind === 'swap' && note.pool.toLowerCase() !== d.pool.toLowerCase())
-        throw new Error('Only WETH-to-hUSD swaps are enabled in this interface');
+      const reverse = note.pool.toLowerCase() === d.outputPool.toLowerCase();
+      if (!reverse && note.pool.toLowerCase() !== d.pool.toLowerCase())
+        throw new Error('Unknown source pool');
+      const destinationPool = reverse ? d.pool : d.outputPool;
       if (kind === 'withdraw' && (!isAddress(recipient) || BigInt(recipient) === 0n))
         throw new Error('Enter a nonzero recipient address');
       if (
@@ -309,7 +318,11 @@ export class Controller {
         )
       )
         throw new Error('This pool has an unresolved local transaction. Reconcile it first.');
-      await this.requireReady(kind === 'swap' ? 'swap' : 'withdrawal');
+      await this.requireReady(
+        kind === 'swap' ? 'swap' : 'withdrawal',
+        note.pool,
+        note.amount ?? d.denomination,
+      );
       const expected = swapQuote ? BigInt(swapQuote.expected) : BigInt(this.health!.quote);
       const minimum = swapQuote ? BigInt(swapQuote.minimum) : minimumOutput(expected, 50);
       if (kind === 'swap' && d.noteVersion === 2) {
@@ -331,8 +344,8 @@ export class Controller {
       const output =
         kind === 'swap'
           ? preparedOutput
-            ? this.preparedNote(preparedOutput, d.outputPool)
-            : await this.newNote(d.outputPool)
+            ? this.preparedNote(preparedOutput, destinationPool, true)
+            : await this.newNote(destinationPool, true)
           : undefined;
       if (output)
         await this.vault.save({ ...this.vault.data, notes: [...this.vault.data.notes, output] });
@@ -345,7 +358,7 @@ export class Controller {
             ? encodeFunctionData({
                 abi: poolV2Abi,
                 functionName: 'spendAndSwapQuoted',
-                args: [d.pair, minimum, d.outputPool, output!.commitment],
+                args: [d.pair, minimum, destinationPool, output!.commitment],
               })
             : encodeFunctionData({
                 abi: poolAbi,

@@ -45,6 +45,7 @@ export interface Deployment {
   pair: Hex;
   sponsor: Hex;
   wethIsToken0: boolean;
+  defaultDepositAmount?: string;
   denomination: string;
   outputDenomination: string;
   codeHashes: Record<Hex, Hex>;

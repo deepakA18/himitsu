@@ -57,6 +57,6 @@ test('decodes zero allowance accurately and does not assign symbols to unknown t
     }) as Hex[],
     data: encodeAbiParameters([{ type: 'uint256' }], [0n]),
   };
-  expect(decodeLog(log, d)?.fields).toContainEqual(['Allowance', '0 gUSD']);
+  expect(decodeLog(log, d)?.fields).toContainEqual(['Allowance', '0 hUSD']);
   expect(decodeLog({ ...log, address: `0x${'66'.repeat(20)}` }, d)).toBeNull();
 });

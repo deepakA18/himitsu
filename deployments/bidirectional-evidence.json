@@ -1,0 +1,25 @@
+{
+  "deployment": "0x2a65aaa7033c8c99658e0dad9c1ba7d0db9c3389:0x87e27cd461b0dfb0efb229586de6f8c2c7ba5f5535960eb2019be8784e2790b1",
+  "deposit": "0xd4b54a88887240292dfdb359516dedc6ea2884d829007f12ac8905b4ccc18698",
+  "swap": "0xd95b1981b1459fe33b840a95849e89b21a9ff0da26ba0ea99d5e2e466ef5dd26",
+  "failedReverse": "0x2bff21698f20fda5f285d60d2911600372b82fd72a2a2d2093a7b65250bd016c",
+  "reverse": "0xc8edad689d7deba178cbdd031ec2824295289aabe0337016d3dd7a5c2d774335",
+  "forwardAgain": "0xe3c50433bf8d0f1d04b27cd541f73d9f2b372d23b147ab31eb69a323e333e37c",
+  "returnedWeth": "90134979773667251",
+  "withdrawal": "0x329b15a7adb8598768ccd5541f5ea9a056e9afb8415eef39fa1acff6c6f219cd",
+  "outputAmount": "197431606879412259770",
+  "checks": [
+    "portable deposit",
+    "lost response journal recovered with input note",
+    "duplicate deposit rejected",
+    "fresh-file swap",
+    "pre-swap file recovers actual output",
+    "spent input rejected",
+    "reverse slippage atomic revert",
+    "reverse swap and fresh-file WETH recovery",
+    "zero remaining pool and exchange allowances",
+    "variable WETH reswap",
+    "fresh-file withdrawal",
+    "spent output reconciled"
+  ]
+}

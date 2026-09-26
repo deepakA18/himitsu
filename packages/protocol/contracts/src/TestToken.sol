@@ -3,8 +3,8 @@ pragma solidity ^0.8.30;
 
 /// The other side of the swap pair: a plain 18-decimal ERC20.
 contract TestToken {
-    string public name = "Ghost USD";
-    string public symbol = "gUSD";
+    string public name = "Himitsu USD";
+    string public symbol = "hUSD";
     uint8 public decimals = 18;
     uint256 public totalSupply;
 

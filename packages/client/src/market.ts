@@ -47,6 +47,8 @@ export function fundingRequired(baseFee: bigint, swap: boolean) {
   return { fee, maximum };
 }
 export interface Readiness {
+  sourcePool?: Hex;
+  inputAmount?: string;
   checkedAt: number;
   block: string;
   sponsorBalance: string;
@@ -58,11 +60,21 @@ export interface Readiness {
   swapIssues: string[];
   withdrawalIssues: string[];
 }
-export async function readiness(rpc: RpcClient, d: Deployment): Promise<Readiness> {
+export async function readiness(
+  rpc: RpcClient,
+  d: Deployment,
+  sourcePool: Hex = d.pool,
+  inputAmount = d.defaultDepositAmount ?? d.denomination,
+): Promise<Readiness> {
+  const reverse = sourcePool.toLowerCase() === d.outputPool.toLowerCase();
+  if (!reverse && sourcePool.toLowerCase() !== d.pool.toLowerCase())
+    throw new Error('Unknown swap source pool');
   await verifyConfig(rpc, d);
   const head = await rpc.request<Block>('eth_getBlockByNumber', ['latest', false]);
   if (Math.abs(Date.now() / 1000 - Number(BigInt(head.timestamp))) > 120)
-    throw new Error('Network is not producing recent blocks. Check the network clock and connection.');
+    throw new Error(
+      'Network is not producing recent blocks. Check the network clock and connection.',
+    );
   const tag = head.number;
   const [
     reserves,
@@ -109,21 +121,23 @@ export async function readiness(rpc: RpcClient, d: Deployment): Promise<Readines
     throw new Error('Liquidity pair tokens do not match the deployment');
   if (inputBalance < inputAccounted || outputBalance < outputAccounted)
     throw new Error('Pool backing is below outstanding note value');
-  const reserveIn: bigint = reserves[d.wethIsToken0 ? 0 : 1],
-    reserveOut: bigint = reserves[d.wethIsToken0 ? 1 : 0];
+  const reserveIn: bigint = reserves[d.wethIsToken0 !== reverse ? 0 : 1],
+    reserveOut: bigint = reserves[d.wethIsToken0 !== reverse ? 1 : 0];
   const depositIssues: string[] = [],
     swapIssues: string[] = [],
     withdrawalIssues: string[] = [];
   let quote = 0n,
     swapFunding = 0n;
   if (inputIndex >= 1024) depositIssues.push('WETH note pool is full');
-  if (outputIndex >= 1024) swapIssues.push('Output note pool is full');
+  if ((reverse ? inputIndex : outputIndex) >= 1024) swapIssues.push('Output note pool is full');
+  if (reverse && (d.noteVersion !== 2 || BigInt(d.denomination) !== 0n))
+    swapIssues.push('Select the bidirectional deployment to swap hUSD to WETH');
   try {
-    quote = amountOut(BigInt(d.denomination), reserveIn, reserveOut);
+    quote = amountOut(BigInt(inputAmount), reserveIn, reserveOut);
   } catch (e) {
     swapIssues.push((e as Error).message);
   }
-  if (quote <= 0n || quote < BigInt(d.outputDenomination))
+  if (quote <= 0n || quote < BigInt(reverse ? d.denomination : d.outputDenomination))
     swapIssues.push('Liquidity cannot cover the output note');
   for (const swap of [true, false]) {
     const issues = swap ? swapIssues : withdrawalIssues;
@@ -138,6 +152,8 @@ export async function readiness(rpc: RpcClient, d: Deployment): Promise<Readines
   const checked = await rpc.request<Block>('eth_getBlockByNumber', [tag, false]);
   if (checked.hash !== head.hash) throw new Error('Chain changed during readiness checks; retry');
   return {
+    sourcePool,
+    inputAmount,
     checkedAt: Date.now(),
     block: BigInt(tag).toString(),
     sponsorBalance: BigInt(balance).toString(),

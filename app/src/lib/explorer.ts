@@ -71,7 +71,7 @@ export function decodeLog(
       log.address.toLowerCase() === d.weth.toLowerCase()
         ? 'WETH'
         : log.address.toLowerCase() === d.token.toLowerCase()
-          ? 'gUSD'
+          ? 'hUSD'
           : null;
     if (token) {
       const event = decodeEventLog({

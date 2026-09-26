@@ -30,7 +30,7 @@ const verifier = deployer.deploySol('SpendVerifierV2');
 const introspector = deployer.deployAsm('FrameIntrospector', introspectorRuntime());
 const validator = deployer.deployAsm('SpendValidatorV2', spendValidatorRuntime(verifier, true));
 const deployPool = (token, wrapsEth, denom) => deployer.deploySol('HimitsuPoolV2', { args: { signature: 'constructor(address,address,bool,uint256,address,address)', values: [hasher, token, String(wrapsEth), String(denom), validator, introspector] } });
-const pool = deployPool(weth, true, DENOMINATION);
+const pool = deployPool(weth, true, 0n);
 const system = { weth, hasher, verifier, introspector, validator, pool };
 const token = deployer.deploySol('TestToken', {
   args: { signature: 'constructor(uint256)', values: ['1000000000000000000000000'] },
@@ -74,7 +74,7 @@ const anchor = await rpc('eth_getBlockByNumber', ['latest', false]);
 const config = {
   version: 1,
   noteVersion: 2,
-  name: 'Market swaps · v2',
+  name: 'Bidirectional swaps · v2',
   id: system.pool.toLowerCase() + ':' + anchor.hash,
   anchorBlock: BigInt(anchor.number).toString(),
   anchorBlockHash: anchor.hash,
@@ -92,14 +92,15 @@ const config = {
   wethIsToken0:
     cast('call', '--rpc-url', RPC_URL, pair, 'token0()(address)').toLowerCase() ===
     system.weth.toLowerCase(),
-  denomination: DENOMINATION.toString(),
+  denomination: '0',
+  defaultDepositAmount: DENOMINATION.toString(),
   outputDenomination: '0',
   codeHashes,
   artifacts,
 };
 if (!existsSync(join(publicDir, 'deployment-v1.json'))) copyFileSync(join(publicDir, 'deployment.json'), join(publicDir, 'deployment-v1.json'));
 writeFileSync(join(publicDir, 'deployment-v2.json'), JSON.stringify(config, null, 2) + '\n');
-publishDeployment(root, config, 'Market swaps · v2');
+publishDeployment(root, config, 'Bidirectional swaps · v2');
 writeFileSync(join(root, 'deployments/app.v2.json'), JSON.stringify(config, null, 2) + '\n');
 console.log('Public app deployment saved. RPC:', RPC_URL, 'Pool:', system.pool);
 process.exit(0);

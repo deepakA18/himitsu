@@ -72,7 +72,7 @@ export default function Explorer() {
           [deployment.sponsor, 'Paymaster'],
           [deployment.pair, 'Uniswap V2 pair'],
           [deployment.weth, 'WETH'],
-          [deployment.token, 'gUSD'],
+          [deployment.token, 'hUSD'],
         ]
       : [];
     const label = labels.find(([a]) => a.toLowerCase() === value.toLowerCase())?.[1];

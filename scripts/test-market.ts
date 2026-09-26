@@ -190,8 +190,8 @@ c.rpc.request = async function <T>(method: string, params: unknown[] = []): Prom
   return method === 'eth_getBalance' ? ('0x0' as T) : original<T>(method, params);
 };
 const unfunded = await readiness(c.rpc, d);
-assert.ok(unfunded.swapIssues.includes('Paymaster needs more test ETH'));
-assert.ok(unfunded.withdrawalIssues.includes('Paymaster needs more test ETH'));
+assert.ok(unfunded.swapIssues.includes('Paymaster needs more ETH'));
+assert.ok(unfunded.withdrawalIssues.includes('Paymaster needs more ETH'));
 c.rpc.request = original;
 const summary = {
   deployment: d.id,

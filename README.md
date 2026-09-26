@@ -27,7 +27,7 @@ audited or intended for real funds.
    spending authority, bound to the transaction digest. Verification frames check expiry, validate
    the proof, and approve gas payment under the paymaster's policy.
 4. **Swap atomically.** A sender frame consumes the input nullifier, transfers WETH directly to the
-   pair, executes the swap, and deposits all received gUSD into the output pool. If the swap or
+   pair, executes the swap, and deposits all received hUSD into the output pool. If the swap or
    output deposit fails, the spending operation rolls back.
 5. **Recover or withdraw.** Import the saved output note. Canonical pool events reveal its actual
    amount, and nullifier checks establish whether it is unspent. A withdrawal pays the full amount
@@ -57,7 +57,7 @@ flowchart LR
         WETH[WETH privacy pool]
         SPONSOR[Gas paymaster]
         PAIR[Uniswap V2 pair]
-        GUSD[gUSD privacy pool]
+        GUSD[hUSD privacy pool]
     end
 
     WALLET -->|connect and approve deposit| APP
@@ -93,7 +93,7 @@ sequenceDiagram
     participant Pool as WETH privacy pool
     participant Paymaster as Gas paymaster
     participant Pair as Uniswap V2 pair
-    participant Output as gUSD privacy pool
+    participant Output as hUSD privacy pool
 
     User->>App: Import WETH note and review quote
     App->>App: Create and download output note
@@ -108,7 +108,7 @@ sequenceDiagram
     Paymaster-->>RPC: APPROVE_PAYMENT (0x1)
     RPC->>Pool: SENDER frame consumes note and transfers exact WETH
     Pool->>Pair: Swap exact input
-    Pair-->>Pool: Return actual gUSD output
+    Pair-->>Pool: Return actual hUSD output
     Pool->>Output: Deposit full output atomically
     RPC-->>App: Receipt and frame results
     App-->>User: Confirm note status and transaction
@@ -167,7 +167,7 @@ pins describe the tested implementation. There is no claim of EIP-8286 conforman
 ## Uniswap integration
 
 Himitsu uses the official `@uniswap/v2-core` contracts deployed with local test liquidity. The current
-route is WETH → gUSD; it is not an arbitrary-token router.
+route is WETH ↔ hUSD; it is not an arbitrary-token router.
 
 | Integration | Review the implementation |
 | --- | --- |
@@ -396,3 +396,22 @@ not an audit or a proof of production safety.
 The Himitsu Merkle zero-leaf domain is defined consistently in the client and contract sources.
 Deployments created with the former domain are incompatible; use matching artifacts and a fresh deployment.
 `docs/implementation-plan-source.md` preserves the original plan with Himitsu naming for provenance.
+
+### Bidirectional private swaps
+
+Select **Bidirectional swaps · v2** for WETH ↔ hUSD. The swap card’s **Reverse direction**
+button changes the input token; importing a note selects its direction automatically.
+Save a fresh output note before each swap. Quotes use the entire imported note amount;
+the actual received amount is recovered from onchain deposit events, including WETH outputs.
+
+Both pools in this deployment accept variable amounts (`denomination = 0`). The UI still
+uses a default ETH deposit of 0.1 ETH (`defaultDepositAmount`). Older fixed-WETH deployments
+remain in the deployment selector for existing notes and withdrawals; they cannot receive
+variable WETH swap outputs. The test token is named **Himitsu USD (hUSD)**; archived contracts
+retain their original onchain metadata.
+
+Run `RPC_URL=http://127.0.0.1:8567 bun run test:bidirectional` with the local node running.
+This sends test transactions: deposit → WETH-to-hUSD → reverse slippage revert → hUSD-to-WETH
+→ variable-WETH-to-hUSD → withdrawal. It verifies note-file recovery, atomic rollback,
+exact withdrawal amounts, and zero remaining exchange/pool allowances. Transaction hashes
+are recorded in `deployments/bidirectional-evidence.json`.

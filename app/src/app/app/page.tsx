@@ -43,6 +43,7 @@ export default function Page() {
   const [noteId, setNoteId] = useState('');
   const [input, setInput] = useState('');
   const [recipient, setRecipient] = useState('');
+  const [reverse, setReverse] = useState(false);
   const [slippage, setSlippage] = useState('50');
   const [draft, setDraft] = useState<Draft | null>(null);
   const [downloaded, setDownloaded] = useState(false);
@@ -91,9 +92,19 @@ export default function Page() {
       if (working.current || syncing.current || document.hidden) return;
       syncing.current = true;
       try {
-        const checked = controller
-          ? (await controller.refresh(), controller.health!)
-          : await readiness(new RpcClient(config.rpcUrl), config);
+        if (controller) await controller.refresh();
+        const selected = controller?.vault.data.notes.find((n) => n.id === noteId);
+        const sourcePool = reverse ? config.outputPool : config.pool;
+        const checked = await readiness(
+          new RpcClient(config.rpcUrl),
+          config,
+          sourcePool,
+          selected?.pool.toLowerCase() === sourcePool.toLowerCase() && selected.amount
+            ? selected.amount
+            : reverse
+              ? '100000000000000000000'
+              : (config.defaultDepositAmount ?? config.denomination),
+        );
         if (!stopped) {
           setHealth(checked);
           setNetworkError('');
@@ -116,7 +127,7 @@ export default function Page() {
       clearInterval(timer);
       window.removeEventListener('focus', update);
     };
-  }, [config, controller]);
+  }, [config, controller, noteId, reverse]);
   const note = controller?.vault.data.notes.find((n) => n.id === noteId);
   const noteState = note ? controller!.noteState(note) : '';
   const attempts = controller?.vault.data.attempts ?? [];
@@ -124,11 +135,14 @@ export default function Page() {
   const disabled = !!busy || !!draft || pending;
   const latestSwap = attempts.filter((a) => a.kind === 'swap' && a.source === noteId).at(-1);
   const swapPending = swapPreparing || !!(latestSwap && isActive(latestSwap));
-  const swapCompleted = !swapPreparing && latestSwap?.state === 'confirmed';
+  const swapCompleted =
+    !swapPreparing &&
+    latestSwap?.state === 'confirmed' &&
+    note?.pool.toLowerCase() === (reverse ? config?.outputPool : config?.pool)?.toLowerCase();
   const settledOutput = latestSwap?.output
     ? controller?.vault.data.notes.find((n) => n.id === latestSwap.output)?.amount
     : undefined;
-  const asset = note?.pool.toLowerCase() === config?.pool.toLowerCase() ? 'WETH' : 'gUSD';
+  const asset = note?.pool.toLowerCase() === config?.pool.toLowerCase() ? 'WETH' : 'hUSD';
   async function session(n: SavedNote, importing: boolean) {
     const v = await navigator.locks.request('himitsu-vault-actions', async () => {
       const v = await Vault.openPrivateNote(
@@ -160,15 +174,21 @@ export default function Page() {
         (x) => x.nullifierHash === n.nullifierHash && x.pool.toLowerCase() === n.pool.toLowerCase(),
       )!.id,
     );
+    setReverse(n.pool.toLowerCase() === config.outputPool.toLowerCase());
+    setHealth(null);
     setInput('');
     setStatus('Note checked against the chain.');
   }
   async function prepare(kind: 'deposit' | 'swap') {
     if (!config) throw new Error('Wait for the deployment to load');
-    const n = createPrivateNote(config, kind === 'deposit' ? config.pool : config.outputPool);
+    const n = createPrivateNote(
+      config,
+      kind === 'deposit' ? config.pool : reverse ? config.pool : config.outputPool,
+      kind,
+    );
     const c = kind === 'deposit' ? await session(n, false) : controller!;
     if (!c || (kind === 'swap' && (!note || noteState !== 'Available')))
-      throw new Error('Import an available WETH note first');
+      throw new Error('Import an available note for the selected token first');
     setDraft({
       kind,
       note: n,
@@ -253,13 +273,18 @@ export default function Page() {
         : 'Submission uncertain. Keep both notes and check status before retrying.',
     );
   }
+  const inputAsset = reverse ? 'hUSD' : 'WETH';
+  const outputAsset = reverse ? 'WETH' : 'hUSD';
   const swapReason = !note
-    ? 'Import a WETH private note above to swap.'
+    ? `Import a ${inputAsset} private note above to swap.`
     : noteState !== 'Available'
       ? `Note: ${noteState}.`
-      : asset !== 'WETH'
-        ? 'This pool supports WETH → gUSD. You can withdraw this gUSD note.'
-        : !health
+      : asset !== inputAsset
+        ? `Import a ${inputAsset} private note for this direction.`
+        : !health ||
+            health.sourcePool?.toLowerCase() !==
+              (reverse ? config?.outputPool : config?.pool)?.toLowerCase() ||
+            (note.amount && health.inputAmount !== note.amount)
           ? 'Waiting for a live quote.'
           : health.swapIssues.join(' ');
   return (
@@ -334,7 +359,8 @@ export default function Page() {
         {draft && (
           <section className="note-backup" aria-labelledby="backup-heading">
             <h2 id="backup-heading">
-              Save your {draft.kind === 'swap' ? 'new gUSD' : 'deposit'} note
+              Save your {draft.kind === 'swap' ? `new ${reverse ? 'WETH' : 'hUSD'}` : 'deposit'}{' '}
+              note
             </h2>
             <p>
               This file is the key to your funds. Anyone who has it can spend them. Himitsu cannot
@@ -422,7 +448,11 @@ export default function Page() {
             <h2>Deposit into the pool.</h2>
             <p>Create a private WETH note to swap or withdraw later.</p>
             <label htmlFor="deposit-amount">Amount · ETH</label>
-            <input id="deposit-amount" value={config ? money(config.denomination) : ''} readOnly />
+            <input
+              id="deposit-amount"
+              value={config ? money(config.defaultDepositAmount ?? config.denomination) : ''}
+              readOnly
+            />
             <p className="hint">
               Fixed-size deposit. ETH is wrapped into WETH. Your connected wallet pays deposit gas.
             </p>
@@ -535,6 +565,8 @@ export default function Page() {
                     onClick={() => {
                       setController(null);
                       setNoteId('');
+                      setReverse(false);
+                      setHealth(null);
                       setInput('');
                       setStatus(
                         'Note removed from this session. Encrypted transaction records remain for reconciliation.',
@@ -554,7 +586,22 @@ export default function Page() {
             {tab === 'swap' ? (
               <SwapPanel
                 privateNoteMode
-                inputAmount={money(config?.denomination ?? '100000000000000000')}
+                inputAsset={inputAsset}
+                outputAsset={outputAsset}
+                onReverse={() => {
+                  setReverse(!reverse);
+                  setHealth(null);
+                  setStatus('');
+                }}
+                inputAmount={money(
+                  note && asset === inputAsset && note.amount
+                    ? note.amount
+                    : reverse
+                      ? '100000000000000000000'
+                      : (config?.defaultDepositAmount ??
+                        config?.denomination ??
+                        '100000000000000000'),
+                )}
                 outputAmount={
                   health
                     ? money(
@@ -584,9 +631,9 @@ export default function Page() {
                 busy={disabled}
                 rolling={!!swapPending}
                 completed={swapCompleted}
-                animationKey={noteId}
+                animationKey={`${noteId}:${reverse}`}
                 settledOutput={settledOutput ? money(settledOutput) : ''}
-                status={busy || attempts.filter((a) => a.kind === 'swap').at(-1)?.state || ''}
+                status={busy || (swapPending || swapCompleted ? latestSwap?.state : '') || ''}
                 error=""
                 reason={swapReason}
                 disabled={disabled || !!swapReason}
@@ -712,6 +759,8 @@ export default function Page() {
                 setConfig(d);
                 setController(null);
                 setNoteId('');
+                setReverse(false);
+                setHealth(null);
                 setInput('');
                 setHealth(null);
                 setStatus('Deployment changed. Import a note for this pool.');
@@ -740,7 +789,8 @@ export default function Page() {
                 Verified block {health.block} · paymaster {money(health.sponsorBalance)} ETH
               </p>
               <p>
-                Swap quote: {money(health.quote)} gUSD per {money(config!.denomination)} WETH
+                Swap quote: {money(health.quote)} {outputAsset} per{' '}
+                {money(health.inputAmount ?? config!.denomination)} {inputAsset}
               </p>
             </>
           ) : (

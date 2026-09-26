@@ -1,5 +1,10 @@
 [
   {
+    "name": "Bidirectional swaps · v2",
+    "url": "/deployments/0x2a65aaa7033c8c99658e0dad9c1ba7d0db9c3389.json",
+    "id": "0x2a65aaa7033c8c99658e0dad9c1ba7d0db9c3389:0x87e27cd461b0dfb0efb229586de6f8c2c7ba5f5535960eb2019be8784e2790b1"
+  },
+  {
     "name": "Market swaps · v2",
     "url": "/deployments/0xa9b709c7592a19e23f5385a286724ea42ee0ef3d.json",
     "id": "0xa9b709c7592a19e23f5385a286724ea42ee0ef3d:0x1638b3326cadf52be9cb69333fadc9fbb76c13d80219655fc550bfe79b2892d2"

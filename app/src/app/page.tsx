@@ -21,7 +21,7 @@ function Eth() {
 const faqs = [
   [
     'What is Himitsu?',
-    'Himitsu is a private WETH-to-hUSD swap flow. Deposit into a shared privacy pool, keep your private note, and use it to trade through Uniswap V2 or withdraw your funds.',
+    'Himitsu is a private WETH ↔ hUSD swap flow. Deposit into a shared privacy pool, keep your private note, and use it to trade through Uniswap V2 or withdraw your funds.',
   ],
   [
     'Why do I need a private note?',

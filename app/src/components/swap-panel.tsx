@@ -2,6 +2,9 @@
 import { useEffect, useRef } from 'react';
 
 type Props = {
+  inputAsset: 'WETH' | 'hUSD';
+  outputAsset: 'WETH' | 'hUSD';
+  onReverse: () => void;
   privateNoteMode?: boolean;
   inputAmount: string;
   outputAmount: string;
@@ -109,7 +112,7 @@ export function SwapPanel(p: Props) {
                   ? 'Arrived ✓'
                   : p.rolling
                     ? 'In motion · awaiting confirmation'
-                    : 'WETH ↔ gUSD'}
+                    : `${p.inputAsset} → ${p.outputAsset}`}
               </span>
             </div>
             <div className="coin-track" aria-hidden="true">
@@ -138,27 +141,31 @@ export function SwapPanel(p: Props) {
               <span className="coin-dock dock-left" />
               <span className="coin-dock dock-right" />
               <div className="coin-carrier coin-from">
-                <div className="token-coin eth-coin">
-                  <svg viewBox="0 0 32 48" fill="none">
-                    <path d="M16 2 2 24l14 8 14-8L16 2Z" fill="currentColor" />
-                    <path d="m2 27 14 19 14-19-14 8L2 27Z" fill="currentColor" />
-                    <path d="M16 2v30l14-8L16 2Z" fill="var(--coin-facet)" />
-                  </svg>
-                </div>
+                <TokenCoin asset={p.inputAsset} />
               </div>
               <div className="coin-carrier coin-to">
-                <div className="token-coin usd-coin">
-                  <span>$</span>
-                </div>
+                <TokenCoin asset={p.outputAsset} />
               </div>
             </div>
             <div className="route-destinations">
-              <span>{p.completed ? 'gUSD received' : 'WETH starts here'}</span>
-              <span>{p.completed ? 'WETH spent' : 'gUSD starts here'}</span>
+              <span>
+                {p.completed ? `${p.outputAsset} received` : `${p.inputAsset} starts here`}
+              </span>
+              <span>{p.completed ? `${p.inputAsset} spent` : `${p.outputAsset} starts here`}</span>
             </div>
           </div>
+          <button
+            className="swap-direction-toggle"
+            type="button"
+            onClick={p.onReverse}
+            disabled={p.busy || p.rolling}
+            aria-label={`Switch to ${p.outputAsset} to ${p.inputAsset}`}
+            title={`Switch to ${p.outputAsset} to ${p.inputAsset}`}
+          >
+            <span aria-hidden="true">⇄</span>
+          </button>
           <div className="swap-amount-panel">
-            <span className="swap-token-name">{p.completed ? 'gUSD' : 'WETH'}</span>
+            <span className="swap-token-name">{p.completed ? p.outputAsset : p.inputAsset}</span>
             <label htmlFor="swap-input">{p.completed ? 'You received' : 'You pay'}</label>
             <input
               id="swap-input"
@@ -173,7 +180,7 @@ export function SwapPanel(p: Props) {
             </p>
           </div>
           <div className="swap-amount-panel receive-panel">
-            <span className="swap-token-name">{p.completed ? 'WETH' : 'gUSD'}</span>
+            <span className="swap-token-name">{p.completed ? p.inputAsset : p.outputAsset}</span>
             <label htmlFor="swap-output">
               {p.completed ? 'You spent' : `You receive${p.market ? ' ≈' : ''}`}{' '}
             </label>
@@ -199,7 +206,7 @@ export function SwapPanel(p: Props) {
           <>
             <div className="swap-balance">
               <span>Available private balance</span>
-              <strong>{p.locked ? 'Unlock to view' : `${p.balance} WETH`}</strong>
+              <strong>{p.locked ? 'Unlock to view' : `${p.balance} ${p.inputAsset}`}</strong>
             </div>
             <label htmlFor="swap-note">Spend from</label>
             <select
@@ -213,7 +220,7 @@ export function SwapPanel(p: Props) {
                   ? 'Unlock your private wallet'
                   : p.notes.length
                     ? 'Choose a private note'
-                    : 'No available WETH notes'}
+                    : `No available ${p.inputAsset} notes`}
               </option>
               {p.notes.map((n) => (
                 <option key={n.id} value={n.id}>
@@ -240,12 +247,16 @@ export function SwapPanel(p: Props) {
             </div>
             <div className="swap-minimum">
               <span className="hint">Minimum received</span>
-              <strong>{p.minimum ? `${p.minimum} gUSD` : '—'}</strong>
+              <strong>{p.minimum ? `${p.minimum} ${p.outputAsset}` : '—'}</strong>
             </div>
           </div>
         )}
         <button className="swap-submit" type="submit" disabled={p.disabled} aria-busy={p.rolling}>
-          {p.rolling ? 'Swapping…' : p.completed ? 'Swap confirmed' : 'Swap to private gUSD'}
+          {p.rolling
+            ? 'Swapping…'
+            : p.completed
+              ? 'Swap confirmed'
+              : `Swap to private ${p.outputAsset}`}
           <span aria-hidden="true"> ↗</span>
         </button>
         <p className="swap-feedback" role="status" aria-live="polite">
@@ -264,5 +275,21 @@ export function SwapPanel(p: Props) {
         </p>
       </form>
     </section>
+  );
+}
+
+function TokenCoin({ asset }: { asset: 'WETH' | 'hUSD' }) {
+  return asset === 'WETH' ? (
+    <div className="token-coin eth-coin">
+      <svg viewBox="0 0 32 48" fill="none">
+        <path d="M16 2 2 24l14 8 14-8L16 2Z" fill="currentColor" />
+        <path d="m2 27 14 19 14-19-14 8L2 27Z" fill="currentColor" />
+        <path d="M16 2v30l14-8L16 2Z" fill="var(--coin-facet)" />
+      </svg>
+    </div>
+  ) : (
+    <div className="token-coin usd-coin">
+      <span>$</span>
+    </div>
   );
 }

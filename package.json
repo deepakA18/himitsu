@@ -30,7 +30,8 @@
     "test:market": "bun build scripts/test-market.ts --target=node --packages=external --outfile=.local/test-market.mjs && node .local/test-market.mjs",
     "test:readiness": "bun scripts/test-readiness.ts",
     "test:v2-deposits": "bun scripts/test-v2-deposits.ts",
-    "test:private-notes": "bun build scripts/test-private-notes.ts --target=node --packages=external --outfile=.local/test-private-notes.mjs && node .local/test-private-notes.mjs"
+    "test:private-notes": "bun build scripts/test-private-notes.ts --target=node --packages=external --outfile=.local/test-private-notes.mjs && node .local/test-private-notes.mjs",
+    "test:bidirectional": "bun build scripts/test-bidirectional.ts --target=node --packages=external --outfile=.local/test-bidirectional.mjs && node .local/test-bidirectional.mjs"
   },
   "dependencies": {
     "@scure/bip39": "1.6.0",

@@ -9,7 +9,11 @@ function identity(d: Deployment, pool: Hex, nullifierHash: Hex) {
     stringToHex(JSON.stringify(['himitsu-private-note', d.id, pool.toLowerCase(), nullifierHash])),
   );
 }
-export function createPrivateNote(d: Deployment, pool: Hex): SavedNote {
+export function createPrivateNote(
+  d: Deployment,
+  pool: Hex,
+  purpose: 'deposit' | 'swap' = 'deposit',
+): SavedNote {
   const secret = createSecretNote();
   const note = {
     ...secret,
@@ -18,8 +22,8 @@ export function createPrivateNote(d: Deployment, pool: Hex): SavedNote {
     pool,
     createdAt: Date.now(),
   };
-  return d.noteVersion === 2 && pool.toLowerCase() === d.pool.toLowerCase()
-    ? withAmount(note, d.denomination)
+  return d.noteVersion === 2 && purpose === 'deposit' && pool.toLowerCase() === d.pool.toLowerCase()
+    ? withAmount(note, d.defaultDepositAmount ?? d.denomination)
     : note;
 }
 /** Export only the spend preimage and deployment binding. V2 amounts are recovered from events.
@@ -89,8 +93,8 @@ export function importPrivateNote(text: string, d: Deployment): SavedNote {
   };
   validateSecretNote(note);
   note.id = identity(d, note.pool, note.nullifierHash);
-  return d.noteVersion === 2 && pool === d.pool.toLowerCase()
-    ? withAmount(note, d.denomination)
+  return d.noteVersion === 2 && pool === d.pool.toLowerCase() && BigInt(d.denomination) > 0n
+    ? withAmount(note, d.defaultDepositAmount ?? d.denomination)
     : note;
 }
 /** A high-entropy bearer secret unlocks only this note's local encrypted transaction cache. */
