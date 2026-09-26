@@ -676,6 +676,7 @@ export default function Page() {
                   <label htmlFor="recipient">Recipient address</label>
                   <input
                     id="recipient"
+                    aria-describedby="withdraw-privacy-warning"
                     value={recipient}
                     onChange={(e) => setRecipient(e.target.value)}
                     placeholder="0x…"
@@ -683,6 +684,11 @@ export default function Page() {
                     spellCheck={false}
                     disabled={disabled}
                   />
+                  <p id="withdraw-privacy-warning" className="withdraw-privacy-warning">
+                    <strong>Privacy warning:</strong> Withdrawing to the same address you used to
+                    deposit can link your deposit and withdrawal. Use a fresh address you control
+                    to reduce address-based linkage.
+                  </p>
                   <p className="hint">
                     The full note amount goes to this public address. WETH notes withdraw as WETH.
                     The paymaster pays gas.

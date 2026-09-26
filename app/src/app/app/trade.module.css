@@ -527,3 +527,17 @@
 .trade :global(.swap-direction-toggle) span {
   font-size: 20px;
 }
+
+.trade :global(.withdraw-privacy-warning) {
+  background: #302810;
+  color: #ffe38a;
+  border: 1px solid #93752b;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin: 12px 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.trade :global(.withdraw-privacy-warning) strong {
+  color: #ffdf70;
+}
