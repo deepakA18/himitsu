@@ -21,8 +21,8 @@
   -webkit-font-smoothing: antialiased;
 }
 .trade main {
-  max-width: 1200px;
-  padding: 28px 40px 48px;
+  max-width: 1080px;
+  padding: 24px 32px 48px;
 }
 .trade a {
   color: inherit;
@@ -43,8 +43,8 @@
   text-wrap: pretty;
 }
 .trade button {
-  border-radius: 99px;
-  padding: 12px 22px;
+  border-radius: 8px;
+  padding: 11px 18px;
   min-height: 48px;
   font-size: 13px;
   font-weight: 500;
@@ -90,7 +90,7 @@
   margin: 20px 0 8px;
 }
 .trade section {
-  border-radius: 20px;
+  border-radius: 12px;
 }
 .trade :global(.trade-header) {
   border-bottom: 1px solid var(--border);
@@ -137,8 +137,9 @@
   color: var(--muted);
 }
 .trade :global(.trade-intro) {
-  text-align: center;
-  padding: 56px 0 28px;
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 0 0;
 }
 .trade :global(.eyebrow) {
   color: var(--muted);
@@ -164,40 +165,53 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
-  margin: 0 0 4px;
-  color: #f4f0f1;
-  font-size: 13px;
-  letter-spacing: 0.01em;
+  gap: 7px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0;
 }
 .trade :global(.uniswap-credit img) {
-  width: 26px;
-  height: 26px;
+  width: 20px;
+  height: 20px;
 }
 .trade :global(.note-tabs) {
-  width: fit-content;
+  display: flex;
+  width: 100%;
   max-width: 100%;
-  margin: 0 auto 8px;
-  padding: 5px;
-  border: 1px solid var(--border);
-  border-radius: 99px;
-  gap: 4px;
-  background: var(--surface);
+  margin: 12px 0 22px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  gap: 20px;
+  background: transparent;
 }
 .trade :global(.note-tabs) button {
-  padding: 10px 28px;
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 10px 2px 12px;
   border: 0;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
   min-height: 44px;
-}
-.trade :global(.note-tabs) button[aria-pressed='false'] {
+  text-align: center;
+  background: transparent;
   color: var(--muted);
+  font-size: 13px;
+}
+.trade :global(.note-tabs) button[aria-pressed='true'] {
+  color: var(--text);
+  background: transparent;
+  border-bottom-color: var(--text);
 }
 .trade :global(.status) {
   color: var(--muted);
-  text-align: center;
-  font-size: 12px;
-  min-height: 28px;
-  margin: 8px 0 16px;
+  text-align: left;
+  font-size: 11px;
+  min-height: 0;
+  margin: -12px 0 16px;
   overflow-wrap: anywhere;
 }
 .trade :global(.error) {
@@ -215,6 +229,13 @@
 .trade main[data-action='deposit'] :global(.trade-workspace) {
   grid-template-columns: minmax(0, 640px);
   justify-content: center;
+  margin: 0 auto;
+}
+.trade main[data-action='swap'] :global(.trade-workspace),
+.trade main[data-action='withdraw'] :global(.trade-workspace) {
+  grid-template-columns: minmax(0, 920px);
+  justify-content: center;
+  margin: 0 auto;
 }
 .trade :global(.trade-workspace) > section {
   width: 100%;
@@ -225,6 +246,17 @@
 .trade :global(.note-backup) > p {
   color: var(--muted);
   font-size: 13px;
+}
+.trade :global(.note-action) {
+  padding: 24px;
+  background: #101010;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.trade :global(.note-action) h2 {
+  margin: 0 0 8px;
+  font-size: 21px;
+  letter-spacing: -0.4px;
 }
 .trade :global(.note-action) :global(.row) {
   gap: 12px;
@@ -274,10 +306,22 @@
   font-size: 11px;
   line-height: 1.8;
 }
+.trade main > :global(.hint) {
+  max-width: 920px;
+  margin: 10px auto;
+  padding: 10px 12px;
+  border-left: 2px solid var(--muted);
+  background: #111;
+  line-height: 1.55;
+}
 .trade input[id='deposit-amount'] {
-  font-size: 48px;
-  padding: 24px;
-  letter-spacing: -2px;
+  box-sizing: border-box;
+  height: 88px;
+  font-size: 36px;
+  padding: 16px 20px;
+  letter-spacing: -1.4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
   background: var(--bg);
 }
 .trade :global(.note-backup) {
@@ -293,28 +337,20 @@
 .trade :global(.check-label) input {
   accent-color: var(--text);
 }
-/* The light swap surface echoes the homepage's product preview. */
+/* Keep the saved-file and swap form in one continuous work surface. */
 .trade :global(.swap-card) {
-  --bg: #e6e6e3;
-  --surface: #f2f2ef;
-  --text: #171717;
-  --muted: #606060;
-  --border: #cdcdca;
-  --primary: #171717;
-  --error: #171717;
-  --error-bg: #e4e4e1;
-  --focus: #171717;
   color: var(--text);
-  background: var(--surface);
-  padding: 32px;
+  background: transparent;
+  padding: 24px;
   border: 1px solid var(--surface);
 }
 .trade :global(.swap-heading) {
-  gap: 12px;
-  margin-bottom: 28px;
+  gap: 10px;
+  margin-bottom: 18px;
 }
 .trade :global(.swap-heading) h2 {
-  font-size: 29px;
+  font-size: 21px;
+  letter-spacing: -0.4px;
 }
 .trade :global(.badge) {
   border-radius: 99px;
@@ -323,14 +359,14 @@
   padding: 6px 10px;
 }
 .trade :global(.swap-amount-panel) {
-  padding: 24px 12px 20px;
-  border: 0;
-  border-radius: 16px;
-  background: var(--bg);
+  padding: 18px 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: #090909;
 }
 .trade :global(.swap-amount-panel) input {
   background: transparent;
-  font-size: clamp(26px, 3vw, 38px);
+  font-size: clamp(24px, 2.5vw, 32px);
 }
 .trade :global(.swap-token-name) {
   font-size: 14px;
@@ -350,9 +386,9 @@
   border-color: #252525;
 }
 .trade :global(.swap-bridge) {
-  top: 152px;
-  width: 32px;
-  height: 32px;
+  top: 139px;
+  width: 30px;
+  height: 30px;
   font-size: 17px;
 }
 .trade :global(.swap-settings) {
@@ -391,7 +427,7 @@
   max-width: 55%;
 }
 .trade :global(.swap-submit) {
-  border-radius: 99px;
+  border-radius: 8px;
   font-size: 14px;
   min-height: 52px;
 }
@@ -402,32 +438,6 @@
 }
 .trade :global(.swap-feedback) {
   font-size: 11px;
-}
-.trade :global(.trade-activity) {
-  margin-top: 32px;
-}
-.trade :global(.journal) li {
-  padding: 20px 0;
-}
-.trade :global(.journal) strong {
-  font-weight: 500;
-  font-size: 14px;
-  text-transform: capitalize;
-}
-.trade :global(.journal) code {
-  color: var(--muted);
-  margin: 12px 0 4px;
-  font-size: 11px;
-}
-.trade :global(.journal) a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  font-size: 12px;
-}
-.trade :global(.journal) p {
-  font-size: 12px;
-  color: var(--muted);
 }
 .trade :global(.trade-network) {
   margin-top: 32px;
@@ -459,7 +469,6 @@
   .trade :global(.trade-header) nav {
     gap: 20px;
   }
-  .trade :global(.trade-activity),
   .trade :global(.trade-network) {
     max-width: 640px;
     margin-left: auto;
@@ -482,13 +491,13 @@
     gap: 12px;
   }
   .trade :global(.trade-intro) {
-    padding: 36px 0 24px;
-  }
-  .trade :global(.trade-intro) h1 {
-    font-size: 38px;
+    padding: 4px 0 0;
   }
   .trade :global(.note-tabs) button {
-    padding: 10px 24px;
+    flex: 1 1 0;
+    padding: 10px 4px;
+    font-size: 11px;
+    white-space: normal;
   }
   .trade section,
   .trade :global(.swap-card) {
@@ -785,20 +794,16 @@
   overflow-wrap: anywhere;
 }
 
-.trade main[data-action='withdraw'] :global(.trade-workspace) > :global(.note-action):last-child {
-  max-width: 720px;
-  justify-self: center;
-}
 .trade main[data-action='withdraw'] :global(.private-note-dialog) {
   width: min(640px, calc(100vw - 32px));
 }
 
 .trade main[data-action='withdraw'] :global(.trade-workspace) {
-  grid-template-columns: minmax(0, 720px);
+  grid-template-columns: minmax(0, 920px);
   justify-content: center;
 }
 .trade main[data-action='withdraw'] :global(.trade-workspace) > :global(.withdrawal-card) {
-  max-width: 720px;
+  max-width: none;
 }
 .trade :global(.withdrawal-destination) {
   border-top: 1px solid var(--border);
@@ -890,60 +895,64 @@
   max-width: none;
 }
 .trade :global(.combined-swap-card) {
-  --bg: #e6e6e3;
-  --surface: #f2f2ef;
-  --text: #171717;
-  --muted: #606060;
-  --border: #cdcdca;
-  --primary: #171717;
-  --error: #171717;
-  --error-bg: #e4e4e1;
-  --focus: #171717;
+  --bg: #080808;
+  --surface: #101010;
+  --text: #f2f2ef;
+  --muted: #ababab;
+  --border: #353535;
+  --primary: #f2f2ef;
+  --error: #f2f2ef;
+  --error-bg: #222;
+  --focus: #f2f2ef;
   display: grid;
   grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
   padding: 0;
-  overflow: hidden;
+  overflow: clip;
   background: var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
+  border-radius: 12px;
 }
 .trade :global(.swap-note-entry) {
-  padding: 28px;
+  padding: 24px;
   min-width: 0;
 }
 .trade :global(.combined-swap-card) > :global(.swap-card) {
   max-width: none;
   min-width: 0;
   margin: 0;
-  padding: 28px;
+  padding: 24px;
   border: 0;
   border-left: 1px solid var(--border);
   border-radius: 0;
 }
 .trade :global(.combined-swap-card) :global(.note-upload) {
-  background: #e8e8e5;
-  color: #171717;
-  border-color: #999;
+  background: #090909;
+  color: var(--text);
+  border-color: #555;
 }
 .trade :global(.combined-swap-card) :global(.note-upload):hover {
-  background: #dededb;
-  border-color: #333;
+  background: #171717;
+  border-color: #aaa;
 }
 .trade :global(.combined-swap-card) :global(.note-upload):focus-within {
-  outline-color: #171717;
+  outline-color: var(--text);
 }
 .trade :global(.combined-swap-card) :global(.note-upload-copy) > span {
-  color: #606060;
+  color: var(--muted);
 }
 .trade :global(.combined-swap-card) :global(.note-upload-browse) {
-  border-color: #aaa;
+  border-color: #555;
 }
 /* Wider, less vertically padded withdrawal flow. */
 .trade :global(.withdrawal-card) {
-  padding: 28px;
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 28px;
+  padding: 24px;
 }
 .trade :global(.withdrawal-card) h2 {
-  margin: 8px 0 12px;
+  margin: 0 0 8px;
 }
 .trade :global(.withdrawal-card) label {
   margin-top: 12px;
@@ -962,8 +971,10 @@
   padding: 12px;
 }
 .trade :global(.withdrawal-card) :global(.withdrawal-destination) {
-  margin-top: 18px;
-  padding-top: 18px;
+  margin: 0;
+  padding: 0 0 0 28px;
+  border-top: 0;
+  border-left: 1px solid var(--border);
 }
 .trade :global(.withdrawal-card) :global(.withdraw-privacy-warning) {
   padding: 10px 14px;
@@ -978,6 +989,15 @@
   .trade :global(.combined-swap-card) > :global(.swap-card) {
     border-left: 0;
     border-top: 1px solid var(--border);
+  }
+  .trade :global(.withdrawal-card) {
+    grid-template-columns: 1fr;
+  }
+  .trade :global(.withdrawal-card) :global(.withdrawal-destination) {
+    margin-top: 4px;
+    padding: 22px 0 0;
+    border-top: 1px solid var(--border);
+    border-left: 0;
   }
 }
 @media (max-width: 540px) {
@@ -1026,5 +1046,81 @@
 @media (max-width: 400px) {
   .trade :global(.deposit-presets) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-height: 700px) {
+  .trade + :global(footer) {
+    display: none;
+  }
+  .trade :global(header) {
+    min-height: 64px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  .trade main {
+    padding: 8px 32px 12px;
+  }
+  .trade :global(.note-tabs) {
+    margin-bottom: 14px;
+  }
+  .trade :global(.note-tabs) button {
+    min-height: 40px;
+    padding: 6px 8px;
+  }
+  .trade :global(.status:empty) {
+    display: none;
+  }
+  .trade :global(.status:not(:empty)) {
+    min-height: 0;
+    margin: 4px 0 8px;
+  }
+  .trade main[data-action='deposit'] :global(.note-action) {
+    padding: 16px;
+  }
+  .trade main[data-action='deposit'] :global(.note-action) > :global(.eyebrow) {
+    margin-bottom: 4px;
+  }
+  .trade main[data-action='deposit'] :global(.note-action) > h2 {
+    margin-bottom: 6px;
+    font-size: 22px;
+  }
+  .trade main[data-action='deposit'] :global(.note-action) label {
+    margin: 8px 0 4px;
+  }
+  .trade input[id='deposit-amount'] {
+    box-sizing: border-box;
+    height: 72px;
+    padding: 8px 16px;
+    font-size: 36px;
+    line-height: 1.2;
+  }
+  .trade :global(.deposit-presets) {
+    gap: 6px;
+    margin: 8px 0;
+  }
+  .trade :global(.deposit-presets) button {
+    min-height: 38px;
+    padding: 6px 4px;
+    font-size: 11px;
+  }
+  .trade main[data-action='deposit'] :global(.note-action) :global(.hint) {
+    margin: 6px 0;
+    line-height: 1.45;
+  }
+  .trade main[data-action='deposit'] :global(.note-action) :global(.row) {
+    margin: 8px 0 0;
+  }
+  .trade main[data-action='deposit'] :global(.note-action) :global(.row) > button {
+    min-height: 42px;
+  }
+}
+
+@media (max-width: 540px) and (max-height: 700px) {
+  .trade main {
+    padding: 8px 16px 12px;
+  }
+  .trade :global(.note-tabs) {
+    gap: 6px;
   }
 }

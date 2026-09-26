@@ -409,9 +409,8 @@ export default function Page() {
           : health.swapIssues.join(' ');
   const noteEntry = (
     <>
-      <p className="eyebrow">01 / YOUR SAVED FUNDS</p>
-      <h2>{tab === 'withdraw' ? 'Withdraw your funds' : 'Add your saved file'}</h2>
-      <p className="muted">Add the secret file you saved to access your funds.</p>
+      <h2>Your saved file</h2>
+      <p className="muted">Choose the saved file for the funds you want to use.</p>
       <div>
         <label htmlFor="private-note">Paste your saved file</label>
         <textarea
@@ -492,8 +491,7 @@ export default function Page() {
   );
   const withdrawalFields = (
     <>
-      <p className="eyebrow">02 / YOUR DESTINATION</p>
-
+      <h2>Send to</h2>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -571,35 +569,14 @@ export default function Page() {
           error={error}
         />
 
-        <div className="trade-intro">
-          <h1>
-            {tab === 'deposit' ? (
-              <>
-                Deposit <em>ETH.</em>
-              </>
-            ) : tab === 'swap' ? (
-              <>
-                Swap and withdraw <em>{outputAsset}</em>
-              </>
-            ) : (
-              <>
-                Withdraw your <em>funds.</em>
-              </>
-            )}
-          </h1>
-          {tab === 'swap' ? (
+        {tab === 'swap' && (
+          <div className="trade-intro">
             <div className="uniswap-credit" aria-label="Powered by Uniswap">
-              <Image src="/uniswap-logo.svg" alt="" width={26} height={26} />
+              <Image src="/uniswap-logo.svg" alt="" width={22} height={22} />
               <span>Powered by Uniswap</span>
             </div>
-          ) : (
-            <p>
-              {tab === 'deposit'
-                ? 'Deposit ETH and save the file that lets you use those funds.'
-                : 'Send your saved balance to an address you choose.'}
-            </p>
-          )}
-        </div>
+          </div>
+        )}
         {fixedMode && (
           <p className="hint">
             This setup uses a fixed amount: deposit 0.1 ETH and withdraw 0.1 WETH. Matching amounts
@@ -621,7 +598,7 @@ export default function Page() {
                   setError('');
                 }}
               >
-                {t === 'swap' ? 'Swap and withdraw' : t[0].toUpperCase() + t.slice(1)}
+                {t === 'swap' ? 'Swap & withdraw' : t[0].toUpperCase() + t.slice(1)}
               </button>
             ))}
         </nav>
@@ -798,7 +775,7 @@ export default function Page() {
           </NoteDialog>
         )}
         <div className="trade-workspace">
-          {draft && (
+          {draft?.kind === 'swap' && (
             <NoteDialog
               busy={!!busy}
               onClose={() => {
@@ -814,14 +791,6 @@ export default function Page() {
                   Anyone with this file can spend these funds. Keep it safe. We cannot restore it
                   if it is lost.
                 </p>
-                {draft.kind === 'deposit' && (
-                  <p className="note-backup-amount">
-                    <span>Deposit</span>
-                    <strong>
-                      {money(draft.note.amount ?? config!.denomination)} <small>ETH</small>
-                    </strong>
-                  </p>
-                )}
                 {draft.kind === 'swap' && (
                   <details className="note-backup-detail">
                     <summary>About this saved file</summary>
@@ -873,15 +842,6 @@ export default function Page() {
                     ? `Backup file: himitsu-${draft.kind}-${draft.note.id.slice(2, 10)}.txt`
                     : 'Download the note before continuing.'}
                 </p>
-                {draft.kind === 'deposit' &&
-                  (!walletReady ||
-                    account?.toLowerCase() !== draft.depositAccount?.toLowerCase()) && (
-                    <p className="error">
-                      The deposit wallet disconnected, changed accounts, or changed networks.
-                      Restore the original wallet connection, or cancel and prepare a new deposit
-                      note.
-                    </p>
-                  )}
                 <label className="check-label note-backup-confirm">
                   <input
                     type="checkbox"
@@ -892,29 +852,13 @@ export default function Page() {
                   I saved the file and understand it controls my funds.
                 </label>
                 <div className="note-backup-footer">
-                  <p>{draft.kind === 'deposit' ? 'Review the network fee in your wallet.' : 'Keep your original file until the swap completes.'}</p>
+                  <p>Keep your original file until the swap completes.</p>
                   <div className="row">
                   <button
-                    disabled={
-                      !downloaded ||
-                      !backedUp ||
-                      !!busy ||
-                      (draft.kind === 'deposit' &&
-                        (!walletReady ||
-                          account?.toLowerCase() !== draft.depositAccount?.toLowerCase()))
-                    }
-                    onClick={() =>
-                      void run(
-                        draft.kind === 'deposit'
-                          ? 'Approve the deposit in your wallet…'
-                          : 'Preparing private swap…',
-                        submitDraft,
-                      )
-                    }
+                    disabled={!downloaded || !backedUp || !!busy}
+                    onClick={() => void run('Preparing private swap…', submitDraft)}
                   >
-                    {draft.kind === 'deposit'
-                      ? `Deposit ${money(draft.note.amount ?? config!.denomination)} ETH`
-                      : 'Confirm swap'}
+                    Confirm swap
                   </button>
                   <button
                     className="secondary"
@@ -933,15 +877,119 @@ export default function Page() {
           )}
           {tab === 'deposit' ? (
             <section className="note-action">
-              <p className="eyebrow">START WITH ETH</p>
-              <h2>Deposit ETH</h2>
-              <p>
-                {fixedMode
-                  ? 'Each saved file gives access to 0.1 WETH. Keep it to withdraw later.'
-                  : 'Save a file to use or withdraw your WETH later.'}
-              </p>
-              <label htmlFor="deposit-amount">Amount · ETH</label>
-              <input id="deposit-amount" value={config ? money(depositValue) : ''} readOnly />
+              {draft?.kind === 'deposit' ? (
+                <div className="note-backup deposit-inline-backup">
+                  <h3>Save your secret file</h3>
+                  <p className="note-backup-warning">
+                    Save a file to use or withdraw your WETH later. Anyone with this file can spend
+                    these funds. Keep it safe; we cannot restore it if it is lost.
+                  </p>
+                  <p className="note-backup-amount">
+                    <span>Deposit</span>
+                    <strong>
+                      {money(draft.note.amount ?? config!.denomination)} <small>ETH</small>
+                    </strong>
+                  </p>
+                  <label className="note-backup-label" htmlFor="deposit-note-file">
+                    Your secret file
+                  </label>
+                  <textarea
+                    id="deposit-note-file"
+                    className="private-note-value"
+                    value={draft.text}
+                    readOnly
+                    rows={5}
+                    spellCheck={false}
+                    autoComplete="off"
+                    autoCapitalize="off"
+                  />
+                  <div className="note-save-actions">
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(draft.text);
+                          setCopyMessage('Copied to clipboard.');
+                        } catch {
+                          setCopyMessage('Copy failed. Download the note instead.');
+                        }
+                      }}
+                    >
+                      Copy note
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        download(draft.text, `himitsu-deposit-${draft.note.id.slice(2, 10)}.txt`);
+                        setDownloaded(true);
+                      }}
+                    >
+                      Download note
+                    </button>
+                  </div>
+                  {copyMessage && <p className="note-copy-status" role="status">{copyMessage}</p>}
+                  <p className="note-backup-hint" role="status">
+                    {downloaded
+                      ? `Backup file: himitsu-deposit-${draft.note.id.slice(2, 10)}.txt`
+                      : 'Download the note before continuing.'}
+                  </p>
+                  {(!walletReady ||
+                    account?.toLowerCase() !== draft.depositAccount?.toLowerCase()) && (
+                    <p className="error">
+                      The deposit wallet disconnected, changed accounts, or changed networks.
+                      Restore the original wallet connection, or cancel and prepare a new deposit
+                      note.
+                    </p>
+                  )}
+                  <label className="check-label note-backup-confirm">
+                    <input
+                      type="checkbox"
+                      checked={backedUp}
+                      disabled={!downloaded}
+                      onChange={(e) => setBackedUp(e.target.checked)}
+                    />
+                    I saved the file and understand it controls my funds.
+                  </label>
+                  <div className="note-backup-footer">
+                    <p>Review the network fee in your wallet.</p>
+                    <div className="row">
+                      <button
+                        disabled={
+                          !downloaded ||
+                          !backedUp ||
+                          !!busy ||
+                          !walletReady ||
+                          account?.toLowerCase() !== draft.depositAccount?.toLowerCase()
+                        }
+                        onClick={() =>
+                          void run('Approve the deposit in your wallet…', submitDraft)
+                        }
+                      >
+                        Deposit {money(draft.note.amount ?? config!.denomination)} ETH
+                      </button>
+                      <button
+                        className="secondary"
+                        disabled={!!busy}
+                        onClick={() => {
+                          setDraft(null);
+                          setStatus('Cancelled. No transaction submitted.');
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+              {fixedMode && <p>Each saved file gives access to 0.1 WETH. Keep it to withdraw later.</p>}
+              <input
+                id="deposit-amount"
+                aria-label="Deposit amount in ETH"
+                value={config ? money(depositValue) : ''}
+                readOnly
+              />
               <div className="deposit-presets" role="group" aria-label="Deposit amount in ETH">
                 {DEPOSIT_AMOUNTS.map((amount) => (
                   <button
@@ -961,9 +1009,8 @@ export default function Page() {
               </div>
               <p className="hint">
                 {config && BigInt(config.denomination) > 0n
-                  ? 'This deposit must use the amount shown. '
-                  : 'Choose a standard deposit amount. '}
-                ETH is converted to WETH, a token version of ETH.
+                  ? 'This deposit must use the amount shown.'
+                  : 'Choose a standard deposit amount.'}
               </p>
               <div className="row">
                 {!isConnected ? (
@@ -1023,7 +1070,8 @@ export default function Page() {
                   {issue}
                 </p>
               ))}
-              <p className="hint">Download the file before approving your deposit.</p>
+                </>
+              )}
             </section>
           ) : tab === 'swap' ? (
             <section className="combined-swap-card" aria-label="Swap and withdraw using your saved file">
@@ -1116,66 +1164,11 @@ export default function Page() {
             </section>
           ) : (
             <section className="note-action withdrawal-card">
-              {noteEntry}
+              <div className="withdrawal-note-entry">{noteEntry}</div>
               <div className="withdrawal-destination">{withdrawalFields}</div>
             </section>
           )}
         </div>
-        {attempts.length > 0 && (
-          <section className="trade-activity">
-            <h2>Activity for these funds</h2>
-            <button
-              className="secondary"
-              disabled={!!busy || !!draft}
-              onClick={() =>
-                void run('Checking transaction status…', async () => {
-                  await controller!.refresh();
-                  setHealth(controller!.health);
-                })
-              }
-            >
-              Check status
-            </button>
-            <ul className="journal">
-              {[...attempts].reverse().map((a) => (
-                <li key={a.id}>
-                  <strong>
-                    {a.kind} · {a.state}
-                  </strong>
-                  {a.hash && (
-                    <>
-                      <code>{a.hash}</code>
-                      <a
-                        href={`/explorer?tx=${a.hash}&pool=${config!.pool}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        View transaction ↗
-                      </a>
-                    </>
-                  )}
-                  {a.detail && <p>{a.detail}</p>}
-                  {a.output && controller!.vault.data.notes.find((n) => n.id === a.output) && (
-                    <button
-                      className="secondary"
-                      onClick={() =>
-                        download(
-                          exportPrivateNote(
-                            controller!.vault.data.notes.find((n) => n.id === a.output)!,
-                            config!,
-                          ),
-                          `himitsu-output-${a.id.slice(0, 8)}.txt`,
-                        )
-                      }
-                    >
-                      Download output note again
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
       </main>
     </>
   );
