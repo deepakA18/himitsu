@@ -18,10 +18,9 @@ function walletConfig(d: Deployment) {
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error('Invalid deployment chain ID');
   const chain = defineChain({
     id,
-    name: 'Himitsu Ethrex devnet',
+    name: 'Himitsu',
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
     rpcUrls: { default: { http: [d.rpcUrl] } },
-    testnet: true,
   });
   const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID?.trim();
   // Without a project ID, use injected wallet discovery only. Never ship a fake WC ID.
@@ -55,11 +54,21 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     let cancelled = false;
-    fetch('/deployment.json', { cache: 'no-store' })
-      .then(async (r) => {
-        if (!r.ok)
-          throw new Error('Deployment unavailable. Start the app with an existing deployment.');
-        const deployment = (await r.json()) as Deployment;
+    async function loadDeployment() {
+      let response = await fetch('/deployment.json', { cache: 'no-store' });
+      if (!response.ok) {
+        const catalogResponse = await fetch('/deployments.json', { cache: 'no-store' });
+        if (!catalogResponse.ok) throw new Error('No app deployment is available.');
+        const catalog = (await catalogResponse.json()) as { url: string }[];
+        const defaultDeployment = catalog[0];
+        if (!defaultDeployment?.url) throw new Error('No app deployment is available.');
+        response = await fetch(defaultDeployment.url, { cache: 'no-store' });
+      }
+      if (!response.ok) throw new Error('The selected deployment could not be loaded.');
+      return (await response.json()) as Deployment;
+    }
+    loadDeployment()
+      .then((deployment) => {
         if (!cancelled) setLoaded({ deployment, config: walletConfig(deployment) });
       })
       .catch((e) => {

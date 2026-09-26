@@ -24,7 +24,7 @@ function Eth() {
 const faqs = [
   [
     'What is Himitsu?',
-    'Himitsu is an experimental private swap app. Deposit into a shared privacy pool, keep your private note, and use it to trade through Uniswap or withdraw your funds.',
+    'Himitsu is a private WETH-to-hUSD swap flow. Deposit into a shared privacy pool, keep your private note, and use it to trade through Uniswap V2 or withdraw your funds.',
   ],
   [
     'Why do I need a private note?',
@@ -40,7 +40,7 @@ const faqs = [
   ],
   [
     'Is everything about my trade private?',
-    'No. Zero-knowledge proofs hide which deposit you are spending. Trade amounts, timing and onchain swap activity remain visible, and an RPC provider can observe network metadata. This is a devnet prototype with test assets, not an audited product for real funds.',
+    'No. Zero-knowledge proofs hide which deposit you are spending. Trade amounts, timing and onchain swap activity remain visible, and an RPC provider can observe network metadata.',
   ],
 ];
 
@@ -76,8 +76,8 @@ export default function Home() {
               Your <span className={styles.serif}>secret.</span>
             </h1>
             <p className={styles.intro}>
-              A private balance. A direct path to Uniswap.
-              <br className={styles.desktopBreak} /> Make your next move yours.
+              Spend a private WETH note through Uniswap V2.
+              <br className={styles.desktopBreak} /> Prove the spend in your browser. Keep the new hUSD note.
             </p>
             <div className={styles.actions}>
               <Link className={styles.button} href="/app" prefetch={false}>
@@ -88,13 +88,13 @@ export default function Home() {
               </a>
             </div>
             <p className={styles.demoNote}>
-              An Ethereum frame-transaction experiment. Test assets only.
+              EIP-8141 frame transactions · Groth16 proofs · prefunded onchain paymaster
             </p>
           </div>
           <div
             className={styles.stage}
             role="img"
-            aria-label="Illustration of an ETH to gUSD private swap and a user-held private note. Not a live quote."
+            aria-label="Illustration of an ETH to hUSD private swap and a user-held private note. Not a live quote."
           >
             <div className={styles.stageGrid} />
             <span className={styles.stageLabel}>A LITTLE LESS PUBLIC.</span>
@@ -130,7 +130,7 @@ export default function Home() {
                 <span className={styles.pairArrow}>⇄</span>
                 <div>
                   <span className={`${styles.coin} ${styles.darkCoin}`}>$</span>
-                  <span className={styles.tokenName}>gUSD</span>
+                  <span className={styles.tokenName}>hUSD</span>
                   <strong>•••</strong>
                   <small>You receive</small>
                 </div>
@@ -161,15 +161,15 @@ export default function Home() {
         </div>
         <section id="why-himitsu" className={styles.features} aria-labelledby="features-title">
           <div className={styles.sectionHead}>
-            <p className={styles.eyebrow}>LESS PERMISSION. MORE POSSIBILITY.</p>
+            <p className={styles.eyebrow}>PRIVATE NOTES. DIRECT EXECUTION.</p>
             <h2 id="features-title">
-              Keep control.
+              Private by proof.
               <br />
-              Skip the middleman.
+              Direct by design.
             </h2>
             <p>
-              Access public liquidity from a private balance, with permission to execute exactly
-              your trade.
+              Himitsu connects a user-held private note to a real Uniswap V2 pair. Your browser proves
+              the spend, the pool enforces its scope, and a separate paymaster covers eligible gas.
             </p>
           </div>
           <div className={styles.featureGrid}>
@@ -177,47 +177,60 @@ export default function Home() {
               <span className={styles.featureIcon} aria-hidden="true">
                 ↗
               </span>
-              <h3>A direct route.</h3>
+              <h3>Your browser submits.</h3>
               <p>
-                Your browser builds the proof and sends the transaction to the network. No
-                application relayer or bundler needs to approve your move.
+                Your browser builds the Groth16 proof and submits an EIP-8141 frame transaction
+                directly to RPC. An onchain paymaster separately authorizes sponsored gas.
               </p>
-              <span className={styles.featureTag}>BROWSER → NETWORK</span>
+              <span className={styles.featureTag}>GROTH16 · EIP-8141 · ONCHAIN SPONSOR</span>
             </article>
             <article>
               <span className={styles.featureIcon} aria-hidden="true">
                 ⊘
               </span>
-              <h3>Your trade. No allowance.</h3>
+              <h3>Exact input to Uniswap.</h3>
               <p>
-                Swap with Uniswap without giving an exchange permission to pull from your wallet.
-                Only the exact input goes to the pair.
+                The pool sends the authorized WETH amount straight to the Uniswap V2 pair, without
+                an open exchange allowance.
               </p>
-              <span className={styles.featureTag}>EXACT INPUT. NO OPEN APPROVAL.</span>
+              <span className={styles.featureTag}>WETH → UNISWAP V2 → hUSD</span>
             </article>
             <article>
               <span className={styles.featureIcon} aria-hidden="true">
                 ∗
               </span>
-              <h3>Prove it. Don’t reveal it.</h3>
+              <h3>Save and recover your output.</h3>
               <p>
-                A zero-knowledge proof shows you can spend a deposit without pointing to which one.
-                Your note secrets stay with you.
+                The proof hides which deposit backs your spend. Save the output note before sending;
+                it recovers the actual hUSD received for later withdrawal.
               </p>
-              <span className={styles.featureTag}>YOUR NOTE IS YOUR KEY</span>
+              <span className={styles.featureTag}>YOUR NOTE IS YOUR KEY · NO HOSTED INDEXER</span>
             </article>
           </div>
+          <p className={styles.comparison}>
+            <strong>Where it fits:</strong> Tornado Cash Classic centers on private deposits and later
+            withdrawals; RAILGUN supports a broader shielded wallet and private DeFi interactions.
+            Himitsu explores a narrower flow: spend a private note directly into a Uniswap V2 swap
+            using browser proofs and EIP-8141 frames.{' '}
+            <a href="https://docs.tornado.cash/tornado-cash-classic/circuits/core-deposit-circuit" target="_blank" rel="noreferrer">
+              Tornado Cash docs
+            </a>{' '}
+            ·{' '}
+            <a href="https://docs.railgun.org/wiki/learn/shielding-tokens" target="_blank" rel="noreferrer">
+              RAILGUN docs
+            </a>
+          </p>
         </section>
         <section id="how-it-works" className={styles.how} aria-labelledby="how-title">
           <div className={styles.howHeading}>
-            <p className={styles.eyebrow}>SIMPLE ON THE SURFACE.</p>
+            <p className={styles.eyebrow}>FROM ETH DEPOSIT TO PRIVATE WETH NOTE.</p>
             <h2 id="how-title">
               One note.
               <br />
               Your next move.
             </h2>
             <Link className={styles.textLink} href="/app" prefetch={false}>
-              Explore the demo <Arrow />
+              Open the app <Arrow />
             </Link>
           </div>
           <ol className={styles.steps}>
@@ -226,8 +239,8 @@ export default function Home() {
               <div>
                 <h3>Deposit. Save your note.</h3>
                 <p>
-                  Put ETH into the shared pool and save your private note. It’s your key to spending
-                  that balance.
+                  Connect your wallet to deposit 0.1 ETH. The pool wraps it to WETH; download the
+                  private note before approving the deposit. The note is the key to that balance.
                 </p>
               </div>
             </li>
@@ -236,8 +249,9 @@ export default function Home() {
               <div>
                 <h3>Swap from the pool.</h3>
                 <p>
-                  Import your note, choose your trade, and save the output note. Your browser proves
-                  the spend; Uniswap executes the swap.
+                  Import the WETH note, review the live quote and slippage, then save a fresh hUSD
+                  note. Your browser proves the spend; the pool swaps exact input through Uniswap V2
+                  and deposits all actual output atomically.
                 </p>
               </div>
             </li>
@@ -246,8 +260,9 @@ export default function Home() {
               <div>
                 <h3>Withdraw when you’re ready.</h3>
                 <p>
-                  Use your unspent note to find your balance and withdraw to a recipient address. No
-                  account or recovery phrase to create.
+                  Import the output note to recover its confirmed amount from pool events, then
+                  withdraw the full balance to a recipient address. No app account or recovery
+                  phrase is involved; keep your note file safe.
                 </p>
               </div>
             </li>
@@ -296,10 +311,9 @@ export default function Home() {
           <a href="#how-it-works">How it works</a>
           <a href="#faq">FAQ</a>
           <Link href="/app" prefetch={false}>
-            Open demo ↗
+            Open app ↗
           </Link>
         </div>
-        <p>Experimental devnet prototype · Test assets only · Not audited</p>
       </footer>
     </div>
   );

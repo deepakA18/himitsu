@@ -62,7 +62,7 @@ export async function readiness(rpc: RpcClient, d: Deployment): Promise<Readines
   await verifyConfig(rpc, d);
   const head = await rpc.request<Block>('eth_getBlockByNumber', ['latest', false]);
   if (Math.abs(Date.now() / 1000 - Number(BigInt(head.timestamp))) > 120)
-    throw new Error('Node is not producing recent blocks. Check the devnet clock and node.');
+    throw new Error('Network is not producing recent blocks. Check the network clock and connection.');
   const tag = head.number;
   const [
     reserves,
@@ -130,7 +130,7 @@ export async function readiness(rpc: RpcClient, d: Deployment): Promise<Readines
     try {
       const required = fundingRequired(BigInt(head.baseFeePerGas), swap).maximum;
       if (swap) swapFunding = required;
-      if (BigInt(balance) < required) issues.push('Paymaster needs more test ETH');
+      if (BigInt(balance) < required) issues.push('Paymaster needs more ETH');
     } catch (e) {
       issues.push((e as Error).message);
     }

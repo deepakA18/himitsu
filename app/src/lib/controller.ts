@@ -243,7 +243,7 @@ export class Controller {
         d.chainId !== '9' ||
         !['127.0.0.1', 'localhost', '[::1]'].includes(new URL(d.rpcUrl).hostname)
       )
-        throw new Error('Test wallets are restricted to the local chain 9 deployment');
+        throw new Error('This wallet is available only on the configured Himitsu network.');
       await this.sync();
       if (!this.vault.data.testWalletKey)
         await this.vault.save({ ...this.vault.data, testWalletKey: generatePrivateKey() });
@@ -266,10 +266,10 @@ export class Controller {
               tx.from.toLowerCase() !== account.address.toLowerCase() ||
               tx.to.toLowerCase() !== d.pool.toLowerCase()
             )
-              throw new Error('Test wallet only signs deposits to this pool');
+              throw new Error('This wallet can only sign deposits to this pool');
             return client.sendTransaction({ to: tx.to, data: tx.data, value: BigInt(tx.value) });
           }
-          throw new Error('Unsupported test wallet operation');
+          throw new Error('Unsupported wallet operation');
         },
       };
       return { wallet, account: account.address };
@@ -297,7 +297,7 @@ export class Controller {
       if (!note || this.noteState(note) !== 'Available')
         throw new Error('Select an available note after synchronization');
       if (kind === 'swap' && note.pool.toLowerCase() !== d.pool.toLowerCase())
-        throw new Error('Only WETH-to-gUSD swaps are enabled in this test UI');
+        throw new Error('Only WETH-to-hUSD swaps are enabled in this interface');
       if (kind === 'withdraw' && (!isAddress(recipient) || BigInt(recipient) === 0n))
         throw new Error('Enter a nonzero recipient address');
       if (

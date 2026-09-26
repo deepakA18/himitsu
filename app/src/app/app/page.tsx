@@ -37,7 +37,7 @@ export default function Page() {
   const { switchChainAsync } = useSwitchChain();
   const walletReady = isConnected && walletChainId === Number(config?.chainId);
   const [catalog, setCatalog] = useState<{ name: string; url: string }[]>([]);
-  const [tab, setTab] = useState<'deposit' | 'swap' | 'withdraw'>('deposit');
+  const [tab, setTab] = useState<'deposit' | 'swap' | 'withdraw'>('swap');
   const [health, setHealth] = useState<Readiness | null>(null);
   const [controller, setController] = useState<Controller | null>(null);
   const [noteId, setNoteId] = useState('');
@@ -121,12 +121,7 @@ export default function Page() {
   const attempts = controller?.vault.data.attempts ?? [];
   const pending = attempts.some(isActive);
   const disabled = !!busy || !!draft || pending;
-  const swapPending =
-    (!!busy && busy.toLowerCase().includes('proof')) ||
-    attempts.some(
-      (a) => a.kind === 'swap' && ['broadcasting', 'submitted', 'mined'].includes(a.state),
-    );
-  const asset = note?.pool.toLowerCase() === config?.pool.toLowerCase() ? 'WETH' : 'gUSD';
+  const asset = note?.pool.toLowerCase() === config?.pool.toLowerCase() ? 'WETH' : 'hUSD';
   async function session(n: SavedNote, importing: boolean) {
     const v = await navigator.locks.request('himitsu-vault-actions', async () => {
       const v = await Vault.openPrivateNote(
@@ -195,7 +190,7 @@ export default function Page() {
           'Wallet account changed. Prepare a new deposit note for the selected account.',
         );
       if (connection.chainId !== Number(current.controller.deployment.chainId))
-        throw new Error('Switch to the Himitsu devnet before depositing');
+        throw new Error('Switch to the Himitsu network before depositing');
       const provider = await connection.connector.getProvider();
       if (!provider || typeof (provider as Wallet).request !== 'function')
         throw new Error('Selected wallet cannot submit deposits');
@@ -251,23 +246,23 @@ export default function Page() {
     : noteState !== 'Available'
       ? `Note: ${noteState}.`
       : asset !== 'WETH'
-        ? 'This pool supports WETH → gUSD. You can withdraw this gUSD note.'
+        ? 'This pool supports WETH → hUSD. You can withdraw this hUSD note.'
         : !health
           ? 'Waiting for a live quote.'
           : health.swapIssues.join(' ');
   return (
-    <main>
-      <header>
+    <main className="app-shell">
+      <header className="app-header">
         <div>
-          <p className="eyebrow">LOCAL DEVNET · TEST ASSETS</p>
-          <h1>Himitsu</h1>
-          <a href="/">← Home</a>
-          <p className="muted">Private notes. Permissionless swaps.</p>
+          <a className="app-home" href="/">← Himitsu</a>
+          <h1>Private swap</h1>
+          <p>WETH → hUSD through Uniswap V2</p>
         </div>
+        <span className="app-environment">WETH → hUSD</span>
       </header>
-      <nav className="note-tabs" aria-label="Actions">
+      <nav className="note-tabs" aria-label="Choose an action">
         {(['deposit', 'swap', 'withdraw'] as const).map((t) => (
-          <button
+        <button
             key={t}
             className={tab === t ? '' : 'secondary'}
             aria-pressed={tab === t}
@@ -281,7 +276,7 @@ export default function Page() {
           </button>
         ))}
       </nav>
-      <p className="status" role="status">
+      <p className="status" role="status" aria-live="polite">
         {busy || status}
       </p>
       {error && (
@@ -289,13 +284,11 @@ export default function Page() {
           {error}
         </p>
       )}
-      {networkError && (
-        <p className="error">Network unavailable: {networkError}. Retrying automatically.</p>
-      )}
+      {networkError && <p className="error network-warning" role="status">Network connection unavailable. Reconnecting automatically.</p>}
       {draft && (
         <section className="note-backup" aria-labelledby="backup-heading">
           <h2 id="backup-heading">
-            Save your {draft.kind === 'swap' ? 'new gUSD' : 'deposit'} note
+            Save your {draft.kind === 'swap' ? 'new hUSD' : 'deposit'} note
           </h2>
           <p>
             This file is the key to your funds. Anyone who has it can spend them. Himitsu cannot
@@ -408,7 +401,7 @@ export default function Page() {
                   })
                 }
               >
-                Switch to Himitsu devnet
+                Switch network
               </button>
             )}
             <button
@@ -434,7 +427,7 @@ export default function Page() {
         <>
           <section className="note-action">
             <h2>Use a private note</h2>
-            <form
+            {!note && <form
               onSubmit={(e) => {
                 e.preventDefault();
                 void run('Checking private note…', () => loadNote(input));
@@ -443,7 +436,7 @@ export default function Page() {
               <label htmlFor="private-note">Paste your Himitsu note</label>
               <textarea
                 id="private-note"
-                rows={3}
+                rows={2}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 disabled={disabled}
@@ -472,7 +465,7 @@ export default function Page() {
                   />
                 </label>
               </div>
-            </form>
+            </form>}
             {note && (
               <div className="note-summary">
                 <strong>
@@ -502,15 +495,13 @@ export default function Page() {
                 </button>
               </div>
             )}
-            <p className="hint">
-              Notes stay secret in this browser. Imported notes unlock encrypted local transaction
-              records. Use one active browser per note; do not retry an uncertain transaction from
-              another device.
-            </p>
+            <details className="note-guidance">
+              <summary>About private notes</summary>
+              <p>Notes stay secret in this browser and unlock encrypted transaction records. Use one active browser per note; don’t retry an uncertain transaction from another device.</p>
+            </details>
           </section>
           {tab === 'swap' ? (
             <SwapPanel
-              privateNoteMode
               inputAmount={money(config?.denomination ?? '100000000000000000')}
               outputAmount={
                 health
@@ -521,10 +512,6 @@ export default function Page() {
                     )
                   : ''
               }
-              balance="0"
-              notes={[]}
-              selected=""
-              onSelect={() => {}}
               slippage={slippage}
               onSlippage={setSlippage}
               minimum={
@@ -537,11 +524,8 @@ export default function Page() {
                   : ''
               }
               market={config?.noteVersion === 2}
-              locked={false}
-              busy={disabled}
-              rolling={!!swapPending}
+              busy={!!busy}
               status={busy || attempts.filter((a) => a.kind === 'swap').at(-1)?.state || ''}
-              error=""
               reason={swapReason}
               disabled={disabled || !!swapReason}
               onSwap={() => void run('Preparing your output note…', () => prepare('swap'))}
@@ -681,7 +665,7 @@ export default function Page() {
                 Verified block {health.block} · paymaster {money(health.sponsorBalance)} ETH
               </p>
               <p>
-                Swap quote: {money(health.quote)} gUSD per {money(config!.denomination)} WETH
+                Swap quote: {money(health.quote)} hUSD per {money(config!.denomination)} WETH
               </p>
             </>
           ) : (
@@ -689,9 +673,8 @@ export default function Page() {
           )}
         </section>
       </details>
-      <footer className="hint">
-        Test assets only. Swap amounts are public. Keep private notes offline; sharing a note gives
-        access to its funds.
+      <footer className="hint app-footer">
+        Swap amounts are public. Keep private notes offline; sharing a note gives access to its funds.
       </footer>
     </main>
   );

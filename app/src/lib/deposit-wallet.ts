@@ -24,7 +24,7 @@ export function guardDepositWallet(
           'Deposit wallet changed or disconnected. Reconnect and prepare a new deposit.',
         );
       if (live.chainId !== expected.chainId)
-        throw new Error('Wallet network changed. Switch to the Himitsu devnet.');
+        throw new Error('Wallet network changed. Switch to the Himitsu network.');
       return provider.request(args);
     },
   };
