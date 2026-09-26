@@ -19,6 +19,8 @@ import {
   GUSD_DENOMINATION,
 } from './ghost.mjs';
 import { deployAutomaticSponsor } from './automatic-sponsor.mjs';
+const fixed = process.env.HIMITSU_POOL_MODE === 'fixed';
+const label = fixed ? 'Fixed notes · 0.1 ETH deposit / 0.1 WETH withdrawal' : 'Bidirectional swaps · v2';
 const root = join(dirname(fileURLToPath(import.meta.url)), '../..');
 if (BigInt(await rpc('eth_chainId')) !== 9n) throw new Error('Local chain 9 required');
 console.log('Deploying hardened pools and automatic sponsor for the test app…');
@@ -30,7 +32,7 @@ const verifier = deployer.deploySol('SpendVerifierV2');
 const introspector = deployer.deployAsm('FrameIntrospector', introspectorRuntime());
 const validator = deployer.deployAsm('SpendValidatorV2', spendValidatorRuntime(verifier, true));
 const deployPool = (token, wrapsEth, denom) => deployer.deploySol('HimitsuPoolV2', { args: { signature: 'constructor(address,address,bool,uint256,address,address)', values: [hasher, token, String(wrapsEth), String(denom), validator, introspector] } });
-const pool = deployPool(weth, true, 0n);
+const pool = deployPool(weth, true, fixed ? DENOMINATION : 0n);
 const system = { weth, hasher, verifier, introspector, validator, pool };
 const token = deployer.deploySol('TestToken', {
   args: { signature: 'constructor(uint256)', values: ['1000000000000000000000000'] },
@@ -40,8 +42,8 @@ send('--value', '10ether', system.weth, 'deposit()');
 send(system.weth, 'transfer(address,uint256)', pair, '10000000000000000000');
 send(token, 'transfer(address,uint256)', pair, '20000000000000000000000');
 send(pair, 'mint(address)', FUNDER);
-const outputPool = deployPool(token, false, 0n);
-const sponsor = await deployAutomaticSponsor([system.pool, outputPool], { amountBound: true });
+const outputPool = deployPool(token, false, fixed ? 100n * 10n ** 18n : 0n);
+const sponsor = await deployAutomaticSponsor([system.pool, outputPool], { amountBound: true, withdrawalsOnly: fixed });
 const codeHashes = {};
 for (const address of [
   ...Object.values(system).filter((v) => typeof v === 'string' && /^0x[0-9a-fA-F]{40}$/.test(v)),
@@ -74,7 +76,8 @@ const anchor = await rpc('eth_getBlockByNumber', ['latest', false]);
 const config = {
   version: 1,
   noteVersion: 2,
-  name: 'Bidirectional swaps · v2',
+  name: label,
+  ...(fixed ? { mode: 'fixed' } : {}),
   id: system.pool.toLowerCase() + ':' + anchor.hash,
   anchorBlock: BigInt(anchor.number).toString(),
   anchorBlockHash: anchor.hash,
@@ -92,15 +95,15 @@ const config = {
   wethIsToken0:
     cast('call', '--rpc-url', RPC_URL, pair, 'token0()(address)').toLowerCase() ===
     system.weth.toLowerCase(),
-  denomination: '0',
+  denomination: fixed ? DENOMINATION.toString() : '0',
   defaultDepositAmount: DENOMINATION.toString(),
-  outputDenomination: '0',
+  outputDenomination: fixed ? '100000000000000000000' : '0',
   codeHashes,
   artifacts,
 };
 if (!existsSync(join(publicDir, 'deployment-v1.json'))) copyFileSync(join(publicDir, 'deployment.json'), join(publicDir, 'deployment-v1.json'));
-writeFileSync(join(publicDir, 'deployment-v2.json'), JSON.stringify(config, null, 2) + '\n');
-publishDeployment(root, config, 'Bidirectional swaps · v2');
-writeFileSync(join(root, 'deployments/app.v2.json'), JSON.stringify(config, null, 2) + '\n');
+writeFileSync(join(publicDir, fixed ? 'deployment-fixed.json' : 'deployment-v2.json'), JSON.stringify(config, null, 2) + '\n');
+publishDeployment(root, config, label);
+writeFileSync(join(root, fixed ? 'deployments/app.fixed.json' : 'deployments/app.v2.json'), JSON.stringify(config, null, 2) + '\n');
 console.log('Public app deployment saved. RPC:', RPC_URL, 'Pool:', system.pool);
 process.exit(0);

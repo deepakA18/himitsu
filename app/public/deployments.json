@@ -5,6 +5,11 @@
     "id": "0x2a65aaa7033c8c99658e0dad9c1ba7d0db9c3389:0x87e27cd461b0dfb0efb229586de6f8c2c7ba5f5535960eb2019be8784e2790b1"
   },
   {
+    "name": "Fixed notes · 0.1 ETH deposit / 0.1 WETH withdrawal",
+    "url": "/deployments/0x60f75912550affca8ac349b0e1b2a15daa42edb3.json",
+    "id": "0x60f75912550affca8ac349b0e1b2a15daa42edb3:0xc917b8647dcee2d97389ab639ecc93ac8e009b502441c123d23e7ff35bfd6b5e"
+  },
+  {
     "name": "Market swaps · v2",
     "url": "/deployments/0xa9b709c7592a19e23f5385a286724ea42ee0ef3d.json",
     "id": "0xa9b709c7592a19e23f5385a286724ea42ee0ef3d:0x1638b3326cadf52be9cb69333fadc9fbb76c13d80219655fc550bfe79b2892d2"

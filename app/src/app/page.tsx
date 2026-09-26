@@ -21,15 +21,15 @@ function Eth() {
 const faqs = [
   [
     'What is Himitsu?',
-    'Himitsu is a private WETH ↔ hUSD swap flow. Deposit into a shared privacy pool, keep your private note, and use it to trade through Uniswap V2 or withdraw your funds.',
+    'Himitsu is a private swap flow. Deposit into a shared privacy pool, keep your private note, and use it to trade through Uniswap V2 or withdraw your funds.',
   ],
   [
     'Why do I need a private note?',
-    'Your note holds the secrets that let you spend your deposit. Save it before depositing and save the new output note before swapping. Anyone with a valid unspent note can spend it; a connected wallet cannot recover a lost note.',
+    'Your note holds the secrets that let you spend your deposit. Save it before depositing and save the new output note before swapping. Anyone with a valid unspent note can spend it, a connected wallet cannot recover a lost note.',
   ],
   [
     'Who submits my transaction and pays for gas?',
-    'Your browser creates a proof and submits the frame transaction directly to the node through RPC. There is no app-operated relayer or bundler signing each spend. The demo uses a prefunded paymaster to pay gas; gas is not free.',
+    'Your browser creates a proof and submits the frame transaction directly to the node through RPC. There is no app-operated relayer or bundler signing each spend.',
   ],
   [
     'Do I give Uniswap an allowance?',
@@ -204,19 +204,6 @@ export default function Home() {
               <span className={styles.featureTag}>YOUR NOTE IS YOUR KEY · NO HOSTED INDEXER</span>
             </article>
           </div>
-          <p className={styles.comparison}>
-            <strong>Where it fits:</strong> Tornado Cash Classic centers on private deposits and later
-            withdrawals; RAILGUN supports a broader shielded wallet and private DeFi interactions.
-            Himitsu explores a narrower flow: spend a private note directly into a Uniswap V2 swap
-            using browser proofs and EIP-8141 frames.{' '}
-            <a href="https://docs.tornado.cash/tornado-cash-classic/circuits/core-deposit-circuit" target="_blank" rel="noreferrer">
-              Tornado Cash docs
-            </a>{' '}
-            ·{' '}
-            <a href="https://docs.railgun.org/wiki/learn/shielding-tokens" target="_blank" rel="noreferrer">
-              RAILGUN docs
-            </a>
-          </p>
         </section>
         <section id="how-it-works" className={styles.how} aria-labelledby="how-title">
           <div className={styles.howHeading}>
@@ -236,7 +223,7 @@ export default function Home() {
               <div>
                 <h3>Deposit. Save your note.</h3>
                 <p>
-                  Connect your wallet to deposit 0.1 ETH. The pool wraps it to WETH; download the
+                  Connect your wallet to deposit 0.1 ETH. The pool wraps it to WETH, download the
                   private note before approving the deposit. The note is the key to that balance.
                 </p>
               </div>
@@ -247,7 +234,7 @@ export default function Home() {
                 <h3>Swap from the pool.</h3>
                 <p>
                   Import the WETH note, review the live quote and slippage, then save a fresh hUSD
-                  note. Your browser proves the spend; the pool swaps exact input through Uniswap V2
+                  note. Your browser proves the spend, the pool swaps exact input through Uniswap V2
                   and deposits all actual output atomically.
                 </p>
               </div>
@@ -259,7 +246,7 @@ export default function Home() {
                 <p>
                   Import the output note to recover its confirmed amount from pool events, then
                   withdraw the full balance to a recipient address. No app account or recovery
-                  phrase is involved; keep your note file safe.
+                  phrase is involved, keep your note file safe.
                 </p>
               </div>
             </li>

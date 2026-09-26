@@ -1,0 +1,24 @@
+{
+  "deployment": "0x60f75912550affca8ac349b0e1b2a15daa42edb3:0xc917b8647dcee2d97389ab639ecc93ac8e009b502441c123d23e7ff35bfd6b5e",
+  "denomination": "100000000000000000",
+  "deposits": [
+    "0xa08d86c09b21aad4f19ee94c3e0b4a1f36bfb179a36d90f3a7f97d035e6e6173",
+    "0x5e7104ee50130ee7fcb7ff7172f5e0853ca4f27438fd14b4edf44a69ebcca666",
+    "0xc55b4eda7a6a1fe268e2fc9d982dca5b7aaa044ad090ef8b76e7cb0ec411a605"
+  ],
+  "withdrawals": [
+    "0xa9c1ad7ad179f597d28652c6b8398d44df407da5d6afde118840de8f34963abe",
+    "0x8001802349dffa9b3df835ffe93e31ee038aad50483c3e9ed1de9dd6f562950f",
+    "0x4b5c2efd9aff60f80354cb7d91a122221a43c04a09dd741468a72aadeedbe653"
+  ],
+  "checks": [
+    "wrong deposit amounts rejected",
+    "equal denominations",
+    "fresh note-file recovery",
+    "swaps disabled",
+    "wrong spend amounts rejected",
+    "exact withdrawals to unfunded recipients",
+    "double spend rejected",
+    "backing reconciled"
+  ]
+}

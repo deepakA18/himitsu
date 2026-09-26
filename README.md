@@ -415,3 +415,27 @@ This sends test transactions: deposit → WETH-to-hUSD → reverse slippage reve
 → variable-WETH-to-hUSD → withdrawal. It verifies note-file recovery, atomic rollback,
 exact withdrawal amounts, and zero remaining exchange/pool allowances. Transaction hashes
 are recorded in `deployments/bidirectional-evidence.json`.
+
+### Fixed-denomination deposits and withdrawals
+
+Select **Fixed notes · 0.1 ETH deposit / 0.1 WETH withdrawal** in the app. Deposit exactly
+0.1 ETH, save the private note, then import it to withdraw exactly 0.1 WETH to a recipient.
+The paymaster funds the withdrawal gas, so the recipient needs no ETH balance. Withdrawals
+return WETH (not native ETH). Wrong amounts are rejected by the contract; spent notes cannot
+be reused. New fixed pools also reject swap execution in their validation layout, and their
+paymaster authorizes withdrawals only.
+
+Equal denominations remove distinctive amounts as a way to distinguish notes within this pool.
+They do not hide deposits, withdrawal recipients, amounts, timing, or network metadata, and do
+not guarantee unlinkability. Practical privacy depends on other users and their activity; the
+local demo is not evidence of a meaningful anonymity set. Private notes must remain secret.
+
+This first UI supports ETH deposits into the fixed WETH pool. It does not convert variable swap
+outputs into fixed notes or handle swap remainders. The existing **Bidirectional swaps · v2**
+deployment remains selectable, with its original notes and variable outputs unchanged.
+
+Local deployment: `RPC_URL=http://127.0.0.1:8567 bun run deploy:app:fixed`.
+Integration test: `RPC_URL=http://127.0.0.1:8567 bun run test:fixed`.
+The test deposits three equal notes, imports each into a fresh cache, withdraws to unfunded
+addresses, checks exact balances, and rejects wrong amounts and repeated spends. Public test
+transaction hashes are saved in `deployments/fixed-evidence.json`.

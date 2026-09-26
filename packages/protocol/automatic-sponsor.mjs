@@ -1,12 +1,12 @@
 import { buildPaymaster, SPONSOR_CALLDATA } from './generated/paymaster.mjs';
 import { cast, RPC_URL, iface, rpc, send } from './ghost.mjs';
 
-export async function deployAutomaticSponsor(pools, { funding = '0.1ether', amountBound = false } = {}) {
+export async function deployAutomaticSponsor(pools, { funding = '0.1ether', amountBound = false, withdrawalsOnly = false } = {}) {
   const policy = {
     chainId: BigInt(await rpc('eth_chainId')),
     pools: pools.map(address => ({ address, verifySelector: amountBound ? cast('sig', 'validateSpend(bytes32,bytes32,address,uint256)') : iface.validateSpend, verifyCalldataBytes: amountBound ? 132 : 100,
       executeSelector: iface.spend, executeCalldataBytes: 4,
-      additionalExecutions: [{ selector: amountBound ? cast('sig', 'spendAndSwapQuoted(address,uint256,address,bytes32)') : iface.spendAndSwapToNote, calldataBytes: amountBound ? 132 : 164 }] })),
+      additionalExecutions: withdrawalsOnly ? [] : [{ selector: amountBound ? cast('sig', 'spendAndSwapQuoted(address,uint256,address,bytes32)') : iface.spendAndSwapToNote, calldataBytes: amountBound ? 132 : 164 }] })),
     expiryVerifier: '0x0000000000000000000000000000000000008141',
     maxTransactionCost: 20_000_000_000_000_000n,
     maxFeePerGas: 10_000_000_000n, maxPriorityFeePerGas: 2_000_000_000n, proofBytes: 256,

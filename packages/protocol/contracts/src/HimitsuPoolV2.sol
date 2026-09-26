@@ -230,6 +230,9 @@ contract HimitsuPoolV2 {
                 "layout: execution frame leaves the pool"
             );
             bytes4 selector = bytes4(_frameData(i, 0));
+            // Fixed-denomination deployments are deposit/withdrawal pools only.
+            // Variable swap outputs must remain in the separate market deployment.
+            require(denomination == 0 || selector == SEL_SPEND, "layout: fixed pool withdrawals only");
             require(
                 selector == SEL_SPEND || selector == SEL_SPEND_AND_SWAP,
                 "layout: selector not sanctioned"

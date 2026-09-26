@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "noteVersion": 2,
+  "name": "Fixed notes · 0.1 ETH deposit / 0.1 WETH withdrawal",
+  "mode": "fixed",
+  "id": "0x60f75912550affca8ac349b0e1b2a15daa42edb3:0xc917b8647dcee2d97389ab639ecc93ac8e009b502441c123d23e7ff35bfd6b5e",
+  "anchorBlock": "30948",
+  "anchorBlockHash": "0xc917b8647dcee2d97389ab639ecc93ac8e009b502441c123d23e7ff35bfd6b5e",
+  "rpcUrl": "http://127.0.0.1:8567",
+  "chainId": "9",
+  "genesisHash": "0xb473dc850bb03610a9d5633bd20dcc66a773dba2ef9b1dc05e1c57319eb932ca",
+  "deploymentBlock": "30931",
+  "deploymentBlockHash": "0xa333cfc22594f413f95fdc2cf82f830a9eca180992fccaef5ee868cab1ecad45",
+  "pool": "0x60f75912550affca8ac349b0e1b2a15daa42edb3",
+  "outputPool": "0x94e80a4418202ca10d882c34a33b4d7ead10cdbd",
+  "token": "0x8a7e22b5b22ff5e83a5c6ca70efe513bbbc12939",
+  "weth": "0x850ddd3e748cd26ca3de1309a335b394e2c82222",
+  "pair": "0x3A91fe487FD1899A24c40d33b7f2Ddd1eb743037",
+  "sponsor": "0x89fdae7e57a11a884bd9e65eedec8c32267f49dd",
+  "wethIsToken0": true,
+  "denomination": "100000000000000000",
+  "defaultDepositAmount": "100000000000000000",
+  "outputDenomination": "100000000000000000000",
+  "codeHashes": {
+    "0x850ddd3e748cd26ca3de1309a335b394e2c82222": "0xaba056211db765ec997674576838631b7639cdef86b675b472e702c7fe88cd2f",
+    "0xc9d4cad640c15c8ac3a9bea1605f5d32b1273b2c": "0x354b26999e434f8256d168395315e1f51fc15bf49bf2e6bb58fc549bd597e7da",
+    "0x395e6142b05a0a0a476818c765848d9123c25460": "0x38b7bd40991688b63211592b1d83a35d79ef3d94d435fce2ed58f1b46f825eaa",
+    "0x84c25a7fed54f2e16bd181318238d119f8778544": "0xcfcada82fb70f35738754bc600d8a52bc1da92a7d2f5b0e091d03fbae7dd84aa",
+    "0x07f4420b5ad0ab3a04bafd12b421199e46ba54a8": "0xf7a076ca7e4e1813d1395bc5ec140a5c3897fb1d2538572c72c429e129a9bf3b",
+    "0x60f75912550affca8ac349b0e1b2a15daa42edb3": "0x8959d02561f3579e3babaf6c27db8b69f6963a3d2df46bf1d4ab49949d9e6e95",
+    "0x8a7e22b5b22ff5e83a5c6ca70efe513bbbc12939": "0x38871ea63289b9c57fc10bbabed417e20827ea4549e684f74d67a2a503ac428b",
+    "0x37aa3007856adca8a7882c423098e3956405a16b": "0xbab145d02e7005f0d84c6c1639d39b799b0ea16df99ebbdaf5a14d9da820b4e0",
+    "0x3A91fe487FD1899A24c40d33b7f2Ddd1eb743037": "0x5b83bdbcc56b2e630f2807bbadd2b0c21619108066b92a58de081261089e9ce5",
+    "0x94e80a4418202ca10d882c34a33b4d7ead10cdbd": "0x7544110dca7e032b2edf7cb781d820dd3776cd7664e66b2a97e04a6c3e8d63b9",
+    "0x89fdae7e57a11a884bd9e65eedec8c32267f49dd": "0x40425138b1a790ca8bd3e97dc6a737161846df1d2e765afa743c111b5feb980e"
+  },
+  "artifacts": {
+    "wasm": {
+      "url": "/proving/spend-v2.wasm",
+      "sha256": "9fa8af7dc5de97e022030251c35729af5aa89411883df40c6d24650ef0a24c4a"
+    },
+    "zkey": {
+      "url": "/proving/spend-v2.zkey",
+      "sha256": "5e8b6769baa9183e556e5b32da5452be232fb98829eb50af82147c5fde9418e9"
+    }
+  }
+}

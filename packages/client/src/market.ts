@@ -128,6 +128,10 @@ export async function readiness(
     withdrawalIssues: string[] = [];
   let quote = 0n,
     swapFunding = 0n;
+  if (d.mode === 'fixed')
+    swapIssues.push(
+      'Fixed notes support deposits and withdrawals only. Select the bidirectional deployment to swap.',
+    );
   if (inputIndex >= 1024) depositIssues.push('WETH note pool is full');
   if ((reverse ? inputIndex : outputIndex) >= 1024) swapIssues.push('Output note pool is full');
   if (reverse && (d.noteVersion !== 2 || BigInt(d.denomination) !== 0n))

@@ -303,6 +303,8 @@ export class Controller {
         note = this.vault.data.notes.find((n) => n.id === id);
       if (!note || this.noteState(note) !== 'Available')
         throw new Error('Select an available note after synchronization');
+      if (kind === 'swap' && d.mode === 'fixed')
+        throw new Error('Fixed notes support withdrawals only');
       const reverse = note.pool.toLowerCase() === d.outputPool.toLowerCase();
       if (!reverse && note.pool.toLowerCase() !== d.pool.toLowerCase())
         throw new Error('Unknown source pool');

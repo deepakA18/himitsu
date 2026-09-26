@@ -2727,81 +2727,81 @@
   },
   "deployedBytecode": {
     "functionDebugData": {
-      "@_4692": {
+      "@_4703": {
         "entryPoint": null,
-        "id": 4692,
+        "id": 4703,
         "parameterSlots": 0,
         "returnSlots": 0
       },
-      "@_transfer_4907": {
+      "@_transfer_4918": {
         "entryPoint": 1421,
-        "id": 4907,
+        "id": 4918,
         "parameterSlots": 3,
         "returnSlots": 1
       },
-      "@allowance_4667": {
+      "@allowance_4678": {
         "entryPoint": null,
-        "id": 4667,
+        "id": 4678,
         "parameterSlots": 0,
         "returnSlots": 0
       },
-      "@approve_4790": {
+      "@approve_4801": {
         "entryPoint": 816,
-        "id": 4790,
+        "id": 4801,
         "parameterSlots": 2,
         "returnSlots": 1
       },
-      "@balanceOf_4661": {
+      "@balanceOf_4672": {
         "entryPoint": null,
-        "id": 4661,
+        "id": 4672,
         "parameterSlots": 0,
         "returnSlots": 0
       },
-      "@decimals_4657": {
+      "@decimals_4668": {
         "entryPoint": null,
-        "id": 4657,
+        "id": 4668,
         "parameterSlots": 0,
         "returnSlots": 0
       },
-      "@deposit_4720": {
+      "@deposit_4731": {
         "entryPoint": 561,
-        "id": 4720,
+        "id": 4731,
         "parameterSlots": 0,
         "returnSlots": 0
       },
-      "@name_4651": {
+      "@name_4662": {
         "entryPoint": 677,
-        "id": 4651,
+        "id": 4662,
         "parameterSlots": 0,
         "returnSlots": 0
       },
-      "@symbol_4654": {
+      "@symbol_4665": {
         "entryPoint": 1389,
-        "id": 4654,
+        "id": 4665,
         "parameterSlots": 0,
         "returnSlots": 0
       },
-      "@totalSupply_4669": {
+      "@totalSupply_4680": {
         "entryPoint": null,
-        "id": 4669,
+        "id": 4680,
         "parameterSlots": 0,
         "returnSlots": 0
       },
-      "@transferFrom_4866": {
+      "@transferFrom_4877": {
         "entryPoint": 924,
-        "id": 4866,
+        "id": 4877,
         "parameterSlots": 3,
         "returnSlots": 1
       },
-      "@transfer_4807": {
+      "@transfer_4818": {
         "entryPoint": 1402,
-        "id": 4807,
+        "id": 4818,
         "parameterSlots": 2,
         "returnSlots": 1
       },
-      "@withdraw_4762": {
+      "@withdraw_4773": {
         "entryPoint": 1118,
-        "id": 4762,
+        "id": 4773,
         "parameterSlots": 1,
         "returnSlots": 0
       },

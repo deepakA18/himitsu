@@ -1,0 +1,57 @@
+.stack {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 100;
+  width: min(380px, calc(100vw - 32px));
+  display: grid;
+  gap: 10px;
+  max-height: 70dvh;
+  overflow-y: auto;
+  pointer-events: none;
+}
+.notice {
+  position: relative;
+  background: #161616;
+  color: #f5f5f5;
+  border: 1px solid #646464;
+  border-radius: 16px;
+  padding: 20px 44px 20px 20px;
+  box-shadow: 0 8px 32px #0006;
+  pointer-events: auto;
+  overflow-wrap: anywhere;
+}
+.notice strong {
+  font-size: 15px;
+}
+.notice p {
+  margin: 8px 0 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #ccc;
+}
+.notice a {
+  color: #fff;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.notice .dismiss {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  background: transparent;
+  color: #fff;
+  border: 0;
+  font-size: 22px;
+}
+@media (max-width: 540px) {
+  .stack {
+    right: 16px;
+    bottom: 16px;
+  }
+}

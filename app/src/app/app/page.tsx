@@ -7,6 +7,7 @@ import { getAccount } from 'wagmi/actions';
 import { guardDepositWallet } from '../../lib/deposit-wallet';
 import { useWalletDeployment } from '../../components/wallet-provider';
 import { Controller, Vault, IndexedVaultStore, type Wallet } from '../../lib/controller';
+import { TransactionNotifications } from '../../components/transaction-notifications';
 import { SwapPanel } from '../../components/swap-panel';
 import {
   createPrivateNote,
@@ -32,6 +33,7 @@ type Draft = {
 export default function Page() {
   const initialDeployment = useWalletDeployment();
   const [config, setConfig] = useState<Deployment | null>(initialDeployment);
+  const fixedMode = config?.mode === 'fixed';
   const wagmiConfig = useConfig();
   const { address: account, chainId: walletChainId, isConnected } = useAccount();
   const { switchChainAsync } = useSwitchChain();
@@ -289,6 +291,12 @@ export default function Page() {
           : health.swapIssues.join(' ');
   return (
     <main data-action={tab}>
+      <TransactionNotifications
+        key={config?.id ?? 'loading'}
+        attempts={attempts}
+        pool={config?.pool ?? ''}
+        error={error}
+      />
       <header className="trade-header">
         <a className="trade-brand" href="/" aria-label="Himitsu home">
           <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
@@ -328,21 +336,30 @@ export default function Page() {
               : 'Bring your private balance back to an address you choose.'}
         </p>
       </div>
+      {fixedMode && (
+        <p className="hint">
+          Fixed-denomination pool · Deposit 0.1 ETH, withdraw 0.1 WETH. Equal amounts reduce
+          amount-based matching. Deposit and recipient addresses remain public; timing and a small
+          number of users can still reveal links. Keep your note secret.
+        </p>
+      )}
       <nav className="note-tabs" aria-label="Actions">
-        {(['deposit', 'swap', 'withdraw'] as const).map((t) => (
-          <button
-            key={t}
-            className={tab === t ? '' : 'secondary'}
-            aria-pressed={tab === t}
-            disabled={!!busy || !!draft}
-            onClick={() => {
-              setTab(t);
-              setError('');
-            }}
-          >
-            {t[0].toUpperCase() + t.slice(1)}
-          </button>
-        ))}
+        {(['deposit', 'swap', 'withdraw'] as const)
+          .filter((t) => !fixedMode || t !== 'swap')
+          .map((t) => (
+            <button
+              key={t}
+              className={tab === t ? '' : 'secondary'}
+              aria-pressed={tab === t}
+              disabled={!!busy || !!draft}
+              onClick={() => {
+                setTab(t);
+                setError('');
+              }}
+            >
+              {t[0].toUpperCase() + t.slice(1)}
+            </button>
+          ))}
       </nav>
       <p className="status" role="status">
         {busy || status}
@@ -446,7 +463,11 @@ export default function Page() {
           <section className="note-action">
             <p className="eyebrow">START WITH ETH</p>
             <h2>Deposit into the pool.</h2>
-            <p>Create a private WETH note to swap or withdraw later.</p>
+            <p>
+              {fixedMode
+                ? 'Each note holds exactly 0.1 WETH. Save your note to withdraw later.'
+                : 'Create a private WETH note to swap or withdraw later.'}
+            </p>
             <label htmlFor="deposit-amount">Amount · ETH</label>
             <input
               id="deposit-amount"
@@ -757,6 +778,7 @@ export default function Page() {
                 if (!r.ok) throw new Error('Deployment unavailable');
                 const d = await r.json();
                 setConfig(d);
+                setTab('deposit');
                 setController(null);
                 setNoteId('');
                 setReverse(false);

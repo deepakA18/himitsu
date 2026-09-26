@@ -31,7 +31,9 @@
     "test:readiness": "bun scripts/test-readiness.ts",
     "test:v2-deposits": "bun scripts/test-v2-deposits.ts",
     "test:private-notes": "bun build scripts/test-private-notes.ts --target=node --packages=external --outfile=.local/test-private-notes.mjs && node .local/test-private-notes.mjs",
-    "test:bidirectional": "bun build scripts/test-bidirectional.ts --target=node --packages=external --outfile=.local/test-bidirectional.mjs && node .local/test-bidirectional.mjs"
+    "test:bidirectional": "bun build scripts/test-bidirectional.ts --target=node --packages=external --outfile=.local/test-bidirectional.mjs && node .local/test-bidirectional.mjs",
+    "deploy:app:fixed": "node packages/protocol/compile-contracts.mjs && HIMITSU_POOL_MODE=fixed node packages/protocol/deploy-app-v2.mjs",
+    "test:fixed": "bun build scripts/test-fixed.ts --target=node --packages=external --outfile=.local/test-fixed.mjs && node .local/test-fixed.mjs"
   },
   "dependencies": {
     "@scure/bip39": "1.6.0",

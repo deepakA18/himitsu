@@ -27,6 +27,7 @@ export const poolV2Abi = parseAbi([
   'event DepositV2(bytes32 indexed commitment,uint32 leafIndex,bytes32 root,bytes32 recoveryTag,uint256 amount)',
 ]);
 export interface Deployment {
+  mode?: 'fixed';
   noteVersion?: 2;
   name?: string;
   version: 1;
