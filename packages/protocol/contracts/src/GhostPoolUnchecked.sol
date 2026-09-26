@@ -62,7 +62,7 @@ contract GhostPoolUnchecked {
     uint256 private constant FIELD_SIZE =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
     uint256 private constant ZERO_VALUE =
-        uint256(keccak256("ghostswap.empty.leaf")) %
+        uint256(keccak256("himitsu.empty.leaf")) %
             21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
     // TXPARAM ids

@@ -19,7 +19,7 @@ function seeded(seed) {
   }
 }
 
-export const SEED = 'ghostswap-devnet-0'
+export const SEED = 'himitsu-devnet-0'
 /** The note's public commitment: y = x1 * x2 with the secret factors below. */
 export const SECRET = { x1: 0xdeadbeefn, x2: 0xfeedfacen }
 

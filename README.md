@@ -109,7 +109,7 @@ bun run test:market
 
 ## Integrating the existing implementation
 
-The stable integration surface is `packages/protocol/ghost.mjs`; `automatic-sponsor.mjs` adds the generated Himitsu sponsor policy. Historical Ghost names and the Merkle zero-leaf domain are preserved for compatibility. `GhostPoolUnchecked`, the stock verifier, and toy circuits are attack/comparison fixtures, not deployment choices for the app.
+The stable integration surface is `packages/protocol/ghost.mjs`; `automatic-sponsor.mjs` adds the generated Himitsu sponsor policy. `GhostPoolUnchecked`, the stock verifier, and toy circuits are attack/comparison fixtures, not deployment choices for the app. The Himitsu Merkle zero-leaf domain is defined consistently in the client and contract sources; deployments created with the former domain are incompatible.
 
 ```sh
 bun run build:protocol
@@ -135,7 +135,7 @@ The team funds test ETH sponsorship; users' notes are not charged gas. Included 
 
 Deposits, withdrawals, AMM trade amounts, and network metadata remain observable. The intended privacy property hides which deposited note authorized an action. Public-network acceptance, audit-grade security, and sustainable gas economics are not established. Independent-client nonce contention is tested, but competing users still share a pool nonce and may need explicit retries.
 
-`docs/implementation-plan-source.md` preserves the supplied original plan unchanged for provenance. Himitsu is the product name for the implementation.
+`docs/implementation-plan-source.md` preserves the supplied original plan with Himitsu naming for provenance.
 
 ## Local test node
 

@@ -24,7 +24,7 @@ export const LEVELS = 10
 
 /** Mirrors GhostPool.ZERO_VALUE. */
 export const ZERO_VALUE =
-  BigInt('0x' + Buffer.from(keccak_256(Buffer.from('ghostswap.empty.leaf'))).toString('hex')) %
+  BigInt('0x' + Buffer.from(keccak_256(Buffer.from('himitsu.empty.leaf'))).toString('hex')) %
   FIELD_SIZE
 
 let poseidonImpl = null

@@ -1,4 +1,4 @@
-# GhostSwap — private swaps, zero exchange approvals
+# Himitsu — private swaps, zero exchange approvals
 
 Phased implementation plan · researched September 20, 2026 · updated September 25, 2026 — free prefunded paymaster and direct browser submission
 
@@ -64,7 +64,7 @@ The following table records the earlier milestone. The updates above supersede i
 | Failed swap | Nullifier remained unspent; pool WETH unchanged |
 | Limitations at that earlier milestone | Clock-derived development entropy and custom pair port (both since superseded); fixed denomination and finite tree capacity |
 
-The report labels the lifecycle suite 7/7 but also lists deposit and A–E/duplicate-spend outcomes; preserve the concrete cases without inferring a different test count. The reported proving time is not a browser benchmark. Lifecycle.mjs supersedes ghostswap.mjs; the toy prover remains an offline historical fixture.
+The report labels the lifecycle suite 7/7 but also lists deposit and A–E/duplicate-spend outcomes; preserve the concrete cases without inferring a different test count. The reported proving time is not a browser benchmark. The current lifecycle runner supersedes the original; the toy prover remains an offline historical fixture.
 
 ### Architecture decision — keep the pool as sender for this hackathon
 
@@ -412,7 +412,7 @@ Validation is read-only. Check whether a nullifier is unused there, but consume 
 
 For the contract-dispatched route, require SENDER mode, the expected frame position, native sender equal to GhostAccount, target equal to GhostAccount, and authenticated self-execution. `msg.sender == ENTRY_POINT` alone is not authorization. Restrict the account's dispatch to known swap/withdraw operations and reject module installation or arbitrary execute payloads from note holders.
 
-**Gas MVP — accepted decision:** Deploy `GasSponsor` as a separate contract and prefund it with a deliberately limited amount of faucet ETH. It pays gas for permitted swaps and withdrawals; it never deducts gas from users' notes. The pool remains the sender and token custodian. The paymaster funding wallet only funds the contract; it does not sign individual GhostSwap transactions.
+**Gas MVP — accepted decision:** Deploy `GasSponsor` as a separate contract and prefund it with a deliberately limited amount of faucet ETH. It pays gas for permitted swaps and withdrawals; it never deducts gas from users' notes. The pool remains the sender and token custodian. The paymaster funding wallet only funds the contract; it does not sign individual Himitsu transactions.
 
 **Automatic sponsorship policy to implement:**
 
@@ -517,7 +517,7 @@ Show both a clean consumer view and an expandable technical receipt. The public 
 
 ## Phase 7 — submission, reproducibility, and scope freeze
 
-**Primary bounty: Uniswap's Best Uniswap Stack Contribution, new-build track ($6,000 pool).** The published rules explicitly include v2 integrations. GhostSwap's use of the pair is central to its approval-free settlement. Include a public repository, README pointers to the relevant integration code, `FEEDBACK.md`, and the required Developer Feedback Form. Label the reported deployed contracts as our testnet deployment of official Uniswap sources, with compiler settings and bytecode evidence; do not imply an official Uniswap-operated deployment. Prize eligibility and selection remain the organizers' decision. [Tokyo 2026 prize rules](https://ethglobal.com/events/tokyo2026/prizes)
+**Primary bounty: Uniswap's Best Uniswap Stack Contribution, new-build track ($6,000 pool).** The published rules explicitly include v2 integrations. Himitsu's use of the pair is central to its approval-free settlement. Include a public repository, README pointers to the relevant integration code, `FEEDBACK.md`, and the required Developer Feedback Form. Label the reported deployed contracts as our testnet deployment of official Uniswap sources, with compiler settings and bytecode evidence; do not imply an official Uniswap-operated deployment. Prize eligibility and selection remain the organizers' decision. [Tokyo 2026 prize rules](https://ethglobal.com/events/tokyo2026/prizes)
 
 Do not add World, ENS, or another chain purely to fill the three-prize allowance. No second sponsor is necessary for this architecture.
 

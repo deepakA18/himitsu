@@ -2,7 +2,7 @@ import { poseidon1, poseidon2 } from 'poseidon-lite';
 import { keccak256, stringToHex, type Hex } from 'viem';
 export const FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 export const hex32 = (v: bigint): Hex => `0x${v.toString(16).padStart(64, '0')}`;
-export const ZERO = BigInt(keccak256(stringToHex('ghostswap.empty.leaf'))) % FIELD;
+export const ZERO = BigInt(keccak256(stringToHex('himitsu.empty.leaf'))) % FIELD;
 export interface SecretNote {
   amount?: string;
   baseCommitment?: Hex;
