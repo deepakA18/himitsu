@@ -84,6 +84,11 @@
     a{color:#c9c9c5;text-decoration:underline;text-decoration-color:#666;text-underline-offset:3px}
     .todo{color:#b9ad8a;border-bottom:1px dotted #b9ad8a}
     .final .content{justify-content:flex-end;padding-bottom:70px}.final h2{font-size:112px;max-width:1190px}.final .lede{font-size:27px;max-width:840px}.final .contact{font:15px var(--mono);color:#888;margin-top:90px;line-height:2}
+    .point-list{list-style:none;padding:0;margin:48px 0 0;display:grid;gap:0;max-width:1390px}
+    .point-list li{border-top:1px solid #393939;padding:20px 0;color:#ddd;font-size:29px;line-height:1.2;letter-spacing:-.025em}
+    .point-list li:before{content:"/";font:18px var(--mono);color:#888;margin-right:24px}
+    .compact-compare{margin-top:36px}.compact-compare th{padding:12px 16px}.compact-compare td{padding:18px 16px;font-size:17px}.compact-compare td:first-child{font-size:19px}
+    .short .content{justify-content:center}.short h2{max-width:1480px}.short .frames{margin-top:42px}.short .frames .frame{min-height:230px}
     @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}}
     @media print{html,body{width:1920px}.slide{scroll-snap-align:none;animation:none!important}.slide:before,.node,.hero-mark,.orbit,.note-card:after,.connector:after{animation:none!important}}
   </style>
@@ -94,162 +99,120 @@
     <div class="hero-mark" aria-hidden="true"><span class="glyph">秘密</span><i class="orbit"></i></div>
     <div class="content hero-content">
       <p class="kicker">HIMITSU PROTOCOL</p>
-      <h1>Swap from a<br>private note.</h1>
-      <p class="lede">Himitsu proves the note spend in your browser, trades through Uniswap V2, and saves the output in a new private note.</p>
+      <h1>Swap from a<br>private note</h1>
+      <p class="lede">Private note → Uniswap V2 → new private note</p>
       <p class="hero-meta">PROTOCOL PRESENTATION · 2026</p>
     </div>
     <div class="foot"><span>Himitsu protocol</span><span>01</span></div>
   </section>
 
-  <section class="slide">
-    <div class="top"><span class="brand"><span class="mark">H</span>himitsu</span><span>01 · The gap</span></div>
+  <section class="slide short">
+    <div class="top"><span class="brand"><span class="mark">H</span>himitsu</span><span>01 · The problem</span></div>
     <div class="content">
       <p class="kicker">THE PROBLEM</p>
-      <h2>A public wallet swap can link a user to a trade.</h2>
-      <div class="two">
-        <div><p class="statement">A standard wallet swap publishes the sender, amount, and time.</p><p class="detail">Those public details can connect a wallet to its later activity.</p></div>
-        <div><p class="callout">A private note can hide which pool deposit is spent, but it needs proof-based authorization to trade through an AMM.</p><p class="detail">The product problem is to authorize the note, execute a limited swap, and place the output in a new note.</p></div>
-      </div>
+      <h2>Wallet swaps expose the link to a trade</h2>
+      <ul class="point-list"><li>Wallet address is public</li><li>Swap amount and timing are public</li><li>Private notes need a constrained path to AMM liquidity</li></ul>
     </div>
     <div class="foot"><span>The problem</span><span>02</span></div>
   </section>
 
-  <section class="slide">
-    <div class="top"><span class="brand"><span class="mark">H</span>himitsu</span><span>02 · The product</span></div>
+  <section class="slide short">
+    <div class="top"><span class="brand"><span class="mark">H</span>himitsu</span><span>02 · The solution</span></div>
     <div class="content">
       <p class="kicker">THE SOLUTION</p>
-      <h2>Himitsu swaps from a private note through Uniswap V2.</h2>
-      <p class="lede">The browser proves ownership. The pool checks the allowed action. The AMM executes the swap. A second pool records the output as a new private note.</p>
+      <h2>Swap from one private note to another</h2>
       <div class="diagram">
-        <div class="node"><small>01 · FUND</small><strong>0.1 ETH deposit</strong></div><i class="connector"></i>
-        <div class="node"><small>02 · HOLD</small><strong>WETH note</strong></div><i class="connector"></i>
-        <div class="node"><small>03 · PROVE</small><strong>Groth16 in browser</strong></div><i class="connector"></i>
-        <div class="node"><small>04 · EXECUTE</small><strong>Uniswap V2 pair</strong></div><i class="connector"></i>
-        <div class="node"><small>05 · RECEIVE</small><strong>hUSD note</strong></div>
+        <div class="node"><small>01 · DEPOSIT</small><strong>WETH note</strong></div><i class="connector"></i>
+        <div class="node"><small>02 · PROVE</small><strong>Groth16 in browser</strong></div><i class="connector"></i>
+        <div class="node"><small>03 · SWAP</small><strong>Uniswap V2</strong></div><i class="connector"></i>
+        <div class="node"><small>04 · RECEIVE</small><strong>hUSD note</strong></div>
       </div>
-      <p class="detail">The user saves the output note and uses it to withdraw or make another swap.</p>
+      <ul class="point-list"><li>Proof authorizes a limited spend</li><li>Swap output goes into a new private note</li></ul>
     </div>
-    <div class="foot"><span>The solution</span><span>03</span></div>
+    <div class="foot"><span>Note to note</span><span>03</span></div>
   </section>
 
-  <section class="slide">
-    <div class="top"><span class="brand"><span class="mark">H</span>himitsu</span><span>03 · User experience</span></div>
+  <section class="slide short">
+    <div class="top"><span class="brand"><span class="mark">H</span>himitsu</span><span>03 · EIP-8141</span></div>
     <div class="content">
-      <p class="kicker">HOW THE SWAP WORKS</p>
-      <h2>The user controls both private notes.</h2>
-      <div class="note">
-        <div class="note-card"><span class="meta">INPUT NOTE · WETH</span><span class="amount">0.1 WETH</span><span class="secret">秘密 · held by you</span></div>
-        <div class="note-card output"><span class="meta">OUTPUT NOTE · hUSD</span><span class="amount">actual AMM output</span><span class="secret">秘密 · recovered by you</span></div>
+      <p class="kicker">EIP-8141 · TYPE 0x06</p>
+      <h2>One transaction, four frames</h2>
+      <div class="frames four">
+        <div class="frame"><span class="kind">01</span><h3>Expiry</h3><p>Reject expired transaction</p></div>
+        <div class="frame"><span class="kind">02</span><h3>Pool verify</h3><p>Check proof and spend</p></div>
+        <div class="frame"><span class="kind">03</span><h3>Paymaster</h3><p>Approve gas payment</p></div>
+        <div class="frame"><span class="kind">04</span><h3>Pool send</h3><p>Swap and deposit output</p></div>
       </div>
-      <div class="two" style="margin-top:38px"><p class="detail">The browser creates the output note before it submits the transaction. After confirmation, the app checks public pool events to recover the output amount.</p><p class="callout">The browser creates the proof and submits the transaction to the configured node. The app does not send the note to a hosted proving service or relayer.</p></div>
+      <ul class="point-list"><li>Pool is the transaction sender</li><li>Prefunded paymaster pays network gas</li></ul>
     </div>
-    <div class="foot"><span>User flow</span><span>04</span></div>
+    <div class="sources">EIP-8141 draft · Requires a compatible Ethrex network</div>
+    <div class="foot"><span>EIP-8141 is the transaction core</span><span>04</span></div>
   </section>
 
-  <section class="slide">
-    <div class="top"><span class="brand"><span class="mark">H</span>himitsu</span><span>04 · Transaction design</span></div>
+  <section class="slide short">
+    <div class="top"><span class="brand"><span class="mark">H</span>himitsu</span><span>04 · Alternatives</span></div>
     <div class="content">
-      <p class="kicker">WHY THE CURRENT FLOW DOES NOT USE ERC-4337</p>
-      <h2>Himitsu submits a native EIP-8141 transaction.</h2>
-      <div class="explain">
-        <div><div class="big-num">0x06</div><p class="mini">EIP-8141 TRANSACTION TYPE</p></div>
-        <div><p>ERC-4337 sends a UserOperation through an EntryPoint contract and a bundler. Himitsu does not create UserOperations or use that route.</p><p style="margin-top:25px">The current design needs the shared pool to be the transaction sender, prove the note spend, and authorize a separate gas payer. EIP-8141 represents those steps as ordered frames in one transaction.</p><p style="margin-top:25px;color:#ddd">This is an architecture choice for an EIP-8141-compatible Ethrex network. ERC-4337 can also support sponsored accounts, but it uses a different transaction path.</p></div>
-      </div>
-    </div>
-    <div class="sources">Sources: <a href="https://eips.ethereum.org/EIPS/eip-4337">EIP-4337</a> · <a href="https://eips.ethereum.org/EIPS/eip-8141">EIP-8141 draft</a></div>
-    <div class="foot"><span>ERC-4337 is not part of the current transaction flow</span><span>05</span></div>
-  </section>
-
-  <section class="slide">
-    <div class="top"><span class="brand"><span class="mark">H</span>himitsu</span><span>05 · What is different</span></div>
-    <div class="content">
-      <p class="kicker">EIP-8141 IS THE TRANSACTION CORE</p>
-      <h2>One type-0x06 transaction runs four ordered frames.</h2>
-      <div class="frames four" style="margin-top:55px">
-        <div class="frame"><span class="kind">01 · VERIFY</span><span class="scope">EXPIRY</span><h3>Check deadline</h3><p>The 0x8141 verifier rejects an expired transaction.</p></div>
-        <div class="frame"><span class="kind">02 · VERIFY</span><span class="scope">POOL</span><h3>Prove note spend</h3><p>The pool checks the proof, nullifier, and allowed action.</p></div>
-        <div class="frame"><span class="kind">03 · VERIFY</span><span class="scope">PAYMASTER</span><h3>Approve gas payment</h3><p>The paymaster checks its policy and fee limits.</p></div>
-        <div class="frame"><span class="kind">04 · SENDER</span><span class="scope">POOL</span><h3>Execute the swap</h3><p>The pool calls Uniswap V2 and deposits output into the next pool.</p></div>
-      </div>
-      <p class="detail" style="margin-top:34px">The pool is the transaction sender. The separately funded paymaster pays network gas. The user’s wallet does not pay gas for the swap.</p>
-    </div>
-    <div class="foot"><span>EIP-8141 implementation · pinned Ethrex network</span><span>06</span></div>
-  </section>
-
-  <section class="slide">
-    <div class="top"><span class="brand"><span class="mark">H</span>himitsu</span><span>06 · Architecture comparison</span></div>
-    <div class="content">
-      <p class="kicker">WHY THIS FITS THE PRODUCT</p>
-      <h2>Frame transactions put sender, validation, and payment in one flow.</h2>
-      <table class="compare">
-        <thead><tr><th>Approach</th><th>Transaction path</th><th>Trade-off for Himitsu</th></tr></thead>
+      <p class="kicker">WHY THIS DESIGN</p>
+      <h2>Different transaction paths, different trade-offs</h2>
+      <table class="compare compact-compare">
+        <thead><tr><th>Approach</th><th>Path</th><th>Trade-off</th></tr></thead>
         <tbody>
-          <tr><td>Direct wallet swap</td><td>The user’s EOA sends the swap and pays gas.</td><td>The wallet address is the sender. Himitsu instead uses the pool as sender and a prefunded paymaster for gas.</td></tr>
-          <tr><td>Relayer meta-transaction</td><td>An app service receives a signed request and submits a transaction.</td><td>The relayer adds a service and signing-key dependency. Himitsu’s browser submits the raw frame transaction to the node.</td></tr>
-          <tr><td>ERC-4337</td><td>A bundler submits a UserOperation through an EntryPoint.</td><td>It supports sponsored smart accounts, but adds the UserOperation and EntryPoint path that this pool-sender design does not need.</td></tr>
-          <tr><td>EIP-8141 in Himitsu</td><td>One type-0x06 transaction orders pool validation, gas approval, and execution.</td><td>It fits the shared pool sender and separates proof authorization from paymaster approval. It requires network support for EIP-8141.</td></tr>
+          <tr><td>Direct wallet</td><td>User sends and pays</td><td>Wallet is the public sender</td></tr>
+          <tr><td>Relayer</td><td>Service signs and submits</td><td>Adds service dependency</td></tr>
+          <tr><td>ERC-4337</td><td>UserOperation · EntryPoint · bundler</td><td>Separate account-abstraction route</td></tr>
+          <tr><td>EIP-8141</td><td>Frames in type 0x06</td><td>Pool sender · separate paymaster</td></tr>
         </tbody>
       </table>
+      <ul class="point-list"><li>Frames combine validation, payment, and execution</li><li>ERC-4337 also supports sponsored gas</li></ul>
     </div>
-    <div class="sources">Sources: <a href="https://eips.ethereum.org/EIPS/eip-4337">EIP-4337</a> · <a href="https://eips.ethereum.org/EIPS/eip-8141">EIP-8141 draft</a></div>
-    <div class="foot"><span>Comparison of transaction paths</span><span>07</span></div>
+    <div class="sources">EIP-4337 · EIP-8141 draft</div>
+    <div class="foot"><span>Fit for this transaction design</span><span>05</span></div>
   </section>
 
-  <section class="slide">
-    <div class="top"><span class="brand"><span class="mark">H</span>himitsu</span><span>07 · Privacy protocol comparison</span></div>
+  <section class="slide short">
+    <div class="top"><span class="brand"><span class="mark">H</span>himitsu</span><span>05 · Protocols</span></div>
     <div class="content">
-      <p class="kicker">OTHER PRIVACY SYSTEMS SOLVE RELATED PROBLEMS</p>
-      <h2>Himitsu focuses on one private swap route.</h2>
-      <table class="compare">
-        <thead><tr><th>Protocol</th><th>What it does</th><th>Himitsu’s focus</th></tr></thead>
+      <p class="kicker">RELATED PRIVACY PROTOCOLS</p>
+      <h2>Himitsu focuses on one private swap route</h2>
+      <table class="compare compact-compare">
+        <thead><tr><th>Protocol</th><th>Focus</th><th>Difference</th></tr></thead>
         <tbody>
-          <tr><td>Tornado Cash Classic</td><td>Users deposit fixed amounts and later withdraw with a zero-knowledge proof.</td><td>Himitsu also spends a note through an AMM and records the output in a second pool.</td></tr>
-          <tr><td>RAILGUN</td><td>Users hold shielded balances and can make private calls to other contracts.</td><td>Himitsu focuses on a shared WETH and hUSD pool, with EIP-8141 frames for note validation and gas payment.</td></tr>
-          <tr><td>Himitsu</td><td>A browser-generated proof authorizes a note spend that calls Uniswap V2.</td><td>The output is committed to a new private note in the same transaction.</td></tr>
+          <tr><td>Tornado Cash Classic</td><td>Private deposits and withdrawals</td><td>No integrated AMM output-note flow</td></tr>
+          <tr><td>RAILGUN</td><td>Shielded balances and private calls</td><td>Broader private DeFi</td></tr>
+          <tr><td>Himitsu</td><td>EIP-8141 note spend through Uniswap V2</td><td>Output committed to a second note</td></tr>
         </tbody>
       </table>
-      <p class="detail" style="margin-top:24px">Himitsu is not a replacement for broader privacy systems. Its contribution is this transaction design and its EIP-8141 implementation.</p>
+      <ul class="point-list"><li>Narrower transaction path</li><li>Not a replacement for broader privacy systems</li></ul>
     </div>
-    <div class="sources">Sources: <a href="https://docs.tornado.cash/tornado-cash-classic/circuits/core-deposit-circuit">Tornado Cash Classic</a> · <a href="https://docs.railgun.org/developer-guide/wallet/transactions/cross-contract-calls">RAILGUN cross-contract calls</a> · <a href="https://eips.ethereum.org/EIPS/eip-8141">EIP-8141 draft</a></div>
-    <div class="foot"><span>Privacy protocol comparison</span><span>08</span></div>
+    <div class="sources">Tornado Cash Classic · RAILGUN · EIP-8141 draft</div>
+    <div class="foot"><span>Protocol comparison</span><span>06</span></div>
   </section>
 
-  <section class="slide">
-    <div class="top"><span class="brand"><span class="mark">H</span>himitsu</span><span>08 · Privacy boundaries</span></div>
+  <section class="slide short">
+    <div class="top"><span class="brand"><span class="mark">H</span>himitsu</span><span>06 · Privacy boundaries</span></div>
     <div class="content">
-      <p class="kicker">WHAT THE PROOF HIDES, AND WHAT IT DOES NOT</p>
-      <h2>The proof hides the spent note, not the public swap.</h2>
+      <p class="kicker">PRIVACY BOUNDARIES</p>
+      <h2>The proof hides the note, not the swap</h2>
       <div class="privacy-grid">
-        <div class="privacy"><h3>Private</h3><p>The proof shows that the user controls a valid, unspent note without naming its deposit commitment. The note secret and witness stay in the browser.</p><div style="margin-top:24px"><span class="tag">NOTE SECRET</span><span class="tag">SPEND MEMBERSHIP</span><span class="tag">BROWSER PROOF</span></div></div>
-        <div class="privacy"><h3>Public</h3><p>Deposit and swap amounts, transaction timing, AMM activity, recipient addresses, and RPC metadata remain observable. These details can still support correlation.</p><div style="margin-top:24px"><span class="tag">AMOUNTS</span><span class="tag">TIMING</span><span class="tag">RPC DATA</span></div></div>
+        <div class="privacy"><h3>Private</h3><ul class="point-list"><li>Spent note commitment</li><li>Note secret and witness</li><li>Proof generated in browser</li></ul></div>
+        <div class="privacy"><h3>Public</h3><ul class="point-list"><li>Amounts and timing</li><li>AMM activity</li><li>Recipient and RPC metadata</li></ul></div>
       </div>
-      <p class="detail" style="margin-top:32px">Himitsu does not hide amounts, timing, or network metadata.</p>
     </div>
-    <div class="foot"><span>Privacy boundaries</span><span>09</span></div>
+    <div class="foot"><span>What the proof does and does not hide</span><span>07</span></div>
   </section>
 
-  <section class="slide">
-    <div class="top"><span class="brand"><span class="mark">H</span>himitsu</span><span>09 · Current status</span></div>
+  <section class="slide short">
+    <div class="top"><span class="brand"><span class="mark">H</span>himitsu</span><span>07 · Status</span></div>
     <div class="content">
-      <p class="kicker">WHAT EXISTS TODAY</p>
-      <h2>The application implements the full note-to-note flow.</h2>
+      <p class="kicker">CURRENT BUILD · NEXT VALIDATION</p>
+      <h2>Working prototype, with network and security work ahead</h2>
       <div class="status">
-        <div class="status-col"><h3>Implemented</h3><p>The browser creates notes and Groth16 proofs. The pool validates spends. A paymaster applies gas limits. The frame transaction swaps through Uniswap V2 and creates an output note.</p><p>The repository includes integration flows for deposits, swaps, withdrawals, and failed swaps.</p></div>
-        <div class="status-col"><h3>Not yet established</h3><p>EIP-8141 is still a draft. The current deployment uses a pinned Ethrex implementation. The contracts and circuits need independent security review.</p><p>Public-network compatibility, throughput, sponsor operations, and privacy under real user activity remain to be evaluated.</p></div>
+        <div class="status-col"><h3>Built</h3><ul class="point-list"><li>Browser notes and Groth16 proofs</li><li>EIP-8141 frame transaction</li><li>Uniswap V2 swap to output note</li></ul></div>
+        <div class="status-col"><h3>Next</h3><ul class="point-list"><li>Public compatible network</li><li>Independent contract and circuit review</li><li>Measure privacy and user experience</li></ul></div>
       </div>
-    </div>
-    <div class="foot"><span>Current implementation and limits</span><span>10</span></div>
-  </section>
-
-  <section class="slide final">
-    <div class="top"><span class="brand"><span class="mark">H</span>himitsu</span><span>10 · What we will validate</span></div>
-    <div class="content">
-      <p class="kicker">NEXT VALIDATION STEPS</p>
-      <h2>We need to validate the network, security, and user experience.</h2>
-      <p class="lede">Run the full transaction on a publicly reachable EIP-8141 network. Complete independent reviews of the contracts, circuit, and setup. Measure how users create, store, and recover notes.</p>
       <p class="contact">HIMITSU PROTOCOL · 2026</p>
     </div>
-    <div class="foot"><span>Validation plan</span><span>11</span></div>
+    <div class="foot"><span>Validate in public</span><span>08</span></div>
   </section>
   <script>
     document.addEventListener('keydown',event=>{if(event.key==='ArrowDown'||event.key==='PageDown'){event.preventDefault();window.scrollBy({top:innerHeight,behavior:'smooth'})}else if(event.key==='ArrowUp'||event.key==='PageUp'){event.preventDefault();window.scrollBy({top:-innerHeight,behavior:'smooth'})}})
