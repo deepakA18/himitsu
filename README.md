@@ -39,51 +39,84 @@ consumed by included failed attempts. Private swaps and withdrawals do not reque
 ## Architecture
 
 ```mermaid
-flowchart TD
-    WALLET(["Deposit wallet · ConnectKit"])
-    NOTE(["User-held private note"])
+flowchart LR
+    subgraph PERSON[User]
+        WALLET[Wallet]
+        INPUT[(Input note file)]
+        OUTPUT[(Output note file)]
+    end
 
-    NOTE -->|"import spending secrets"| APP["Himitsu browser app · Next.js"]
-    APP -->|"generate locally"| PROOF["Groth16 proof + frame transaction"]
-    APP ---|"save new note before submission"| BACKUP["Downloaded output note"]
-    PROOF -->|"save before broadcast"| CACHE[("Encrypted transaction journal")]
-    PROOF -->|"submit directly · no app relayer or bundler"| RPC["Ethrex RPC · frame-enabled devnet"]
+    subgraph DEVICE[Browser · user device]
+        APP[Himitsu app]
+        PROVER[Proof worker]
+        JOURNAL[(Encrypted transaction journal)]
+    end
 
-    RPC --> EXP["VERIFY · Check expiry<br/>Scope: APPROVE_NONE [0x0]"]
-    EXP --> AUTH["VERIFY · Pool validates ZK proof<br/>TXPARAM [0xb0] · SIGDATACOPY [0xb5]<br/>FRAMEPARAM [0xb3] · APPROVE [0xaa]<br/>Scope: APPROVE_EXECUTION [0x2]"]
-    AUTH --> GAS["VERIFY · Paymaster checks policy<br/>TXPARAM [0xb0] · FRAMEPARAM [0xb3]<br/>FRAMEDATALOAD [0xb1] · SIGPARAM [0xb4]<br/>APPROVE [0xaa] · Scope: APPROVE_PAYMENT [0x1]"]
-    GAS -->|"SENDER · execute authorized spend"| POOL[["Himitsu WETH pool<br/>TXPARAM [0xb0] · FRAMEPARAM [0xb3]<br/>FRAMEDATACOPY [0xb2]<br/>Sender-frame scope: APPROVE_NONE [0x0]"]]
-    WALLET -->|"deposit ETH · wrap into WETH"| POOL
+    subgraph DEVNET[Patched Ethrex devnet]
+        RPC[JSON-RPC]
+        WETH[WETH privacy pool]
+        SPONSOR[Gas paymaster]
+        PAIR[Uniswap V2 pair]
+        GUSD[gUSD privacy pool]
+    end
 
-    POOL -->|"push exact input · call swap<br/>no exchange allowance"| UNI[["Uniswap V2 · WETH / gUSD"]]
-    UNI -->|"return actual gUSD output"| SETTLE["Input pool settlement<br/>Exact output-pool approval · deposit · clear approval"]
-    SETTLE -->|"full output · atomic settlement"| OUT[("Himitsu gUSD pool")]
-    OUT -->|"scan confirmed events using saved note"| RECOVER(["Recover private balance · withdraw"])
-
-    classDef wallet fill:#dbeafe,stroke:#2563eb,color:#1e3a8a;
-    classDef note fill:#fef3c7,stroke:#d97706,color:#78350f;
-    classDef client fill:#ede9fe,stroke:#7c3aed,color:#4c1d95;
-    classDef infra fill:#f3f4f6,stroke:#6b7280,color:#374151;
-    classDef verify fill:#cffafe,stroke:#0891b2,color:#164e63;
-    classDef sponsor fill:#dcfce7,stroke:#16a34a,color:#14532d;
-    classDef pool fill:#1f2937,stroke:#111827,color:#f9fafb;
-    classDef uniswap fill:#fce7f3,stroke:#db2777,color:#831843;
-    classDef result fill:#ccfbf1,stroke:#0d9488,color:#134e4a;
-
-    class WALLET wallet;
-    class NOTE,BACKUP note;
-    class APP,PROOF client;
-    class RPC,CACHE infra;
-    class EXP,AUTH verify;
-    class GAS sponsor;
-    class POOL,OUT pool;
-    class UNI uniswap;
-    class SETTLE,RECOVER result;
+    WALLET -->|connect and approve deposit| APP
+    APP -->|deposit request| RPC
+    RPC -->|deposit ETH| WETH
+    INPUT -->|import secret| APP
+    APP -->|prove locally| PROVER
+    APP -->|save before send| OUTPUT
+    APP -->|persist before broadcast| JOURNAL
+    APP -->|submit frame transaction| RPC
+    APP -->|recover from confirmed events| RPC
+    RPC --> WETH
+    RPC --> SPONSOR
+    WETH -->|exact input| PAIR
+    PAIR -->|actual output| WETH
+    WETH -->|atomic deposit| GUSD
+    GUSD -->|recover or withdraw| RPC
 ```
 
-Read top to bottom: prepare locally, authorize onchain, then swap and settle. The wallet deposit
-feeds the same WETH pool through a separate path. The input pool appears again as a settlement step
-to show the token flow without a backward arrow; it is the same contract, not an additional service.
+The browser creates proofs and stores transaction history locally. It sends transactions and recovery
+queries straight to RPC; there is no app relayer, proving server, or hosted indexer. The wallet is
+used for deposits only. Private swaps and withdrawals are authorized by the note proof.
+
+## Swap transaction
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant App as Browser app
+    participant Worker as Proof worker
+    participant RPC as Ethrex RPC
+    participant Pool as WETH privacy pool
+    participant Paymaster as Gas paymaster
+    participant Pair as Uniswap V2 pair
+    participant Output as gUSD privacy pool
+
+    User->>App: Import WETH note and review quote
+    App->>App: Create and download output note
+    App->>Worker: Build witness and transaction digest
+    Worker-->>App: Groth16 proof
+    App->>App: Save signed transaction to encrypted journal
+    App->>RPC: Submit frame transaction
+    RPC->>RPC: Check expiry frame
+    RPC->>Pool: VERIFY frame checks proof and authorizes execution
+    Pool-->>RPC: APPROVE_EXECUTION (0x2)
+    RPC->>Paymaster: VERIFY frame checks sponsor policy
+    Paymaster-->>RPC: APPROVE_PAYMENT (0x1)
+    RPC->>Pool: SENDER frame consumes note and transfers exact WETH
+    Pool->>Pair: Swap exact input
+    Pair-->>Pool: Return actual gUSD output
+    Pool->>Output: Deposit full output atomically
+    RPC-->>App: Receipt and frame results
+    App-->>User: Confirm note status and transaction
+```
+
+If a swap or output deposit fails, the spend rolls back and the input note remains unspent. An
+included failed attempt may still consume paymaster funds. The output note was saved before broadcast,
+so it can be imported to recover the confirmed amount later.
 
 **Diagram notation:** brackets after instruction names identify opcode bytes. Approval-scope values
 are separate operands/permissions, not additional opcodes. `VERIFY` and `SENDER` are frame modes.
@@ -197,9 +230,8 @@ docs/                        Recovery, accounting, implementation provenance, an
 ```
 
 Bun manages the workspace. Protocol/proving scripts run under Node because snarkjs worker execution
-crashed under the tested Bun runtime. Historical Ghost names and commitment domains remain where
-required for compatibility; unchecked pools and stock verifiers are comparison fixtures, not app
-deployment choices.
+crashed under the tested Bun runtime. The client and contracts use the Himitsu commitment domain.
+Unchecked pools and stock verifiers are comparison fixtures, not app deployment choices.
 
 ## Running locally
 
