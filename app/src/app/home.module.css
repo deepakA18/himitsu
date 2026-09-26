@@ -6,6 +6,8 @@
   --home-line: #303030;
   --home-gutter: clamp(24px, 5vw, 80px);
   background: var(--home-bg);
+  display: flow-root;
+  min-height: 100vh;
   color: var(--home-paper);
   font-family: Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -579,7 +581,7 @@
   background: #1a1a1a;
   border: 1px solid var(--home-line);
   border-radius: 20px;
-  margin: 0 24px 70px;
+  margin: 0 24px;
   padding: 64px var(--home-gutter);
 }
 .closing > div {

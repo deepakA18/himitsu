@@ -34,6 +34,12 @@ body:has(.trade) {
   color: #f2f2ef;
   overscroll-behavior-y: none;
 }
+html:has(.home),
+body:has(.home) {
+  background: #080808;
+  color: #f2f2ef;
+  overscroll-behavior-y: none;
+}
 main {
   max-width: 1100px;
   margin: 0 auto;
