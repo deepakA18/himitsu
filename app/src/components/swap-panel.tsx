@@ -257,7 +257,6 @@ export function SwapPanel(p: Props) {
             : p.completed
               ? 'Swap confirmed'
               : `Swap to private ${p.outputAsset}`}
-          <span aria-hidden="true"> ↗</span>
         </button>
         <p className="swap-feedback" role="status" aria-live="polite">
           {p.status || p.reason || 'Ready when you are.'}

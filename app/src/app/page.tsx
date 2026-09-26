@@ -61,8 +61,8 @@ export default function Home() {
               Your <span className={styles.serif}>secret.</span>
             </h1>
             <p className={styles.intro}>
-              Spend a private WETH note through Uniswap V2.
-              <br className={styles.desktopBreak} /> Prove the spend client-side. Keep the new hUSD note.
+              Swap from your private balance.
+              <br className={styles.desktopBreak} /> Stay in control.
             </p>
             <div className={styles.actions}>
               <Link className={styles.button} href="/app" prefetch={false}>
