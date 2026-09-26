@@ -11,6 +11,7 @@ artifacts/
 *.ptau
 # Preserve the imported live development setup; stale pot13 files were excluded.
 !packages/protocol/circuits/spend_final.zkey
+!packages/protocol/circuits/v2/spend-v2.zkey
 !packages/protocol/circuits/pot_final.ptau
 coverage/
 .DS_Store

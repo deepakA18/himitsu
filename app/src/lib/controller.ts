@@ -588,7 +588,7 @@ async function artifact(a: { url: string; sha256: string }) {
   if (!pending) {
     pending = (async () => {
       const response = await fetch(a.url);
-      if (!response.ok) throw new Error('Proving artifact unavailable; run bun run deploy:app');
+      if (!response.ok) throw new Error('Proof files are unavailable on this site. Nothing was submitted. The app needs to be redeployed with its proving files.');
       const bytes = new Uint8Array(await response.arrayBuffer());
       const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), (v) =>
         v.toString(16).padStart(2, '0'),

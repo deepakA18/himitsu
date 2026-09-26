@@ -4,8 +4,9 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "WATCHPACK_POLLING=true next dev --webpack --hostname 127.0.0.1",
-    "build": "next build --webpack",
+    "dev": "node scripts/prepare-proving.mjs && WATCHPACK_POLLING=true next dev --webpack --hostname 127.0.0.1",
+    "prepare:proving": "node scripts/prepare-proving.mjs",
+    "build": "node scripts/prepare-proving.mjs && next build --webpack",
     "start": "next start --hostname 127.0.0.1",
     "typecheck": "tsc --noEmit"
   },

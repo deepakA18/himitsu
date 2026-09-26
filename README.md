@@ -322,6 +322,18 @@ HTTPS RPC. This is a deployment plan, not a claim of an already-hosted service. 
 RPC and matching manifest/proving assets with the frontend; generated files excluded from Git must
 be supplied to the hosting build. No separate application backend is required.
 
+For Vercel, use the `app` root directory and its `bun run build` command (or
+`bun run build:app` from the repository root). Enable access to files outside the root directory
+so the build can read `packages/protocol/circuits`. The build copies the existing V1/V2 WASM,
+public proving keys, and snarkjs runtime into `app/public/proving/`, and checks the proof hashes
+against the current deployment manifests. Commit `packages/protocol/circuits/v2/spend-v2.zkey`
+along with the build script; this public key is required even though most `.zkey` files are ignored.
+Historical manifests may require their own older proving keys; this step checks the current manifests.
+Missing or mismatched files fail the build instead of shipping a broken withdrawal flow.
+Run `bun run --cwd app prepare:proving` to check packaging without building the UI.
+For an existing pool, redeploy only the frontend to publish missing proof files; do not run a new
+trusted setup or redeploy contracts. Keep using the original saved deposit note.
+
 User secrets stay on user devices. Deployer/funding keys and the Engine API JWT stay outside frontend
 assets. The WalletConnect project ID, circuit WASM, proving key, and verification key are public.
 A fresh hosted chain requires fresh contract deployment; switching RPC URLs does not migrate state.
