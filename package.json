@@ -23,7 +23,6 @@
     "build:app": "bun run --cwd app build",
     "typecheck:app": "bun run --cwd app typecheck",
     "deploy:app": "bun run build:protocol && node packages/protocol/deploy-app.mjs",
-    "test:browser": "node node_modules/@playwright/test/cli.js test",
     "test:surplus": "node packages/protocol/surplus.mjs",
     "test:client": "bun build scripts/test-client.ts --target=node --packages=external --outfile=.local/test-client.mjs && node .local/test-client.mjs",
     "setup:v2": "node packages/protocol/setup-v2.mjs",

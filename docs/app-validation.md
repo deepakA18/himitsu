@@ -56,3 +56,13 @@ The main route now uses Deposit / Swap / Withdraw with a required private-note d
 Validation: 66 unit tests / 139 assertions passed, root and app TypeScript checks passed, and the optimized Next.js build includes `/` and `/legacy`. The native `test:private-notes` suite passed against the existing Ethrex deployment using real Groth16 proofs: deposit, fresh-file input import, accepted swap with intentionally lost RPC response, journal reopening using the input file, fresh output-file import and amount recovery, withdrawal, and spent/duplicate-note rejection. Public evidence is `deployments/private-note-evidence.json`.
 
 The new UI has not been visually verified or exercised through browser automation. The user requested no app access and will run it locally. Existing Playwright phrase-flow navigation was moved to `/legacy`; that suite was not run in this milestone. No new contract, circuit, deployment, or Ethrex changes were needed.
+
+## Legacy UI removal
+
+The `/legacy` route and navigation link have been removed at the user’s request. The obsolete phrase-flow Playwright test, its configuration, and `test:browser` command were retired. Earlier sections record historical validation, not currently available screens. The private-note interface and native `test:private-notes` suite remain. Existing browser storage was not deleted. Internal phrase-recovery library helpers remain for historical protocol/client regression tests; they are no longer exposed as an app workflow.
+
+## Family ConnectKit integration
+
+Deposit wallet connections now use ConnectKit 1.9.1, Wagmi 2.15.6 and TanStack Query 5.103.2. The provider loads the published deployment to configure the custom chain and RPC. Injected discovery works without a project ID; WalletConnect is enabled only when NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID is configured. The deposit action uses the active connector and rechecks account, network and connector before every wallet request. A saved deposit draft is bound to its selected account. Private-note swaps/withdrawals do not use the wallet connector.
+
+Validation: 67 unit tests / 145 assertions passed, root TypeScript and production-build TypeScript passed. The final production build compiled successfully after pinning the compatible Wagmi connector generation and disabling optional Node-only logger formatting resolution. No wallet UI, connection or deposit was exercised in a browser, per the user's no-app-access instruction. ConnectKit declares React 17/18 peers while Himitsu uses React 19; runtime modal compatibility remains a user-run check. Restart bun run dev to verify locally. See README for optional WalletConnect configuration and mobile RPC reachability.

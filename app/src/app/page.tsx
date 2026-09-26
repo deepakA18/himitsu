@@ -1,7 +1,11 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
-import { formatUnits, type Hex } from 'viem';
+import { formatUnits } from 'viem';
+import { ConnectKitButton } from 'connectkit';
+import { useAccount, useConfig, useSwitchChain } from 'wagmi';
+import { getAccount } from 'wagmi/actions';
+import { guardDepositWallet } from '../lib/deposit-wallet';
+import { useWalletDeployment } from '../components/wallet-provider';
 import { Controller, Vault, IndexedVaultStore, type Wallet } from '../lib/controller';
 import { SwapPanel } from '../components/swap-panel';
 import {
@@ -17,16 +21,21 @@ import { isActive } from '../../../packages/client/src/vault';
 import { RpcClient } from '../../../packages/client/src/index';
 const money = (v: string) =>
   Number(formatUnits(BigInt(v), 18)).toLocaleString(undefined, { maximumFractionDigits: 6 });
-const short = (v: string) => `${v.slice(0, 10)}…${v.slice(-6)}`;
 type Draft = {
   kind: 'deposit' | 'swap';
   note: SavedNote;
   text: string;
   controller: Controller;
   source?: string;
+  depositAccount?: string;
 };
 export default function Page() {
-  const [config, setConfig] = useState<Deployment | null>(null);
+  const initialDeployment = useWalletDeployment();
+  const [config, setConfig] = useState<Deployment | null>(initialDeployment);
+  const wagmiConfig = useConfig();
+  const { address: account, chainId: walletChainId, isConnected } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
+  const walletReady = isConnected && walletChainId === Number(config?.chainId);
   const [catalog, setCatalog] = useState<{ name: string; url: string }[]>([]);
   const [tab, setTab] = useState<'deposit' | 'swap' | 'withdraw'>('deposit');
   const [health, setHealth] = useState<Readiness | null>(null);
@@ -34,7 +43,6 @@ export default function Page() {
   const [noteId, setNoteId] = useState('');
   const [input, setInput] = useState('');
   const [recipient, setRecipient] = useState('');
-  const [account, setAccount] = useState<Hex | null>(null);
   const [slippage, setSlippage] = useState('50');
   const [draft, setDraft] = useState<Draft | null>(null);
   const [downloaded, setDownloaded] = useState(false);
@@ -46,7 +54,6 @@ export default function Page() {
   const [, rerender] = useState(0);
   const working = useRef(false),
     syncing = useRef(false);
-  const wallet = useRef<Wallet | null>(null);
   const download = (text: string, name: string) => {
     const url = URL.createObjectURL(new Blob([text + '\n'], { type: 'text/plain' }));
     const a = document.createElement('a');
@@ -71,12 +78,6 @@ export default function Page() {
     }
   }
   useEffect(() => {
-    fetch('/deployment.json', { cache: 'no-store' })
-      .then(async (r) => {
-        if (!r.ok) throw new Error('Deployment unavailable');
-        setConfig(await r.json());
-      })
-      .catch((e) => setError(e.message));
     fetch('/deployments.json', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : []))
       .then(setCatalog)
@@ -160,26 +161,20 @@ export default function Page() {
     setInput('');
     setStatus('Note checked against the chain.');
   }
-  async function connect() {
-    if (!window.ethereum)
-      throw new Error('Connect an Ethereum wallet configured for the local devnet.');
-    const accounts = (await window.ethereum.request({ method: 'eth_requestAccounts' })) as Hex[];
-    if (!accounts[0]) throw new Error('No wallet account selected');
-    if (
-      BigInt((await window.ethereum.request({ method: 'eth_chainId' })) as string) !==
-      BigInt(config!.chainId)
-    )
-      throw new Error(`Switch your wallet to chain ${config!.chainId}`);
-    wallet.current = window.ethereum;
-    setAccount(accounts[0]);
-  }
   async function prepare(kind: 'deposit' | 'swap') {
     if (!config) throw new Error('Wait for the deployment to load');
     const n = createPrivateNote(config, kind === 'deposit' ? config.pool : config.outputPool);
     const c = kind === 'deposit' ? await session(n, false) : controller!;
     if (!c || (kind === 'swap' && (!note || noteState !== 'Available')))
       throw new Error('Import an available WETH note first');
-    setDraft({ kind, note: n, text: exportPrivateNote(n, config), controller: c, source: noteId });
+    setDraft({
+      kind,
+      note: n,
+      text: exportPrivateNote(n, config),
+      controller: c,
+      source: noteId,
+      ...(kind === 'deposit' && account ? { depositAccount: account } : {}),
+    });
     setDownloaded(false);
     setBackedUp(false);
     setStatus('Save the new private note before continuing.');
@@ -192,8 +187,40 @@ export default function Page() {
     setDraft(null);
     let result;
     if (current.kind === 'deposit') {
-      if (!wallet.current || !account) throw new Error('Connect your deposit wallet first');
-      result = await current.controller.deposit(wallet.current, account, current.note);
+      const connection = getAccount(wagmiConfig);
+      if (!connection.address || !connection.connector || connection.status !== 'connected')
+        throw new Error('Connect your deposit wallet first');
+      if (connection.address.toLowerCase() !== current.depositAccount?.toLowerCase())
+        throw new Error(
+          'Wallet account changed. Prepare a new deposit note for the selected account.',
+        );
+      if (connection.chainId !== Number(current.controller.deployment.chainId))
+        throw new Error('Switch to the Himitsu devnet before depositing');
+      const provider = await connection.connector.getProvider();
+      if (!provider || typeof (provider as Wallet).request !== 'function')
+        throw new Error('Selected wallet cannot submit deposits');
+      result = await current.controller.deposit(
+        guardDepositWallet(
+          provider as Wallet,
+          {
+            address: connection.address,
+            chainId: connection.chainId,
+            connectorId: connection.connector.uid,
+            connected: true,
+          },
+          () => {
+            const live = getAccount(wagmiConfig);
+            return {
+              address: live.address,
+              chainId: live.chainId,
+              connectorId: live.connector?.uid,
+              connected: live.status === 'connected',
+            };
+          },
+        ),
+        connection.address,
+        current.note,
+      );
       setNoteId(current.note.id);
     } else {
       if (!health) throw new Error('Wait for a live quote');
@@ -236,7 +263,6 @@ export default function Page() {
           <h1>Himitsu</h1>
           <p className="muted">Private notes. Permissionless swaps.</p>
         </div>
-        <Link href="/legacy">Legacy phrase recovery</Link>
       </header>
       <nav className="note-tabs" aria-label="Actions">
         {(['deposit', 'swap', 'withdraw'] as const).map((t) => (
@@ -300,6 +326,13 @@ export default function Page() {
               autoComplete="off"
             />
           </details>
+          {draft.kind === 'deposit' &&
+            (!walletReady || account?.toLowerCase() !== draft.depositAccount?.toLowerCase()) && (
+              <p className="error">
+                The deposit wallet disconnected, changed accounts, or changed networks. Restore the
+                original connection below, or cancel and prepare a new deposit note.
+              </p>
+            )}
           <label className="check-label">
             <input
               type="checkbox"
@@ -311,7 +344,13 @@ export default function Page() {
           </label>
           <div className="row">
             <button
-              disabled={!downloaded || !backedUp || !!busy}
+              disabled={
+                !downloaded ||
+                !backedUp ||
+                !!busy ||
+                (draft.kind === 'deposit' &&
+                  (!walletReady || account?.toLowerCase() !== draft.depositAccount?.toLowerCase()))
+              }
               onClick={() =>
                 void run(
                   draft.kind === 'deposit'
@@ -346,15 +385,35 @@ export default function Page() {
             Fixed-size deposit. ETH is wrapped into WETH. Your connected wallet pays deposit gas.
           </p>
           <div className="row">
+            <ConnectKitButton.Custom>
+              {({ show, isConnected, truncatedAddress }) => (
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={!!busy || !show}
+                  onClick={show}
+                >
+                  {isConnected ? truncatedAddress : 'Connect wallet'}
+                </button>
+              )}
+            </ConnectKitButton.Custom>
+            {isConnected && !walletReady && (
+              <button
+                className="secondary"
+                disabled={!!busy}
+                onClick={() =>
+                  void run('Switching wallet network…', async () => {
+                    await switchChainAsync({ chainId: Number(config!.chainId) });
+                  })
+                }
+              >
+                Switch to Himitsu devnet
+              </button>
+            )}
             <button
-              className="secondary"
-              disabled={!config || disabled}
-              onClick={() => void run('Connecting wallet…', connect)}
-            >
-              {account ? short(account) : 'Connect wallet'}
-            </button>
-            <button
-              disabled={!account || !health || !!health.depositIssues.length || disabled}
+              disabled={
+                !walletReady || !account || !health || !!health.depositIssues.length || disabled
+              }
               onClick={() => void run('Preparing your private note…', () => prepare('deposit'))}
             >
               Create deposit note

@@ -52,11 +52,6 @@ import {
 export interface Wallet {
   request(args: { method: string; params?: unknown[] }): Promise<unknown>;
 }
-declare global {
-  interface Window {
-    ethereum?: Wallet;
-  }
-}
 export class Controller {
   readonly rpc: RpcClient;
   current: Snapshot | null = null;

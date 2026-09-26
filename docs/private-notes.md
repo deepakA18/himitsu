@@ -1,6 +1,6 @@
 # Portable private-note flow
 
-The main UI uses Deposit / Swap / Withdraw. Phrase-based notes remain accessible at `/legacy`. No contract, circuit, or Ethrex changes are needed for this flow.
+The main UI uses Deposit / Swap / Withdraw. The legacy phrase-recovery page has been removed; the app accepts private-note files only. No contract, circuit, or Ethrex changes are needed for this flow.
 
 ## Format and ownership
 

@@ -231,22 +231,6 @@ dd {
 textarea {
   resize: vertical;
 }
-.recovery-phrase {
-  padding: 16px;
-  border: 1px solid var(--border);
-  line-height: 2;
-  word-spacing: 0.35em;
-}
-
-.deployment-choice {
-  margin-bottom: 24px;
-}
-.quote-box {
-  padding: 16px;
-  margin: 16px 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
 summary {
   cursor: pointer;
   padding: 12px 0;

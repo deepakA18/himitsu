@@ -12,7 +12,7 @@ The supplied implementation is preserved in `packages/protocol`, with import has
 - Immutable automatic-paymaster bytecode generator with explicit trusted-pool ABI shapes, fee/gas caps, prefix ordering, prior validation status, no sponsor signatures, and a separate ETH funding path.
 - Unit tests for envelope binding, receipt rollback, submission uncertainty, and paymaster policy control flow.
 
-**Implemented for local testing:** Next.js UI, browser Groth16 proving, portable private-note files with encrypted per-note IndexedDB transaction caches, plus legacy 24-word phrase recovery and encrypted backup/restore at `/legacy`, canonical event reconstruction, and shared-pool nonce reconciliation. The automatic paymaster passes the native private swap, output withdrawal, and failed-swap rollback flow on the locally patched Ethrex client. The imported circuit and lifecycle tests also pass locally. The paymaster test interpreter is deliberately limited: it does not establish EVM gas bounds, admission compatibility, or proof soundness. Never deploy it with real funds.
+**Implemented for local testing:** Next.js UI, browser Groth16 proving, portable private-note files with encrypted per-note IndexedDB transaction caches, canonical event reconstruction, and shared-pool nonce reconciliation. The automatic paymaster passes the native private swap, output withdrawal, and failed-swap rollback flow on the locally patched Ethrex client. The imported circuit and lifecycle tests also pass locally. The paymaster test interpreter is deliberately limited: it does not establish EVM gas bounds, admission compatibility, or proof soundness. Never deploy it with real funds.
 
 ## Commands
 
@@ -57,16 +57,30 @@ bun run dev
 
 Open http://127.0.0.1:3000. `deploy:app` writes `deployments/app.local.json`, the public deployment manifest, and browser proving assets. It deploys test pools, liquidity and a sponsor funded with 0.1 test ETH. Do not redeploy on every app start: old notes are bound to their original deployment. The manifest pins chain ID, genesis, a postdeployment anchor block, contract runtime hashes, and proving-asset hashes.
 
-1. **Deposit:** connect an injected wallet on chain 9, choose **Create deposit note**, download the private note, and confirm that you saved it. Only then approve the ETH deposit in your wallet. No phrase or local password is required.
+1. **Deposit:** connect a wallet through Family ConnectKit on chain 9, choose **Create deposit note**, download the private note, and confirm that you saved it. Only then approve the ETH deposit in your wallet. No phrase or local password is required.
 2. **Swap:** paste/import the WETH note, review the live quote and slippage, then download and confirm a **new output note before submission**. The entire actual gUSD output becomes that note. Retain the input note until confirmation; a failed swap leaves it unspent.
 3. **Withdraw:** paste/import an unspent input or output note and enter the recipient. The full note amount is withdrawn; WETH notes pay WETH, not native ETH. No connected wallet is required to authorize a private spend.
-4. **Legacy recovery:** `/legacy` retains the existing phrase/password interface and encrypted backups. It does not overwrite the original browser vault. Its local test wallet remains available for existing test workflows. The pool selector is under **Pool details & network status** on the new page.
+The pool selector is under **Pool details & network status**. The app supports private-note files only; the legacy phrase-recovery page has been removed.
 
 Each downloaded file is an **unencrypted bearer secret**. Anyone holding it can spend its note. Save a new file for every deposit and swap output; there is no master recovery phrase for these random notes. A pre-swap output file contains the recovery tag preimage; its exact amount is reconstructed and verified against canonical pool events. Notes are bound to chain ID, genesis, immutable deployment identity, pool, and circuit version. Imported files cannot choose the RPC endpoint.
 
 The browser keeps AES-GCM encrypted per-note transaction records. The supplied note derives the cache key, so there is no separate password. Secrets are not stored in plaintext in browser storage. The raw signed transaction is saved before broadcast, and re-importing the source note in the same browser recovers pending history. Browser cleanup removes this journal; the file still recovers confirmed note ownership on a fresh device. Use one active browser per note and do not retry an uncertain submission from another device. Keep both source and output files until confirmation. Encrypted storage does not protect an open page from malicious scripts.
 
 See `docs/private-notes.md` for the format and flow, and run `bun run test:private-notes` for the real devnet note-file round trip. This uses the existing deployment; do not redeploy to test the UI.
+
+### Wallet connections (Family ConnectKit)
+
+The deposit button uses ConnectKit 1.9.1, Wagmi 2.15.6 and TanStack Query. The custom chain and RPC come from the public deployment manifest. Injected browser wallets work without an API key; the button also opens account/disconnect controls. A wrong-network connection exposes **Switch to Himitsu devnet**. Account, connector and network changes are checked again before wallet requests. Private-note swaps and withdrawals do not request wallet signatures.
+
+To enable WalletConnect QR/mobile connections, create `app/.env.local` using `app/.env.example` and set:
+
+```dotenv
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id
+```
+
+Obtain a project ID through the service linked in [Family's ConnectKit setup guide](https://family.co/docs/connectkit/getting-started), then restart `bun run dev`. The ID is public client configuration. No placeholder project ID is shipped. Mobile wallets cannot reach the laptop's loopback RPC: use a devnet endpoint reachable by the wallet before testing mobile connections. WalletConnect transports deposit-wallet requests only; private frame transactions still go directly from the browser to the deployment RPC.
+
+ConnectKit's declared React peer range is 17/18, while this app uses React 19.3.0. Build/type checks do not establish modal runtime compatibility; actual wallet connection, switching, disconnect and deposit approval remain part of the user's local browser verification. Wagmi 2.15.6 is pinned because the newer 2.19.5 connector bundle pulled in unresolved Coinbase x402 modules during the Next build.
 
 Reconciliation rebuilds trees from canonical deposit events and checks nullifiers, pool nonces and receipts at a consistent block. Two-block confirmation is a devnet policy, not finality. Unknown broadcasts reserve the input note until chain evidence resolves them. Nonce conflicts release only unspent notes for an explicit retry; no automatic reproving or replacement occurs. A later reorg reopens cached outcomes for reconciliation.
 
@@ -82,10 +96,9 @@ RPC_URL=http://127.0.0.1:8567 bun run test:surplus
 bun run test:client
 bun run test:market
 # With the app running and a usable Playwright Chromium installation:
-bun run test:browser
 ```
 
-`test:client` reads the existing app deployment. It exercises two independent vaults, a real nonce collision, an accepted transaction with a lost response, phrase-only restoration with a new password across counter gaps, output recovery, and withdrawal. Full browser testing and host limitations are recorded in `docs/app-validation.md`.
+`test:client` is a historical client-library regression suite, not the current UI workflow. It reads the existing app deployment. It exercises two independent vaults, a real nonce collision, an accepted transaction with a lost response, phrase-only restoration with a new password across counter gaps, output recovery, and withdrawal. Full browser testing and host limitations are recorded in `docs/app-validation.md`.
 
 ## Version boundary
 
