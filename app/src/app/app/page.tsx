@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { formatUnits } from 'viem';
+import { formatUnits, isAddress } from 'viem';
 import { ConnectKitButton } from 'connectkit';
 import { useAccount, useConfig, useSwitchChain } from 'wagmi';
 import { getAccount } from 'wagmi/actions';
@@ -8,6 +8,7 @@ import { guardDepositWallet } from '../../lib/deposit-wallet';
 import { useWalletDeployment } from '../../components/wallet-provider';
 import { Controller, Vault, IndexedVaultStore, type Wallet } from '../../lib/controller';
 import { TransactionNotifications } from '../../components/transaction-notifications';
+import { NoteDialog } from '../../components/note-dialog';
 import { SwapPanel } from '../../components/swap-panel';
 import {
   createPrivateNote,
@@ -47,7 +48,15 @@ export default function Page() {
   const [recipient, setRecipient] = useState('');
   const [reverse, setReverse] = useState(false);
   const [slippage, setSlippage] = useState('50');
+  const [withdrawReview, setWithdrawReview] = useState<{
+    controller: Controller;
+    source: string;
+    recipient: string;
+    amount: string;
+    asset: string;
+  } | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [copyMessage, setCopyMessage] = useState('');
   const [downloaded, setDownloaded] = useState(false);
   const [backedUp, setBackedUp] = useState(false);
   const [busy, setBusy] = useState('');
@@ -134,7 +143,7 @@ export default function Page() {
   const noteState = note ? controller!.noteState(note) : '';
   const attempts = controller?.vault.data.attempts ?? [];
   const pending = attempts.some(isActive);
-  const disabled = !!busy || !!draft || pending;
+  const disabled = !!busy || !!draft || !!withdrawReview || pending;
   const latestSwap = attempts.filter((a) => a.kind === 'swap' && a.source === noteId).at(-1);
   const swapPending = swapPreparing || !!(latestSwap && isActive(latestSwap));
   const swapCompleted =
@@ -188,18 +197,22 @@ export default function Page() {
       kind === 'deposit' ? config.pool : reverse ? config.pool : config.outputPool,
       kind,
     );
+    const text = exportPrivateNote(n, config);
+    // Trigger the browser download inside the original click, before async RPC work.
+    if (kind === 'deposit') download(text, `himitsu-${kind}-${n.id.slice(2, 10)}.txt`);
     const c = kind === 'deposit' ? await session(n, false) : controller!;
     if (!c || (kind === 'swap' && (!note || noteState !== 'Available')))
       throw new Error('Import an available note for the selected token first');
     setDraft({
       kind,
       note: n,
-      text: exportPrivateNote(n, config),
+      text,
       controller: c,
       source: noteId,
       ...(kind === 'deposit' && account ? { depositAccount: account } : {}),
     });
-    setDownloaded(false);
+    setCopyMessage('');
+    setDownloaded(kind === 'deposit');
     setBackedUp(false);
     setStatus('Save the new private note before continuing.');
   }
@@ -289,6 +302,167 @@ export default function Page() {
             (note.amount && health.inputAmount !== note.amount)
           ? 'Waiting for a live quote.'
           : health.swapIssues.join(' ');
+  const noteEntry = (
+    <>
+      <p className="eyebrow">01 / YOUR PRIVATE BALANCE</p>
+      <h2>{tab === 'withdraw' ? 'Withdraw your balance.' : 'Bring your note.'}</h2>
+      <p className="muted">Import the note you saved to find your available funds.</p>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void run('Checking private note…', () => loadNote(input));
+        }}
+      >
+        <label htmlFor="private-note">Paste your Himitsu note</label>
+        <textarea
+          id="private-note"
+          rows={3}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          disabled={disabled}
+          spellCheck={false}
+          autoComplete="off"
+          autoCapitalize="none"
+          placeholder="himitsu-note-v1:…"
+        />
+        <div className="row">
+          <button disabled={!input.trim() || !config || disabled}>Check note</button>
+          <label className="note-upload" data-disabled={!config || disabled}>
+            <span className="note-upload-icon" aria-hidden="true">
+              ↑
+            </span>
+            <span className="note-upload-copy">
+              <strong>Upload private note</strong>
+              <span>Choose your saved .txt file · up to 4 KB</span>
+            </span>
+            <span className="note-upload-browse" aria-hidden="true">
+              Browse
+            </span>
+            <input
+              type="file"
+              aria-label="Upload a private note file"
+              accept=".txt,text/plain"
+              disabled={!config || disabled}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = '';
+                if (file)
+                  void run('Reading private note…', async () => {
+                    if (file.size > 4096) throw new Error('Private note file is too large');
+                    await loadNote(await file.text());
+                  });
+              }}
+            />
+          </label>
+        </div>
+      </form>
+      {note && (
+        <div className="note-summary">
+          <strong>
+            {note.amount
+              ? money(note.amount)
+              : config?.noteVersion === 2
+                ? 'Amount awaiting confirmation'
+                : money(asset === 'WETH' ? config!.denomination : config!.outputDenomination)}{' '}
+            {asset}
+          </strong>
+          <span>{noteState}</span>
+          <button
+            className="secondary"
+            disabled={disabled}
+            onClick={() => {
+              setController(null);
+              setNoteId('');
+              setReverse(false);
+              setHealth(null);
+              setInput('');
+              setStatus(
+                'Note removed from this session. Encrypted transaction records remain for reconciliation.',
+              );
+            }}
+          >
+            Clear note
+          </button>
+        </div>
+      )}
+      <p className="hint">
+        Notes stay secret in this browser. Imported notes unlock encrypted local transaction
+        records. Use one active browser per note; do not retry an uncertain transaction from another
+        device.
+      </p>
+    </>
+  );
+  const withdrawalFields = (
+    <>
+      <p className="eyebrow">02 / YOUR DESTINATION</p>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (
+            disabled ||
+            !controller ||
+            !note ||
+            noteState !== 'Available' ||
+            !health ||
+            health.withdrawalIssues.length
+          )
+            return;
+          const address = recipient.trim();
+          if (!isAddress(address) || BigInt(address) === 0n) {
+            setError('Enter a valid, nonzero recipient address.');
+            return;
+          }
+          setError('');
+          setWithdrawReview({
+            controller,
+            source: noteId,
+            recipient: address,
+            amount:
+              note.amount ?? (asset === 'WETH' ? config!.denomination : config!.outputDenomination),
+            asset,
+          });
+        }}
+      >
+        <label htmlFor="recipient">Recipient address</label>
+        <input
+          id="recipient"
+          aria-describedby="withdraw-privacy-warning"
+          value={recipient}
+          onChange={(e) => setRecipient(e.target.value)}
+          placeholder="0x…"
+          autoComplete="off"
+          spellCheck={false}
+          disabled={disabled}
+        />
+        <p id="withdraw-privacy-warning" className="withdraw-privacy-warning">
+          <strong>Privacy warning:</strong> Withdrawing to the same address you used to deposit can
+          link your deposit and withdrawal. Use a fresh address you control to reduce address-based
+          linkage.
+        </p>
+        <p className="hint">
+          The full note amount goes to this public address. WETH notes withdraw as WETH. The
+          paymaster pays gas.
+        </p>
+        <button
+          disabled={
+            disabled ||
+            noteState !== 'Available' ||
+            !recipient ||
+            !health ||
+            !!health.withdrawalIssues.length
+          }
+        >
+          Withdraw note
+        </button>
+      </form>
+      {health?.withdrawalIssues.map((x) => (
+        <p className="error" key={x}>
+          {x}
+        </p>
+      ))}
+    </>
+  );
   return (
     <main data-action={tab}>
       <TransactionNotifications
@@ -372,92 +546,215 @@ export default function Page() {
       {networkError && (
         <p className="error">Network unavailable: {networkError}. Retrying automatically.</p>
       )}
-      <div className="trade-workspace">
-        {draft && (
-          <section className="note-backup" aria-labelledby="backup-heading">
-            <h2 id="backup-heading">
-              Save your {draft.kind === 'swap' ? `new ${reverse ? 'WETH' : 'hUSD'}` : 'deposit'}{' '}
-              note
+      {withdrawReview && (
+        <NoteDialog
+          busy={!!busy}
+          titleId="withdraw-review-heading"
+          descriptionId="withdraw-review-description"
+          closeLabel="Cancel withdrawal"
+          onClose={() => setWithdrawReview(null)}
+        >
+          <section className="note-backup">
+            <p className="eyebrow">REVIEW YOUR WITHDRAWAL</p>
+            <h2 id="withdraw-review-heading" tabIndex={-1}>
+              Confirm withdrawal
             </h2>
-            <p>
-              This file is the key to your funds. Anyone who has it can spend them. Himitsu cannot
-              replace a lost note.
+            <p id="withdraw-review-description">
+              Check the amount and recipient. Confirming will generate your proof and submit the
+              withdrawal.
             </p>
-            {draft.kind === 'swap' && (
-              <p>
-                The new note recovers the actual swap output. Keep your input note too until the
-                swap confirms. If it fails, the input note remains yours.
-              </p>
-            )}
-            <button
-              onClick={() => {
-                download(draft.text, `himitsu-${draft.kind}-${draft.note.id.slice(2, 10)}.txt`);
-                setDownloaded(true);
-              }}
-            >
-              Download private note
-            </button>
-            <details>
-              <summary>Show private note</summary>
-              <label htmlFor="new-note">Secret note — keep private</label>
-              <textarea
-                id="new-note"
-                value={draft.text}
-                readOnly
-                rows={5}
-                spellCheck={false}
-                autoComplete="off"
-              />
-            </details>
-            {draft.kind === 'deposit' &&
-              (!walletReady || account?.toLowerCase() !== draft.depositAccount?.toLowerCase()) && (
-                <p className="error">
-                  The deposit wallet disconnected, changed accounts, or changed networks. Restore
-                  the original connection below, or cancel and prepare a new deposit note.
-                </p>
-              )}
-            <label className="check-label">
-              <input
-                type="checkbox"
-                checked={backedUp}
-                disabled={!downloaded}
-                onChange={(e) => setBackedUp(e.target.checked)}
-              />
-              I saved the file somewhere safe and understand it controls my funds.
-            </label>
+            <dl className="withdraw-review-details">
+              <dt>You receive</dt>
+              <dd>
+                {money(withdrawReview.amount)} {withdrawReview.asset}
+              </dd>
+              <dt>Recipient</dt>
+              <dd>
+                <code>{withdrawReview.recipient}</code>
+              </dd>
+              <dt>Network</dt>
+              <dd>
+                {config?.name} · Chain {config?.chainId}
+              </dd>
+              <dt>Gas payment</dt>
+              <dd>Paid by the paymaster</dd>
+            </dl>
+            <p className="withdraw-privacy-warning">
+              <strong>Privacy warning:</strong> Using your deposit address can link your deposit and
+              withdrawal. A fresh address reduces address reuse; amounts and timing can still reveal
+              a connection.
+            </p>
+            <p className="hint">
+              The full note will be spent. WETH is received as WETH, not native ETH.
+            </p>
             <div className="row">
               <button
-                disabled={
-                  !downloaded ||
-                  !backedUp ||
-                  !!busy ||
-                  (draft.kind === 'deposit' &&
-                    (!walletReady ||
-                      account?.toLowerCase() !== draft.depositAccount?.toLowerCase()))
-                }
-                onClick={() =>
-                  void run(
-                    draft.kind === 'deposit'
-                      ? 'Approve the deposit in your wallet…'
-                      : 'Preparing private swap…',
-                    submitDraft,
-                  )
-                }
-              >
-                Continue with {draft.kind}
-              </button>
-              <button
-                className="secondary"
+                type="button"
                 disabled={!!busy}
                 onClick={() => {
-                  setDraft(null);
-                  setStatus('Cancelled. No transaction submitted.');
+                  const review = withdrawReview;
+                  setWithdrawReview(null);
+                  void run('Preparing withdrawal…', async () => {
+                    const a = await review.controller.spend(
+                      review.source,
+                      'withdraw',
+                      review.recipient,
+                      setBusy,
+                    );
+                    setStatus(`Withdrawal ${a.state}. Watching the chain automatically.`);
+                  });
                 }}
+              >
+                Confirm withdrawal
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                disabled={!!busy}
+                onClick={() => setWithdrawReview(null)}
               >
                 Cancel
               </button>
             </div>
           </section>
+        </NoteDialog>
+      )}
+      <div className="trade-workspace">
+        {draft && (
+          <NoteDialog
+            busy={!!busy}
+            onClose={() => {
+              setDraft(null);
+              setStatus('Cancelled. No transaction submitted.');
+            }}
+          >
+            <section className="note-backup">
+              <p className="eyebrow">KEEP THIS SAFE</p>
+              <h2 id="backup-heading" tabIndex={-1}>
+                Your private note
+              </h2>
+              <p id="backup-description">
+                Back up this note. You will need it to{' '}
+                {draft.kind === 'swap'
+                  ? 'spend or withdraw your swap output'
+                  : 'swap or withdraw your deposit'}
+                . Treat it like a private key: anyone with this note can spend the funds. Never
+                share it, including with the Himitsu team. A lost note cannot be replaced.
+              </p>
+              {draft.kind === 'swap' && (
+                <p>
+                  The new note recovers the actual swap output. Keep your input note too until the
+                  swap confirms. If it fails, the input note remains yours.
+                </p>
+              )}
+              <label htmlFor="new-note">Private note</label>
+              <textarea
+                id="new-note"
+                className="private-note-value"
+                value={draft.text}
+                readOnly
+                rows={5}
+                spellCheck={false}
+                autoComplete="off"
+                autoCapitalize="off"
+              />
+              <div className="note-save-actions">
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(draft.text);
+                      setCopyMessage(
+                        'Copied. Keep it private and save the backup file before continuing.',
+                      );
+                    } catch {
+                      setCopyMessage(
+                        'Could not copy. Select the note manually or download the file.',
+                      );
+                    }
+                  }}
+                >
+                  Copy note
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    download(draft.text, `himitsu-${draft.kind}-${draft.note.id.slice(2, 10)}.txt`);
+                    setDownloaded(true);
+                  }}
+                >
+                  Download note
+                </button>
+              </div>
+              <p className="hint" role="status">
+                {copyMessage}
+              </p>
+              <p className="note-filename">
+                Backup file:{' '}
+                <code>{`himitsu-${draft.kind}-${draft.note.id.slice(2, 10)}.txt`}</code>
+              </p>
+              <p className="hint">
+                {downloaded
+                  ? 'Download requested. Check that the file was saved before confirming below.'
+                  : 'Download the backup file, then confirm you have saved it safely.'}
+              </p>
+              <p className="note-gas-info">
+                {draft.kind === 'deposit'
+                  ? 'Your connected wallet pays the deposit gas fee. Review the fee in your wallet.'
+                  : 'The paymaster pays swap gas. Keep both notes until the swap is confirmed.'}
+              </p>
+              {draft.kind === 'deposit' &&
+                (!walletReady ||
+                  account?.toLowerCase() !== draft.depositAccount?.toLowerCase()) && (
+                  <p className="error">
+                    The deposit wallet disconnected, changed accounts, or changed networks. Restore
+                    the original wallet connection, or cancel and prepare a new deposit note.
+                  </p>
+                )}
+              <label className="check-label">
+                <input
+                  type="checkbox"
+                  checked={backedUp}
+                  disabled={!downloaded}
+                  onChange={(e) => setBackedUp(e.target.checked)}
+                />
+                I saved the file somewhere safe and understand it controls my funds.
+              </label>
+              <div className="row">
+                <button
+                  disabled={
+                    !downloaded ||
+                    !backedUp ||
+                    !!busy ||
+                    (draft.kind === 'deposit' &&
+                      (!walletReady ||
+                        account?.toLowerCase() !== draft.depositAccount?.toLowerCase()))
+                  }
+                  onClick={() =>
+                    void run(
+                      draft.kind === 'deposit'
+                        ? 'Approve the deposit in your wallet…'
+                        : 'Preparing private swap…',
+                      submitDraft,
+                    )
+                  }
+                >
+                  {draft.kind === 'deposit' ? 'Send deposit' : 'Confirm swap'}
+                </button>
+                <button
+                  className="secondary"
+                  disabled={!!busy}
+                  onClick={() => {
+                    setDraft(null);
+                    setStatus('Cancelled. No transaction submitted.');
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </section>
+          </NoteDialog>
         )}
         {tab === 'deposit' ? (
           <section className="note-action">
@@ -478,39 +775,35 @@ export default function Page() {
               Fixed-size deposit. ETH is wrapped into WETH. Your connected wallet pays deposit gas.
             </p>
             <div className="row">
-              <ConnectKitButton.Custom>
-                {({ show, isConnected, truncatedAddress }) => (
-                  <button
-                    type="button"
-                    className="secondary"
-                    disabled={!!busy || !show}
-                    onClick={show}
-                  >
-                    {isConnected ? truncatedAddress : 'Connect wallet'}
-                  </button>
-                )}
-              </ConnectKitButton.Custom>
-              {isConnected && !walletReady && (
+              {!isConnected ? (
+                <ConnectKitButton.Custom>
+                  {({ show }) => (
+                    <button type="button" disabled={disabled || !show} onClick={show}>
+                      Connect wallet
+                    </button>
+                  )}
+                </ConnectKitButton.Custom>
+              ) : !walletReady ? (
                 <button
-                  className="secondary"
-                  disabled={!!busy}
+                  type="button"
+                  disabled={disabled || !config}
                   onClick={() =>
                     void run('Switching wallet network…', async () => {
                       await switchChainAsync({ chainId: Number(config!.chainId) });
                     })
                   }
                 >
-                  Switch to Himitsu devnet
+                  Switch network
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={!account || !health || !!health.depositIssues.length || disabled}
+                  onClick={() => void run('Preparing your private note…', () => prepare('deposit'))}
+                >
+                  Deposit
                 </button>
               )}
-              <button
-                disabled={
-                  !walletReady || !account || !health || !!health.depositIssues.length || disabled
-                }
-                onClick={() => void run('Preparing your private note…', () => prepare('deposit'))}
-              >
-                Create deposit note
-              </button>
             </div>
             {health?.depositIssues.map((issue) => (
               <p key={issue} className="error">
@@ -522,197 +815,70 @@ export default function Page() {
               password.
             </p>
           </section>
-        ) : (
-          <>
-            <section className="note-action">
-              <p className="eyebrow">01 / YOUR PRIVATE BALANCE</p>
-              <h2>Bring your note.</h2>
-              <p className="muted">Import the note you saved to find your available funds.</p>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void run('Checking private note…', () => loadNote(input));
-                }}
-              >
-                <label htmlFor="private-note">Paste your Himitsu note</label>
-                <textarea
-                  id="private-note"
-                  rows={3}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  disabled={disabled}
-                  spellCheck={false}
-                  autoComplete="off"
-                  autoCapitalize="none"
-                  placeholder="himitsu-note-v1:…"
-                />
-                <div className="row">
-                  <button disabled={!input.trim() || !config || disabled}>Check note</button>
-                  <label className="file">
-                    Or import a note file
-                    <input
-                      type="file"
-                      accept=".txt,text/plain"
-                      disabled={!config || disabled}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        e.target.value = '';
-                        if (file)
-                          void run('Reading private note…', async () => {
-                            if (file.size > 4096) throw new Error('Private note file is too large');
-                            await loadNote(await file.text());
-                          });
-                      }}
-                    />
-                  </label>
-                </div>
-              </form>
-              {note && (
-                <div className="note-summary">
-                  <strong>
-                    {note.amount
-                      ? money(note.amount)
-                      : config?.noteVersion === 2
-                        ? 'Amount awaiting confirmation'
-                        : money(
-                            asset === 'WETH' ? config!.denomination : config!.outputDenomination,
-                          )}{' '}
-                    {asset}
-                  </strong>
-                  <span>{noteState}</span>
-                  <button
-                    className="secondary"
-                    disabled={disabled}
-                    onClick={() => {
-                      setController(null);
-                      setNoteId('');
-                      setReverse(false);
-                      setHealth(null);
-                      setInput('');
-                      setStatus(
-                        'Note removed from this session. Encrypted transaction records remain for reconciliation.',
-                      );
-                    }}
-                  >
-                    Clear note
-                  </button>
-                </div>
+        ) : tab === 'swap' ? (
+          <section className="combined-swap-card" aria-label="Swap from your private note">
+            <div className="note-action swap-note-entry">{noteEntry}</div>
+            <SwapPanel
+              privateNoteMode
+              inputAsset={inputAsset}
+              outputAsset={outputAsset}
+              onReverse={() => {
+                setReverse(!reverse);
+                setHealth(null);
+                setStatus('');
+              }}
+              inputAmount={money(
+                note && asset === inputAsset && note.amount
+                  ? note.amount
+                  : reverse
+                    ? '100000000000000000000'
+                    : (config?.defaultDepositAmount ??
+                      config?.denomination ??
+                      '100000000000000000'),
               )}
-              <p className="hint">
-                Notes stay secret in this browser. Imported notes unlock encrypted local transaction
-                records. Use one active browser per note; do not retry an uncertain transaction from
-                another device.
-              </p>
-            </section>
-            {tab === 'swap' ? (
-              <SwapPanel
-                privateNoteMode
-                inputAsset={inputAsset}
-                outputAsset={outputAsset}
-                onReverse={() => {
-                  setReverse(!reverse);
-                  setHealth(null);
-                  setStatus('');
-                }}
-                inputAmount={money(
-                  note && asset === inputAsset && note.amount
-                    ? note.amount
-                    : reverse
-                      ? '100000000000000000000'
-                      : (config?.defaultDepositAmount ??
-                        config?.denomination ??
-                        '100000000000000000'),
-                )}
-                outputAmount={
-                  health
-                    ? money(
-                        config?.noteVersion === 2
-                          ? health.quote
-                          : (config?.outputDenomination ?? '0'),
-                      )
-                    : ''
-                }
-                balance="0"
-                notes={[]}
-                selected=""
-                onSelect={() => {}}
-                slippage={slippage}
-                onSlippage={setSlippage}
-                minimum={
-                  health
-                    ? money(
-                        config?.noteVersion === 2
-                          ? minimumOutput(BigInt(health.quote), Number(slippage)).toString()
-                          : (config?.outputDenomination ?? '0'),
-                      )
-                    : ''
-                }
-                market={config?.noteVersion === 2}
-                locked={false}
-                busy={disabled}
-                rolling={!!swapPending}
-                completed={swapCompleted}
-                animationKey={`${noteId}:${reverse}`}
-                settledOutput={settledOutput ? money(settledOutput) : ''}
-                status={busy || (swapPending || swapCompleted ? latestSwap?.state : '') || ''}
-                error=""
-                reason={swapReason}
-                disabled={disabled || !!swapReason}
-                onSwap={() => void run('Preparing your output note…', () => prepare('swap'))}
-              />
-            ) : (
-              <section className="note-action">
-                <p className="eyebrow">02 / YOUR DESTINATION</p>
-                <h2>Take it with you.</h2>
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    void run('Preparing withdrawal…', async () => {
-                      const a = await controller!.spend(noteId, 'withdraw', recipient, setBusy);
-                      setStatus(`Withdrawal ${a.state}. Watching the chain automatically.`);
-                    });
-                  }}
-                >
-                  <label htmlFor="recipient">Recipient address</label>
-                  <input
-                    id="recipient"
-                    aria-describedby="withdraw-privacy-warning"
-                    value={recipient}
-                    onChange={(e) => setRecipient(e.target.value)}
-                    placeholder="0x…"
-                    autoComplete="off"
-                    spellCheck={false}
-                    disabled={disabled}
-                  />
-                  <p id="withdraw-privacy-warning" className="withdraw-privacy-warning">
-                    <strong>Privacy warning:</strong> Withdrawing to the same address you used to
-                    deposit can link your deposit and withdrawal. Use a fresh address you control
-                    to reduce address-based linkage.
-                  </p>
-                  <p className="hint">
-                    The full note amount goes to this public address. WETH notes withdraw as WETH.
-                    The paymaster pays gas.
-                  </p>
-                  <button
-                    disabled={
-                      disabled ||
-                      noteState !== 'Available' ||
-                      !recipient ||
-                      !health ||
-                      !!health.withdrawalIssues.length
-                    }
-                  >
-                    Withdraw note
-                  </button>
-                </form>
-                {health?.withdrawalIssues.map((x) => (
-                  <p className="error" key={x}>
-                    {x}
-                  </p>
-                ))}
-              </section>
-            )}
-          </>
+              outputAmount={
+                health
+                  ? money(
+                      config?.noteVersion === 2
+                        ? health.quote
+                        : (config?.outputDenomination ?? '0'),
+                    )
+                  : ''
+              }
+              balance="0"
+              notes={[]}
+              selected=""
+              onSelect={() => {}}
+              slippage={slippage}
+              onSlippage={setSlippage}
+              minimum={
+                health
+                  ? money(
+                      config?.noteVersion === 2
+                        ? minimumOutput(BigInt(health.quote), Number(slippage)).toString()
+                        : (config?.outputDenomination ?? '0'),
+                    )
+                  : ''
+              }
+              market={config?.noteVersion === 2}
+              locked={false}
+              busy={disabled}
+              rolling={!!swapPending}
+              completed={swapCompleted}
+              animationKey={`${noteId}:${reverse}`}
+              settledOutput={settledOutput ? money(settledOutput) : ''}
+              status={busy || (swapPending || swapCompleted ? latestSwap?.state : '') || ''}
+              error=""
+              reason={swapReason}
+              disabled={disabled || !!swapReason}
+              onSwap={() => void run('Preparing your output note…', () => prepare('swap'))}
+            />
+          </section>
+        ) : (
+          <section className="note-action withdrawal-card">
+            {noteEntry}
+            <div className="withdrawal-destination">{withdrawalFields}</div>
+          </section>
         )}
       </div>
       {attempts.length > 0 && (
