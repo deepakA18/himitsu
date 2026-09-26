@@ -83,6 +83,8 @@ contract HimitsuPoolV2 {
     bytes4 private constant SEL_SPEND = bytes4(keccak256("spend()"));
     bytes4 private constant SEL_SPEND_AND_SWAP =
         bytes4(keccak256("spendAndSwapQuoted(address,uint256,address,bytes32)"));
+    bytes4 private constant SEL_SWAP_AND_WITHDRAW =
+        bytes4(keccak256("spendAndSwapToRecipient(address,uint256,address)"));
 
     IHasher public immutable hasher;
     IERC20 public immutable token;
@@ -107,6 +109,7 @@ contract HimitsuPoolV2 {
 
     event DepositV2(bytes32 indexed commitment, uint32 leafIndex, bytes32 root, bytes32 recoveryTag, uint256 amount);
     event Spent(bytes32 indexed nullifierHash, address indexed recipient, uint256 amount);
+    event SwapWithdrawn(bytes32 indexed nullifierHash, address indexed recipient, uint256 inputAmount, uint256 outputAmount);
 
     constructor(
         IHasher _hasher,
@@ -234,7 +237,7 @@ contract HimitsuPoolV2 {
             // Variable swap outputs must remain in the separate market deployment.
             require(denomination == 0 || selector == SEL_SPEND, "layout: fixed pool withdrawals only");
             require(
-                selector == SEL_SPEND || selector == SEL_SPEND_AND_SWAP,
+                selector == SEL_SPEND || selector == SEL_SPEND_AND_SWAP || selector == SEL_SWAP_AND_WITHDRAW,
                 "layout: selector not sanctioned"
             );
         }
@@ -275,6 +278,39 @@ contract HimitsuPoolV2 {
         require(outputToken.approve(outPool, 0), "swap: clear approval failed");
         require(outputToken.balanceOf(address(this)) == beforeBalance, "swap: output not consumed");
         emit Spent(nullifierHash, pair, inputAmount);
+    }
+
+    /// Spend a private note, swap its full input through the configured V2 pair,
+    /// and send the output directly to the proved recipient in this transaction.
+    /// The proof commits to pair, minimum output, recipient, and every other tx field.
+    function spendAndSwapToRecipient(address pair, uint256 minOut, address recipient)
+        external
+        nonReentrant
+        returns (uint256 outputAmount)
+    {
+        (bytes32 nullifierHash, address provedRecipient, uint256 inputAmount) = _settle();
+        require(
+            recipient == provedRecipient && recipient != address(this) && recipient != pair,
+            "swap: recipient not proved"
+        );
+        (bool inputIs0, uint256 quotedOutput) = _quote(pair, _pairOutputToken(pair), inputAmount);
+        require(quotedOutput > 0 && quotedOutput >= minOut, "swap: slippage exceeded");
+
+        IERC20 outputToken = IERC20(_pairOutputToken(pair));
+        uint256 beforeRecipientBalance = outputToken.balanceOf(recipient);
+        _payOut(pair, inputAmount);
+        IPair(pair).swap(inputIs0 ? 0 : quotedOutput, inputIs0 ? quotedOutput : 0, recipient, "");
+        require(outputToken.balanceOf(recipient) == beforeRecipientBalance + quotedOutput, "swap: wrong output");
+
+        emit SwapWithdrawn(nullifierHash, recipient, inputAmount, quotedOutput);
+        return quotedOutput;
+    }
+
+    function _pairOutputToken(address pair) private view returns (address) {
+        address token0 = IPair(pair).token0();
+        address token1 = IPair(pair).token1();
+        require(token0 == address(token) || token1 == address(token), "swap: wrong pair");
+        return token0 == address(token) ? token1 : token0;
     }
 
     function _quote(address pair, address outputToken, uint256 inputAmount) private view returns (bool inputIs0, uint256 outputAmount) {

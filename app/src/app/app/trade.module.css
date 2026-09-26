@@ -359,6 +359,25 @@
   margin: 16px 0 24px;
   gap: 16px;
 }
+.trade :global(.swap-recipient) {
+  margin: 0 0 20px;
+}
+.trade :global(.swap-recipient) label {
+  margin: 0 0 8px;
+}
+.trade :global(.swap-recipient) input {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+}
+.trade :global(.swap-recipient) .withdraw-privacy-warning {
+  font-size: 11px;
+  padding: 9px 12px;
+}
 .trade :global(.swap-settings) select {
   min-height: 44px;
   font-size: 12px;

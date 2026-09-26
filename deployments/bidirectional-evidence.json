@@ -1,13 +1,14 @@
 {
-  "deployment": "0x2a65aaa7033c8c99658e0dad9c1ba7d0db9c3389:0x87e27cd461b0dfb0efb229586de6f8c2c7ba5f5535960eb2019be8784e2790b1",
-  "deposit": "0xd4b54a88887240292dfdb359516dedc6ea2884d829007f12ac8905b4ccc18698",
-  "swap": "0xd95b1981b1459fe33b840a95849e89b21a9ff0da26ba0ea99d5e2e466ef5dd26",
-  "failedReverse": "0x2bff21698f20fda5f285d60d2911600372b82fd72a2a2d2093a7b65250bd016c",
-  "reverse": "0xc8edad689d7deba178cbdd031ec2824295289aabe0337016d3dd7a5c2d774335",
-  "forwardAgain": "0xe3c50433bf8d0f1d04b27cd541f73d9f2b372d23b147ab31eb69a323e333e37c",
-  "returnedWeth": "90134979773667251",
-  "withdrawal": "0x329b15a7adb8598768ccd5541f5ea9a056e9afb8415eef39fa1acff6c6f219cd",
-  "outputAmount": "197431606879412259770",
+  "deployment": "0x23264a58cd7738b26407d4b7b0486c564c7766b4:0x257d7ad13638b0fd5c2d6429657711f47ccd7015009047d208c7bf7b8185deb9",
+  "deposit": "0x13ae96de627cbe77190b0543049b1f442aa21c91a70ba926678aad1278343502",
+  "swap": "0x502e0f0e9ad2e4434b430525f7ecc770f1d33441a91717fdac3b2cf8a7a5a662",
+  "failedReverse": "0x1ca66e80cdc9bfe196f0599891ddfe2d16e62dd754a8a33265c09068dd75b912",
+  "reverse": "0x230b2fb2ad3a76f26f26697d3b5855ac57ff194a5f8796a1481ffe87fdd1771d",
+  "forwardAgain": "0x32f4a4aafb3b193b4cf27463c07b9f7b9a8b251022a859ff6248d3ae6281d7b7",
+  "returnedWeth": "90882421004172561",
+  "withdrawal": "0x2585f43dcdf6951f0aa93a6c8f47ac93f9a209fb6d6d3445980f7f55d9a3ccba",
+  "swapAndWithdraw": "0x92a352872279c3bebe36ac4adfc5e7c090ff2c998a1383eb510561d210b4839b",
+  "outputAmount": "236254855499353673191",
   "checks": [
     "portable deposit",
     "lost response journal recovered with input note",
@@ -20,6 +21,8 @@
     "zero remaining pool and exchange allowances",
     "variable WETH reswap",
     "fresh-file withdrawal",
+    "swap output sent directly to recipient with minimum-output protection",
+    "direct swap does not create an output note or credit the output pool",
     "spent output reconciled"
   ]
 }

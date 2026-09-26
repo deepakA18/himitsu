@@ -25,7 +25,7 @@ export interface Attempt {
 
   id: string;
   deployment: string;
-  kind: 'deposit' | 'swap' | 'withdraw';
+  kind: 'deposit' | 'swap' | 'swap-withdraw' | 'withdraw';
   source: string;
   output?: string;
   sender: Hex;
@@ -125,7 +125,7 @@ function validate(data: VaultData) {
       attemptIds.has(a.id) ||
       !ids.has(a.source) ||
       (a.output && !ids.has(a.output)) ||
-      !['deposit', 'swap', 'withdraw'].includes(a.kind) ||
+      !['deposit', 'swap', 'swap-withdraw', 'withdraw'].includes(a.kind) ||
       ![
         'prepared',
         'broadcasting',

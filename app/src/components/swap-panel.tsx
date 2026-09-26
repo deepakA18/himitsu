@@ -15,6 +15,8 @@ type Props = {
   slippage: string;
   onSlippage: (value: string) => void;
   minimum: string;
+  recipient: string;
+  onRecipient: (value: string) => void;
   market: boolean;
   locked: boolean;
   busy: boolean;
@@ -87,8 +89,8 @@ export function SwapPanel(p: Props) {
     <section className="swap-card" aria-labelledby="swap-heading">
       <div className="swap-heading">
         <div>
-          <p className="eyebrow">02 / CHOOSE YOUR SWAP</p>
-          <h2 id="swap-heading">{p.completed ? 'Swap confirmed.' : 'Make the swap.'}</h2>
+          <p className="eyebrow">02 / SWAP AND WITHDRAW</p>
+          <h2 id="swap-heading">{p.completed ? 'Swap and withdrawal confirmed.' : 'Swap and withdraw.'}</h2>
         </div>
         <span className="badge">Uniswap V2</span>
       </div>
@@ -251,12 +253,29 @@ export function SwapPanel(p: Props) {
             </div>
           </div>
         )}
+        {!p.completed && (
+          <div className="swap-recipient">
+            <label htmlFor="swap-recipient">Send output to</label>
+            <input
+              id="swap-recipient"
+              value={p.recipient}
+              onChange={(e) => p.onRecipient(e.target.value)}
+              placeholder="Recipient address · 0x…"
+              autoComplete="off"
+              spellCheck={false}
+              disabled={p.busy}
+            />
+            <p className="withdraw-privacy-warning">
+              The swap output goes to this public address; it is not placed in another private pool.
+            </p>
+          </div>
+        )}
         <button className="swap-submit" type="submit" disabled={p.disabled} aria-busy={p.rolling}>
           {p.rolling
-            ? 'Swapping…'
+            ? 'Swapping and withdrawing…'
             : p.completed
               ? 'Swap confirmed'
-              : `Swap to ${p.outputAsset}`}
+              : `Swap and withdraw ${p.outputAsset}`}
         </button>
         <p className="swap-feedback" role="status" aria-live="polite">
           {p.status || p.reason || 'Ready when you are.'}

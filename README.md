@@ -1,6 +1,6 @@
 # Himitsu
 
-Private-note swaps through Uniswap, authorized by native frame transactions.
+Private-note withdrawals and swap-and-withdrawals through Uniswap, authorized by native frame transactions.
 
 Himitsu lets a user spend a private balance without an application-operated relayer or bundler,
 and without granting the exchange a token allowance. The client generates a zero-knowledge proof,
@@ -8,9 +8,9 @@ constructs an EIP-8141 frame transaction, and submits it directly to RPC. The po
 spend; a prefunded onchain paymaster independently authorizes gas payment. Neither step requires an
 operator's per-transaction signature.
 
-The swap goes directly through a Uniswap V2 pair. Himitsu transfers the exact authorized input to
-the pair and deposits the entire received output into a second privacy pool. The user saves a new
-private note before submission and can later import it to recover or withdraw the actual output.
+Users choose one of two actions after importing a note: withdraw its token directly, or swap it
+through a Uniswap V2 pair and send the output to a chosen address in the same transaction. The
+swap output is public and does not create a second private note.
 
 Built with **EIP-8141, Uniswap V2, Circom + Groth16, Poseidon, Ethrex, Next.js, and Family ConnectKit**.
 The current implementation runs on a pinned, patched Ethrex devnet with test assets. It is not
@@ -21,17 +21,15 @@ audited or intended for real funds.
 1. **Deposit and save a note.** Connect a wallet through ConnectKit, generate a private note, and
    download it before approving a 0.1 ETH deposit. The input pool wraps ETH into WETH and inserts an
    amount-bound commitment into its Merkle tree.
-2. **Choose the trade.** Import the WETH note, review the live Uniswap quote and slippage tolerance,
-   and save a fresh output note. No phrase or vault-password onboarding is required.
+2. **Choose an action.** Import the note and choose **Swap and withdraw** or **Withdraw**. For a
+   swap, review the live Uniswap quote, slippage limit, and public recipient address.
 3. **Prove and authorize.** A client-side worker generates a Groth16 proof of note membership and
    spending authority, bound to the transaction digest. Verification frames check expiry, validate
    the proof, and approve gas payment under the paymaster's policy.
-4. **Swap atomically.** A sender frame consumes the input nullifier, transfers WETH directly to the
-   pair, executes the swap, and deposits all received hUSD into the output pool. If the swap or
-   output deposit fails, the spending operation rolls back.
-5. **Recover or withdraw.** Import the saved output note. Canonical pool events reveal its actual
-   amount, and nullifier checks establish whether it is unspent. A withdrawal pays the full amount
-   to a public recipient; WETH notes withdraw as WETH, not native ETH.
+4. **Settle atomically.** A sender frame consumes the input nullifier. For a swap it sends the exact
+   input to the pair, enforces the minimum output, and routes the result directly to the recipient.
+   For a withdrawal it sends the note's token directly to the recipient. Any failure rolls back the
+   spend, so the input note remains unspent.
 
 The wallet pays deposit gas. The prefunded paymaster pays eligible private-spend gas, including gas
 consumed by included failed attempts. Private swaps and withdrawals do not request wallet signatures.
@@ -43,7 +41,7 @@ flowchart LR
     subgraph PERSON[User]
         WALLET[Wallet]
         INPUT[(Input note file)]
-        OUTPUT[(Output note file)]
+        RECIPIENT[Recipient address]
     end
 
     subgraph DEVICE[Client · user device]
@@ -57,7 +55,6 @@ flowchart LR
         WETH[WETH privacy pool]
         SPONSOR[Gas paymaster]
         PAIR[Uniswap V2 pair]
-        GUSD[hUSD privacy pool]
     end
 
     WALLET -->|connect and approve deposit| APP
@@ -65,16 +62,14 @@ flowchart LR
     RPC -->|deposit ETH| WETH
     INPUT -->|import secret| APP
     APP -->|prove locally| PROVER
-    APP -->|save before send| OUTPUT
     APP -->|persist before broadcast| JOURNAL
     APP -->|submit frame transaction| RPC
     APP -->|recover from confirmed events| RPC
     RPC --> WETH
     RPC --> SPONSOR
     WETH -->|exact input| PAIR
-    PAIR -->|actual output| WETH
-    WETH -->|atomic deposit| GUSD
-    GUSD -->|recover or withdraw| RPC
+    PAIR -->|swap output| RECIPIENT
+    WETH -->|withdraw token| RECIPIENT
 ```
 
 The client creates proofs and stores transaction history locally. It sends transactions and recovery
@@ -93,10 +88,10 @@ sequenceDiagram
     participant Pool as WETH privacy pool
     participant Paymaster as Gas paymaster
     participant Pair as Uniswap V2 pair
-    participant Output as hUSD privacy pool
+    actor Recipient
 
     User->>App: Import WETH note and review quote
-    App->>App: Create and download output note
+    User->>App: Choose recipient and minimum output
     App->>Worker: Build witness and transaction digest
     Worker-->>App: Groth16 proof
     App->>App: Save signed transaction to encrypted journal
@@ -108,15 +103,14 @@ sequenceDiagram
     Paymaster-->>RPC: APPROVE_PAYMENT (0x1)
     RPC->>Pool: SENDER frame consumes note and transfers exact WETH
     Pool->>Pair: Swap exact input
-    Pair-->>Pool: Return actual hUSD output
-    Pool->>Output: Deposit full output atomically
+    Pair-->>Recipient: Send actual hUSD output
     RPC-->>App: Receipt and frame results
     App-->>User: Confirm note status and transaction
 ```
 
-If a swap or output deposit fails, the spend rolls back and the input note remains unspent. An
-included failed attempt may still consume paymaster funds. The output note was saved before broadcast,
-so it can be imported to recover the confirmed amount later.
+If the swap fails or returns less than the minimum, the spend rolls back and the input note remains
+unspent. An included failed attempt may still consume paymaster funds. Swap amounts and recipient
+addresses are public; the proof hides which deposit authorized the input spend.
 
 **Diagram notation:** brackets after instruction names identify opcode bytes. Approval-scope values
 are separate operands/permissions, not additional opcodes. `VERIFY` and `SENDER` are frame modes.
@@ -171,7 +165,7 @@ route is WETH ↔ hUSD; it is not an arbitrary-token router.
 
 | Integration | Review the implementation |
 | --- | --- |
-| Exact-input swap, minimum output, direct pair transfer, full output redeposit | [`HimitsuPoolV2.sol`, `spendAndSwapQuoted()`](packages/protocol/contracts/src/HimitsuPoolV2.sol#L259) |
+| Exact-input swap, minimum output, direct payment to recipient | [`HimitsuPoolV2.sol`, `spendAndSwapToRecipient()`](packages/protocol/contracts/src/HimitsuPoolV2.sol#L280) |
 | Proof validation and permitted execution layout | [`HimitsuPoolV2.sol`, `validateSpend()`](packages/protocol/contracts/src/HimitsuPoolV2.sol#L193) |
 | Fresh token backing for deposited notes | [`HimitsuPoolV2.sol`, `depositTokenAmount()`](packages/protocol/contracts/src/HimitsuPoolV2.sol#L153) |
 | Client-side frame construction and submission | [`controller.ts`, `spend()`](app/src/lib/controller.ts#L284) |
@@ -179,11 +173,10 @@ route is WETH ↔ hUSD; it is not an arbitrary-token router.
 | Pair deployment and initial liquidity | [`deploy-app-v2.mjs`](packages/protocol/deploy-app-v2.mjs) |
 | Reserve-based quotes and readiness checks | [`market.ts`](packages/client/src/market.ts) |
 
-There is no allowance to the Uniswap pair or router. The input pool temporarily approves the
-**output privacy pool** for the exact received amount, deposits it, and clears that approval in the
-same call. Initial ERC-20 deposits can also require an allowance; the ETH deposit flow does not.
-Direct pair transfers are an existing Uniswap capability. Himitsu combines them with private-note
-spending and native frame authorization.
+There is no allowance to the Uniswap pair or router. In **Swap and withdraw**, Uniswap sends output
+tokens directly to the recipient. Initial ERC-20 deposits can require an allowance; the ETH deposit
+flow does not. Direct pair transfers are an existing Uniswap capability. Himitsu combines them
+with private-note spending, proof-bound minimum output, and native frame authorization.
 
 ## Enforced properties and limits
 
@@ -192,7 +185,7 @@ spending and native frame authorization.
 - **Bounded sponsorship.** Immutable policy restricts eligible pools, transaction shape, and fee/gas
   limits. No operator signs each sponsorship approval. These bounds do not prevent repeated subsidy
   consumption by a valid note holder.
-- **Atomic settlement.** A failed swap or output deposit leaves the input unspent. Included failures
+- **Atomic settlement.** A failed swap or recipient transfer leaves the input unspent. Included failures
   can still cost sponsor gas. Fresh backing checks prevent unsolicited donations being claimed as notes.
 - **Recoverable confirmed funds.** A downloaded note can recover its confirmed deposit and amount in
   a fresh client. The checksum detects file damage; it does not authenticate ownership or encrypt it.
@@ -368,8 +361,8 @@ production build passed. Public native-flow evidence is in
 [`app.v2-market-evidence.json`](deployments/app.v2-market-evidence.json), and
 [`app.v2-deposit-evidence.json`](deployments/app.v2-deposit-evidence.json).
 
-The current private-note UI and ConnectKit flow have **not** been exercised end to end in a client.
-Earlier client evidence covers the previous UI. See [`app-validation.md`](docs/app-validation.md)
+The private-note UI and ConnectKit flow have **not** been exercised end to end in a browser.
+Native client scripts exercise transaction construction and chain behavior. See [`app-validation.md`](docs/app-validation.md)
 for the distinction. `test:client` retains historical phrase-recovery and nonce-contention regression
 coverage; phrase recovery is no longer an app workflow. Tests are evidence of the checked behavior,
 not an audit or a proof of production safety.
@@ -378,7 +371,7 @@ not an audit or a proof of production safety.
 
 - **Concurrent spending.** Reduce shared-pool nonce contention without weakening replay protection.
 - **Sustainable gas payment.** Replace open-ended demo subsidy with a reviewed funding and abuse-control model.
-- **Broader Uniswap integration.** Explore newer routing and pool versions while preserving exact authorization and private output recovery.
+- **Broader Uniswap integration.** Explore newer routing and pool versions while preserving exact authorization and recipient protections.
 - **Privacy and usability.** Address amount/timing correlation and improve note custody without introducing a secret-holding backend.
 - **Larger pools.** Extend tree capacity and recovery performance beyond the current fixed-depth demo.
 - **Production readiness.** Independent audits, an appropriate proving ceremony, supported network execution, and operational validation.
@@ -397,12 +390,12 @@ The Himitsu Merkle zero-leaf domain is defined consistently in the client and co
 Deployments created with the former domain are incompatible; use matching artifacts and a fresh deployment.
 `docs/implementation-plan-source.md` preserves the original plan with Himitsu naming for provenance.
 
-### Bidirectional private swaps
+### Bidirectional swaps and withdrawals
 
-Select **Bidirectional swaps · v2** for WETH ↔ hUSD. The swap card’s **Reverse direction**
-button changes the input token; importing a note selects its direction automatically.
-Save a fresh output note before each swap. Quotes use the entire imported note amount;
-the actual received amount is recovered from onchain deposit events, including WETH outputs.
+Select **Bidirectional swaps · v2** for WETH ↔ hUSD. The **Reverse direction** button changes the
+input token; importing a note selects its direction automatically. Choose **Swap and withdraw**
+to trade the full note and send the output directly to a recipient, or **Withdraw** to send the
+original token. Review the quote, minimum output, recipient, and privacy warning before confirming.
 
 Both pools in this deployment accept variable amounts (`denomination = 0`). The UI still
 uses a default ETH deposit of 0.1 ETH (`defaultDepositAmount`). Older fixed-WETH deployments
@@ -411,9 +404,9 @@ variable WETH swap outputs. The test token is named **Himitsu USD (hUSD)**; arch
 retain their original onchain metadata.
 
 Run `RPC_URL=http://127.0.0.1:8567 bun run test:bidirectional` with the local node running.
-This sends test transactions: deposit → WETH-to-hUSD → reverse slippage revert → hUSD-to-WETH
-→ variable-WETH-to-hUSD → withdrawal. It verifies note-file recovery, atomic rollback,
-exact withdrawal amounts, and zero remaining exchange/pool allowances. Transaction hashes
+This sends test transactions: deposit → private-note swaps and withdrawals → direct swap-and-withdraw.
+It verifies note-file recovery, atomic rollback, exact withdrawal amounts, direct recipient payment,
+minimum output protection, no output-pool credit for direct swaps, and zero exchange/pool allowances. Transaction hashes
 are recorded in `deployments/bidirectional-evidence.json`.
 
 ### Fixed-denomination deposits and withdrawals

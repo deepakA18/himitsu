@@ -20,6 +20,9 @@ interface IWETH is IERC20 {
 }
 
 interface IPair {
+    function getReserves() external view returns (uint112, uint112, uint32);
+    function token0() external view returns (address);
+    function token1() external view returns (address);
     function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata data) external;
 }
 
@@ -50,8 +53,8 @@ interface IGhostPool {
 ///   2. requires the transaction to contain exactly ONE execution frame, which
 ///      must target this pool and call one of two sanctioned entry points
 ///
-/// Everything a spend needs to do -- pay out, swap, mint the output note -- is
-/// therefore inside a single pool function that runs atomically, rather than
+/// Everything a spend needs to do -- pay out, swap, and optionally mint an output
+/// note or send it to the recipient -- is therefore inside one atomic pool call, rather than
 /// spread over frames that would each have to be validated.
 contract GhostPoolUnchecked {
     uint32 public constant LEVELS = 10;
@@ -83,6 +86,8 @@ contract GhostPoolUnchecked {
     bytes4 private constant SEL_SPEND = bytes4(keccak256("spend()"));
     bytes4 private constant SEL_SPEND_AND_SWAP =
         bytes4(keccak256("spendAndSwapToNote(address,uint256,uint256,address,bytes32)"));
+    bytes4 private constant SEL_SWAP_AND_WITHDRAW =
+        bytes4(keccak256("spendAndSwapToRecipient(address,uint256,uint256,address)"));
 
     IHasher public immutable hasher;
     IERC20 public immutable token;
@@ -106,6 +111,7 @@ contract GhostPoolUnchecked {
 
     event Deposit(bytes32 indexed commitment, uint32 leafIndex, bytes32 root);
     event Spent(bytes32 indexed nullifierHash, address indexed recipient, uint256 amount);
+    event SwapWithdrawn(bytes32 indexed nullifierHash, address indexed recipient, uint256 inputAmount, uint256 outputAmount);
 
     constructor(
         IHasher _hasher,
@@ -220,7 +226,7 @@ contract GhostPoolUnchecked {
             );
             bytes4 selector = bytes4(_frameData(i, 0));
             require(
-                selector == SEL_SPEND || selector == SEL_SPEND_AND_SWAP,
+                selector == SEL_SPEND || selector == SEL_SPEND_AND_SWAP || selector == SEL_SWAP_AND_WITHDRAW,
                 "layout: selector not sanctioned"
             );
         }
@@ -266,6 +272,31 @@ contract GhostPoolUnchecked {
         require(outputToken.balanceOf(address(this)) == beforeBalance, "swap: output not consumed");
 
         emit Spent(nullifierHash, pair, denomination);
+    }
+
+    /// Swap the note's full input and send the output directly to a recipient.
+    /// The transaction proof commits to the pair, output amount, and recipient.
+    function spendAndSwapToRecipient(
+        address pair,
+        uint256 amount0Out,
+        uint256 amount1Out,
+        address recipient
+    ) external nonReentrant {
+        (bytes32 nullifierHash, address provedRecipient) = _settle();
+        require(
+            recipient == provedRecipient && recipient != address(this) && recipient != pair,
+            "swap: recipient not proved"
+        );
+        require((amount0Out == 0) != (amount1Out == 0), "swap: invalid output");
+        address token0 = IPair(pair).token0();
+        address token1 = IPair(pair).token1();
+        require(token0 == address(token) || token1 == address(token), "swap: wrong pair");
+        require((amount0Out == 0 ? token0 : token1) == address(token), "swap: wrong output side");
+
+        _payOut(pair);
+        IPair(pair).swap(amount0Out, amount1Out, recipient, "");
+        uint256 outputAmount = amount0Out + amount1Out;
+        emit SwapWithdrawn(nullifierHash, recipient, denomination, outputAmount);
     }
 
     /// Shared prologue: only reachable from a SENDER frame of this pool's own

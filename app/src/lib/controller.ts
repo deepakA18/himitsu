@@ -291,7 +291,7 @@ export class Controller {
   }
   async spend(
     id: string,
-    kind: 'swap' | 'withdraw',
+    kind: 'swap' | 'swap-withdraw' | 'withdraw',
     recipient: string,
     onProgress: (text: string) => void,
     swapQuote?: { expected: string; minimum: string; quotedAt: number },
@@ -302,15 +302,17 @@ export class Controller {
       await this.sync();
       const d = this.deployment,
         note = this.vault.data.notes.find((n) => n.id === id);
+      const swapping = kind !== 'withdraw';
+      const swappingToRecipient = kind === 'swap-withdraw';
       if (!note || this.noteState(note) !== 'Available')
         throw new Error('Select an available note after synchronization');
-      if (kind === 'swap' && d.mode === 'fixed')
+      if (kind !== 'withdraw' && d.mode === 'fixed')
         throw new Error('Fixed notes support withdrawals only');
       const reverse = note.pool.toLowerCase() === d.outputPool.toLowerCase();
       if (!reverse && note.pool.toLowerCase() !== d.pool.toLowerCase())
         throw new Error('Unknown source pool');
       const destinationPool = reverse ? d.pool : d.outputPool;
-      if (kind === 'withdraw' && (!isAddress(recipient) || BigInt(recipient) === 0n))
+      if (kind !== 'swap' && (!isAddress(recipient) || BigInt(recipient) === 0n))
         throw new Error('Enter a nonzero recipient address');
       if (
         this.vault.data.attempts.some(
@@ -322,13 +324,13 @@ export class Controller {
       )
         throw new Error('This pool has an unresolved local transaction. Reconcile it first.');
       await this.requireReady(
-        kind === 'swap' ? 'swap' : 'withdrawal',
+        swapping ? 'swap' : 'withdrawal',
         note.pool,
         note.amount ?? d.denomination,
       );
       const expected = swapQuote ? BigInt(swapQuote.expected) : BigInt(this.health!.quote);
       const minimum = swapQuote ? BigInt(swapQuote.minimum) : minimumOutput(expected, 50);
-      if (kind === 'swap' && d.noteVersion === 2) {
+      if (swapping && d.noteVersion === 2) {
         if (expected <= 0n || minimum <= 0n || minimum > expected)
           throw new Error('Invalid swap quote');
         if (
@@ -356,7 +358,28 @@ export class Controller {
       const pool = this.current!.pools.get(note.pool.toLowerCase())!,
         root = hex32(pool.tree.root());
       const execute =
-        kind === 'swap'
+        swappingToRecipient
+          ? d.noteVersion === 2
+            ? encodeFunctionData({
+                abi: poolV2Abi,
+                functionName: 'spendAndSwapToRecipient',
+                args: [d.pair, minimum, recipient as Hex],
+              })
+            : encodeFunctionData({
+                abi: poolAbi,
+                functionName: 'spendAndSwapToRecipient',
+                args: [
+                  d.pair,
+                  (reverse ? d.wethIsToken0 : !d.wethIsToken0)
+                    ? BigInt(reverse ? d.denomination : d.outputDenomination)
+                    : 0n,
+                  (reverse ? d.wethIsToken0 : !d.wethIsToken0)
+                    ? 0n
+                    : BigInt(reverse ? d.denomination : d.outputDenomination),
+                  recipient as Hex,
+                ],
+              })
+          : kind === 'swap'
           ? d.noteVersion === 2
             ? encodeFunctionData({
                 abi: poolV2Abi,
@@ -375,7 +398,7 @@ export class Controller {
                 ],
               })
           : encodeFunctionData({ abi: poolAbi, functionName: 'spend' });
-      const fee = fundingRequired(BigInt(latest.baseFeePerGas), kind === 'swap').fee;
+      const fee = fundingRequired(BigInt(latest.baseFeePerGas), swapping).fee;
       if (fee > 10_000_000_000n) throw new Error('Network fee exceeds sponsor policy');
       const tx: FrameTransaction = {
         chainId: BigInt(d.chainId),
@@ -421,8 +444,8 @@ export class Controller {
             flags: 0,
             target: note.pool,
             limits: {
-              execution: kind === 'swap' ? 900000n : 200000n,
-              state: kind === 'swap' ? 1500000n : 300000n,
+              execution: swapping ? 900000n : 200000n,
+              state: swapping ? 1500000n : 300000n,
             },
             value: 0n,
             data: execute,
@@ -465,7 +488,7 @@ export class Controller {
         deadline: deadline.toString(),
         raw,
         hash,
-        ...(kind === 'swap' && d.noteVersion === 2
+        ...(swapping && d.noteVersion === 2
           ? { quote: { expected: expected.toString(), minimum: minimum.toString() } }
           : {}),
         maxFeePerGas: tx.fees.maxFeePerGas.toString(),
@@ -475,7 +498,11 @@ export class Controller {
             'Check expiry',
             'Verify note ownership and authorize this action',
             'Approve gas payment onchain',
-            kind === 'swap' ? 'Swap and create output note atomically' : 'Withdraw the note',
+            kind === 'swap'
+              ? 'Swap and create output note atomically'
+              : kind === 'swap-withdraw'
+                ? 'Swap and send output to the proved recipient'
+                : 'Withdraw the note',
           ][i]!,
           target: f.target ?? tx.sender,
           executionGas: f.limits.execution.toString(),

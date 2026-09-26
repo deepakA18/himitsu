@@ -1,22 +1,32 @@
 [
   {
-    "name": "Bidirectional swaps · v2",
+    "name": "Bidirectional swaps \u00b7 v2",
+    "url": "/deployments/0x23264a58cd7738b26407d4b7b0486c564c7766b4.json",
+    "id": "0x23264a58cd7738b26407d4b7b0486c564c7766b4:0x257d7ad13638b0fd5c2d6429657711f47ccd7015009047d208c7bf7b8185deb9"
+  },
+  {
+    "name": "Bidirectional swaps \u00b7 v2",
     "url": "/deployments/0x2a65aaa7033c8c99658e0dad9c1ba7d0db9c3389.json",
     "id": "0x2a65aaa7033c8c99658e0dad9c1ba7d0db9c3389:0x87e27cd461b0dfb0efb229586de6f8c2c7ba5f5535960eb2019be8784e2790b1"
   },
   {
-    "name": "Fixed notes · 0.1 ETH deposit / 0.1 WETH withdrawal",
+    "name": "Fixed notes \u00b7 0.1 ETH deposit / 0.1 WETH withdrawal",
     "url": "/deployments/0x60f75912550affca8ac349b0e1b2a15daa42edb3.json",
     "id": "0x60f75912550affca8ac349b0e1b2a15daa42edb3:0xc917b8647dcee2d97389ab639ecc93ac8e009b502441c123d23e7ff35bfd6b5e"
   },
   {
-    "name": "Market swaps · v2",
+    "name": "Market swaps \u00b7 v2",
     "url": "/deployments/0xa9b709c7592a19e23f5385a286724ea42ee0ef3d.json",
     "id": "0xa9b709c7592a19e23f5385a286724ea42ee0ef3d:0x1638b3326cadf52be9cb69333fadc9fbb76c13d80219655fc550bfe79b2892d2"
   },
   {
-    "name": "Original fixed notes · v1",
+    "name": "Original fixed notes \u00b7 v1",
     "url": "/deployments/0xb81eb4138da8f5abc8437e7451997c3756aca77b.json",
     "id": "0xb81eb4138da8f5abc8437e7451997c3756aca77b:0xd079e904828af1257c0625135b5595a7ef303aeccbf01b18e4247c3f39664049"
+  },
+  {
+    "name": "Previous market swaps \u00b7 0xe4c4d400",
+    "url": "/deployments/0xe4c4d4008fc59f2b4a3218888685e55d5c664b55.json",
+    "id": "0xe4c4d4008fc59f2b4a3218888685e55d5c664b55:0xc3fcc9b86f468f1838db5199eaca4d1e8ae47b495af6a310193854473180eb01"
   }
 ]

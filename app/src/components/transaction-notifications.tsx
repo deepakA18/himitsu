@@ -6,7 +6,14 @@ import styles from './transaction-notifications.module.css';
 
 type Notice = { id: string; title: string; message: string; failure: boolean; hash?: string };
 function describe(a: Attempt): Notice | null {
-  const action = a.kind === 'withdraw' ? 'Withdrawal' : a.kind === 'swap' ? 'Swap' : 'Deposit';
+  const action =
+    a.kind === 'withdraw'
+      ? 'Withdrawal'
+      : a.kind === 'swap-withdraw'
+        ? 'Swap and withdrawal'
+        : a.kind === 'swap'
+          ? 'Swap'
+          : 'Deposit';
   const base = { id: a.id, hash: a.hash, failure: false };
   switch (a.state) {
     case 'confirmed':
@@ -16,7 +23,9 @@ function describe(a: Attempt): Notice | null {
         message:
           a.kind === 'deposit'
             ? 'Your deposit is confirmed. Keep your saved private note to spend these funds.'
-            : a.kind === 'swap'
+            : a.kind === 'swap-withdraw'
+              ? 'Your swap is confirmed and the output was sent to the recipient address.'
+              : a.kind === 'swap'
               ? 'Your swap is confirmed. Import your saved output note to use the received balance.'
               : 'Your withdrawal is confirmed. The tokens were sent to the recipient address.',
       };

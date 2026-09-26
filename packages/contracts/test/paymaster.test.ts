@@ -4,8 +4,9 @@ import { hexToBytes, type Hex } from 'viem';
 
 const pool = `0x${'11'.repeat(20)}` as Hex;
 const sponsor = `0x${'22'.repeat(20)}` as Hex;
+const swapWithdraw = '0x11223344' as Hex;
 const policy: SponsorPolicy = {
-  chainId: 9n, pools: [{ address: pool, verifySelector: '0x12345678', verifyCalldataBytes: 4, executeSelector: '0xabcdef01', executeCalldataBytes: 4 }],
+  chainId: 9n, pools: [{ address: pool, verifySelector: '0x12345678', verifyCalldataBytes: 4, executeSelector: '0xabcdef01', executeCalldataBytes: 4, additionalExecutions: [{ selector: swapWithdraw, calldataBytes: 100 }] }],
   expiryVerifier: '0x0000000000000000000000000000000000008141',
   maxTransactionCost: 1000n, maxFeePerGas: 10n, maxPriorityFeePerGas: 2n, proofBytes: 256,
   budgets: Array.from({ length: 4 }, () => ({ execution: { min: 100n, max: 500000n }, state: { min: 0n, max: 500000n } })) as SponsorPolicy['budgets'],
@@ -20,6 +21,7 @@ function context() {
       [BigInt(sponsor), 20000n, 1n, 1n, 4n, 0n],
       [BigInt(pool), 300000n, 2n, 0n, 4n, 0n],
     ],
+    executionSelector: 0xabcdef01n,
   };
 }
 /** Limited policy-control-flow interpreter. Not an EVM, gas meter, or native admission test. */
@@ -53,7 +55,7 @@ function evaluate(ctx: ReturnType<typeof context>): 'fund' | 'pay' | 'reject' {
       case 0xb0: { const key = Number(pop()); const value = ctx.tx.get(key); if (value === undefined) throw new Error('Unknown TXPARAM'); stack.push(value); break; }
       case 0xb3: { const i = Number(pop()), key = Number(pop()); stack.push(key === 8 || key === 9 ? 0n : ctx.frames[i]![key]!); break; }
       case 0xb4: { pop(); const key = pop(); stack.push(key === 3n ? 256n : 0n); break; }
-      case 0xb1: { pop(); const index = pop(); stack.push(BigInt(index === 1n ? '0x12345678' : '0xabcdef01') << 224n); break; }
+      case 0xb1: { pop(); const index = pop(); stack.push((index === 1n ? 0x12345678n : ctx.executionSelector!) << 224n); break; }
       case 0xaa: expect(pop()).toBe(0n); expect(pop()).toBe(0n); expect(pop()).toBe(1n); return 'pay';
       default: throw new Error(`Unexpected opcode ${op.toString(16)}`);
     }
@@ -64,6 +66,12 @@ test('funding path does not invoke native transaction context', () => {
   const ctx = context(); ctx.data = '0x'; ctx.tx.clear(); expect(evaluate(ctx)).toBe('fund');
 });
 test('supported layout approves payment only', () => expect(evaluate(context())).toBe('pay'));
+test('sponsored swap-and-withdraw selector and calldata shape are accepted', () => {
+  const c = context();
+  c.executionSelector = BigInt(swapWithdraw);
+  c.frames[3]![4] = 100n;
+  expect(evaluate(c)).toBe('pay');
+});
 test.each(['cost', 'fee', 'extra-frame', 'wrong-current-frame', 'blob', 'extra-signature', 'untrusted-pool', 'caller', 'chain', 'unapproved-pool', 'external-execution', 'atomic-swap', 'low-budget'])('rejects %s', attack => {
   const c = context();
   if (attack === 'cost') c.tx.set(6, 1001n);

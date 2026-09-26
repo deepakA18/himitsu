@@ -17,6 +17,7 @@ export const poolAbi = parseAbi([
   'function validateSpend(bytes32 root,bytes32 nullifierHash,address recipient)',
   'function spend()',
   'function spendAndSwapToNote(address pair,uint256 amount0Out,uint256 amount1Out,address outPool,bytes32 outCommitment)',
+  'function spendAndSwapToRecipient(address pair,uint256 amount0Out,uint256 amount1Out,address recipient)',
   'event Deposit(bytes32 indexed commitment,uint32 leafIndex,bytes32 root)',
 ]);
 export const poolV2Abi = parseAbi([
@@ -24,6 +25,7 @@ export const poolV2Abi = parseAbi([
   'function depositTokenAmount(bytes32 recoveryTag,uint256 amount) returns (uint32)',
   'function validateSpend(bytes32 root,bytes32 nullifierHash,address recipient,uint256 amount)',
   'function spendAndSwapQuoted(address pair,uint256 minOut,address outPool,bytes32 recoveryTag)',
+  'function spendAndSwapToRecipient(address pair,uint256 minOut,address recipient) returns (uint256 outputAmount)',
   'event DepositV2(bytes32 indexed commitment,uint32 leafIndex,bytes32 root,bytes32 recoveryTag,uint256 amount)',
 ]);
 export interface Deployment {

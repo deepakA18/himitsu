@@ -6,7 +6,15 @@ export async function deployAutomaticSponsor(pools, { funding = '0.1ether', amou
     chainId: BigInt(await rpc('eth_chainId')),
     pools: pools.map(address => ({ address, verifySelector: amountBound ? cast('sig', 'validateSpend(bytes32,bytes32,address,uint256)') : iface.validateSpend, verifyCalldataBytes: amountBound ? 132 : 100,
       executeSelector: iface.spend, executeCalldataBytes: 4,
-      additionalExecutions: withdrawalsOnly ? [] : [{ selector: amountBound ? cast('sig', 'spendAndSwapQuoted(address,uint256,address,bytes32)') : iface.spendAndSwapToNote, calldataBytes: amountBound ? 132 : 164 }] })),
+      additionalExecutions: withdrawalsOnly ? [] : amountBound
+        ? [
+            { selector: cast('sig', 'spendAndSwapQuoted(address,uint256,address,bytes32)'), calldataBytes: 132 },
+            { selector: cast('sig', 'spendAndSwapToRecipient(address,uint256,address)'), calldataBytes: 100 },
+          ]
+        : [
+            { selector: iface.spendAndSwapToNote, calldataBytes: 164 },
+            { selector: iface.spendAndSwapToRecipient, calldataBytes: 132 },
+          ] })),
     expiryVerifier: '0x0000000000000000000000000000000000008141',
     maxTransactionCost: 20_000_000_000_000_000n,
     maxFeePerGas: 10_000_000_000n, maxPriorityFeePerGas: 2_000_000_000n, proofBytes: 256,

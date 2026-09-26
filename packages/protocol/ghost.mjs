@@ -35,6 +35,7 @@ export const iface = {
   validateSpend: cast('sig', 'validateSpend(bytes32,bytes32,address)'),
   spend: cast('sig', 'spend()'),
   spendAndSwapToNote: cast('sig', 'spendAndSwapToNote(address,uint256,uint256,address,bytes32)'),
+  spendAndSwapToRecipient: cast('sig', 'spendAndSwapToRecipient(address,uint256,uint256,address)'),
   depositCredited: cast('sig', 'depositCredited(bytes32)'),
 }
 
@@ -46,6 +47,12 @@ export const encodeSpendAndSwap = ({ pair, amount0Out, amount1Out, outPool, outC
   amount1Out.toString(16).padStart(64, '0') +
   BigInt(outPool).toString(16).padStart(64, '0') +
   BigInt(outCommitment).toString(16).padStart(64, '0')
+
+export const encodeSpendAndSwapToRecipient = ({ pair, minOut, recipient }) =>
+  cast('sig', 'spendAndSwapToRecipient(address,uint256,address)') +
+  BigInt(pair).toString(16).padStart(64, '0') +
+  minOut.toString(16).padStart(64, '0') +
+  BigInt(recipient).toString(16).padStart(64, '0')
 
 export const eth = (wei) => `${(Number(wei) / 1e18).toFixed(6)} ETH`
 export const pad = (s, n) => String(s).padEnd(n)

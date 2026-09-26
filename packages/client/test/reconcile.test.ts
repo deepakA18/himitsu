@@ -44,6 +44,16 @@ test('receipt waits for confirmations and requires note settlement', () => {
     }).state,
   ).toBe('confirmed');
 });
+test('swap and withdraw confirms without an output note when input is spent', () => {
+  const directAttempt: Attempt = { ...attempt, kind: 'swap-withdraw' };
+  delete directAttempt.output;
+  expect(
+    reconcileAttempt(
+      directAttempt,
+      { ...base, spent: true, receipt: { success: true, confirmed: true } },
+    ).state,
+  ).toBe('confirmed');
+});
 test('confirmed revert makes unspent input recoverable', () =>
   expect(
     reconcileAttempt(attempt, { ...base, receipt: { success: false, confirmed: true } }).state,

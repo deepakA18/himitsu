@@ -1,4 +1,4 @@
-import { readMarket, amountOut, readiness } from '../packages/client/src/market';
+import { readMarket, amountOut, readiness, minimumOutput } from '../packages/client/src/market';
 import {
   createPrivateNote,
   exportPrivateNote,
@@ -84,6 +84,8 @@ async function settled(c: Controller, id: string) {
     if (['confirmed', 'failed', 'conflict', 'expired'].includes(a.state)) return a;
     await new Promise((r) => setTimeout(r, 1000));
   }
+  const pending = c.vault.data.attempts.find((a) => a.id === id);
+  console.error('Timed out waiting for transaction state:', pending?.state, pending?.hash, pending?.detail);
   throw new Error('Confirmation timeout');
 }
 const input = createPrivateNote(d, d.pool);
@@ -236,6 +238,35 @@ assert.equal(
   beforeWithdrawal + BigInt(last.note.amount!),
 );
 console.log('PASS returned variable WETH → hUSD → exact withdrawal');
+const directInput = createPrivateNote(d, d.pool, 'deposit');
+const directFile = exportPrivateNote(directInput, d);
+const directDeposit = await c.deposit(local.wallet, local.account, directInput);
+assert.equal((await settled(c, directDeposit.id)).state, 'confirmed');
+const direct = await opened(directFile);
+const directQuote = await readiness(direct.c.rpc, d, d.pool, direct.note.amount!);
+const directExpected = BigInt(directQuote.quote);
+const directMinimum = minimumOutput(directExpected, 50);
+const recipientBeforeDirect = await readMarket(c.rpc, d.token, 'balanceOf', [local.account]);
+const outputPoolBeforeDirect = await readMarket(c.rpc, d.outputPool, 'accounted');
+const swapAndWithdraw = await direct.c.spend(
+  direct.note.id,
+  'swap-withdraw',
+  local.account,
+  () => {},
+  {
+    expected: directExpected.toString(),
+    minimum: directMinimum.toString(),
+    quotedAt: directQuote.checkedAt,
+  },
+);
+console.log('Direct swap-and-withdraw submitted as', swapAndWithdraw.state, swapAndWithdraw.hash);
+assert.equal((await settled(direct.c, swapAndWithdraw.id)).state, 'confirmed');
+const receivedDirect =
+  (await readMarket(c.rpc, d.token, 'balanceOf', [local.account])) - recipientBeforeDirect;
+assert(receivedDirect >= directMinimum);
+assert.equal(await readMarket(c.rpc, d.outputPool, 'accounted'), outputPoolBeforeDirect);
+assert.equal(direct.c.noteState(direct.note), 'Spent');
+console.log('PASS swap and withdraw sends output to recipient atomically without minting an output note');
 writeFileSync(
   'deployments/bidirectional-evidence.json',
   JSON.stringify(
@@ -248,6 +279,7 @@ writeFileSync(
       forwardAgain: forwardAgain.hash,
       returnedWeth: weth.note.amount,
       withdrawal: withdrawal.hash,
+      swapAndWithdraw: swapAndWithdraw.hash,
       outputAmount: recovered.note.amount,
       checks: [
         'portable deposit',
@@ -261,6 +293,8 @@ writeFileSync(
         'zero remaining pool and exchange allowances',
         'variable WETH reswap',
         'fresh-file withdrawal',
+        'swap output sent directly to recipient with minimum-output protection',
+        'direct swap does not create an output note or credit the output pool',
         'spent output reconciled',
       ],
     },

@@ -72,6 +72,17 @@ export default function Page() {
     amount: string;
     asset: string;
   } | null>(null);
+  const [swapReview, setSwapReview] = useState<{
+    controller: Controller;
+    source: string;
+    recipient: string;
+    expected: string;
+    minimum: string;
+    inputAmount: string;
+    inputAsset: string;
+    outputAsset: string;
+    quotedAt: number;
+  } | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [copyMessage, setCopyMessage] = useState('');
   const [downloaded, setDownloaded] = useState(false);
@@ -221,13 +232,10 @@ export default function Page() {
   const noteState = note ? controller!.noteState(note) : '';
   const attempts = controller?.vault.data.attempts ?? [];
   const pending = attempts.some(isActive);
-  const disabled = !!busy || !!draft || !!withdrawReview || pending;
+  const disabled = !!busy || !!draft || !!withdrawReview || !!swapReview || pending;
   const latestSwap = attempts.filter((a) => a.kind === 'swap' && a.source === noteId).at(-1);
   const swapPending = swapPreparing || !!(latestSwap && isActive(latestSwap));
-  const swapCompleted =
-    !swapPreparing &&
-    latestSwap?.state === 'confirmed' &&
-    note?.pool.toLowerCase() === (reverse ? config?.outputPool : config?.pool)?.toLowerCase();
+  const swapCompleted = !swapPreparing && latestSwap?.state === 'confirmed';
   const settledOutput = latestSwap?.output
     ? controller?.vault.data.notes.find((n) => n.id === latestSwap.output)?.amount
     : undefined;
@@ -571,7 +579,7 @@ export default function Page() {
               </>
             ) : tab === 'swap' ? (
               <>
-                Swap <em>{inputAsset} for {outputAsset}</em>
+                Swap and withdraw <em>{outputAsset}</em>
               </>
             ) : (
               <>
@@ -613,7 +621,7 @@ export default function Page() {
                   setError('');
                 }}
               >
-                {t[0].toUpperCase() + t.slice(1)}
+                {t === 'swap' ? 'Swap and withdraw' : t[0].toUpperCase() + t.slice(1)}
               </button>
             ))}
         </nav>
@@ -694,6 +702,94 @@ export default function Page() {
                   className="secondary"
                   disabled={!!busy}
                   onClick={() => setWithdrawReview(null)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </section>
+          </NoteDialog>
+        )}
+        {swapReview && (
+          <NoteDialog
+            busy={!!busy}
+            titleId="swap-review-heading"
+            descriptionId="swap-review-description"
+            closeLabel="Cancel swap and withdrawal"
+            onClose={() => setSwapReview(null)}
+          >
+            <section className="note-backup">
+              <p className="eyebrow">CHECK YOUR SWAP AND WITHDRAWAL</p>
+              <h2 id="swap-review-heading" tabIndex={-1}>
+                Confirm swap and withdraw
+              </h2>
+              <p id="swap-review-description">
+                The swap output will be sent directly to your recipient in this transaction.
+              </p>
+              <dl className="withdraw-review-details">
+                <dt>You swap</dt>
+                <dd>
+                  {money(swapReview.inputAmount)} {swapReview.inputAsset}
+                </dd>
+                <dt>You receive at least</dt>
+                <dd>
+                  {money(swapReview.minimum)} {swapReview.outputAsset}
+                </dd>
+                <dt>Recipient</dt>
+                <dd>
+                  <code>{swapReview.recipient}</code>
+                </dd>
+                <dt>Network</dt>
+                <dd>
+                  {config?.name} · Chain {config?.chainId}
+                </dd>
+                <dt>Network fee</dt>
+                <dd>Covered by the transaction sponsor</dd>
+              </dl>
+              <p className="withdraw-privacy-warning">
+                <strong>Privacy:</strong> The public transaction shows the recipient and swap
+                output. A fresh address reduces address reuse; amounts and timing can still reveal
+                a connection.
+              </p>
+              <div className="row">
+                <button
+                  type="button"
+                  disabled={!!busy}
+                  onClick={() => {
+                    const review = swapReview;
+                    setSwapReview(null);
+                    void run('Preparing your swap and withdrawal…', async () => {
+                      setSwapPreparing(true);
+                      try {
+                        const result = await review.controller.spend(
+                          review.source,
+                          'swap-withdraw',
+                          review.recipient,
+                          setBusy,
+                          {
+                            expected: review.expected,
+                            minimum: review.minimum,
+                            quotedAt: review.quotedAt,
+                          },
+                        );
+                        setController(review.controller);
+                        setStatus(
+                          result.state === 'submitted'
+                            ? 'Swap and withdrawal submitted.'
+                            : 'The network has not confirmed this transaction yet. Check its status before retrying.',
+                        );
+                      } finally {
+                        setSwapPreparing(false);
+                      }
+                    });
+                  }}
+                >
+                  Confirm swap and withdraw
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={!!busy}
+                  onClick={() => setSwapReview(null)}
                 >
                   Cancel
                 </button>
@@ -930,7 +1026,7 @@ export default function Page() {
               <p className="hint">Download the file before approving your deposit.</p>
             </section>
           ) : tab === 'swap' ? (
-            <section className="combined-swap-card" aria-label="Swap using your saved file">
+            <section className="combined-swap-card" aria-label="Swap and withdraw using your saved file">
               <div className="note-action swap-note-entry">{noteEntry}</div>
               <SwapPanel
                 privateNoteMode
@@ -974,6 +1070,8 @@ export default function Page() {
                       )
                     : ''
                 }
+                recipient={recipient}
+                onRecipient={setRecipient}
                 market={config?.noteVersion === 2}
                 locked={false}
                 busy={disabled}
@@ -985,7 +1083,35 @@ export default function Page() {
                 error=""
                 reason={swapReason}
                 disabled={disabled || !!swapReason}
-                onSwap={() => void run('Preparing your output note…', () => prepare('swap'))}
+                onSwap={() => {
+                  if (!controller || !note || !health) return;
+                  const address = recipient.trim();
+                  if (!isAddress(address) || BigInt(address) === 0n) {
+                    setError('Enter a valid, nonzero recipient address.');
+                    return;
+                  }
+                  const expected = BigInt(health.quote);
+                  const minimum =
+                    config?.noteVersion === 2
+                      ? minimumOutput(expected, Number(slippage))
+                      : BigInt(config?.outputDenomination ?? '0');
+                  if (expected <= 0n || minimum <= 0n || minimum > expected) {
+                    setError('The current quote cannot be used. Refresh and try again.');
+                    return;
+                  }
+                  setError('');
+                  setSwapReview({
+                    controller,
+                    source: noteId,
+                    recipient: address,
+                    expected: expected.toString(),
+                    minimum: minimum.toString(),
+                    inputAmount: note.amount ?? config?.denomination ?? '0',
+                    inputAsset,
+                    outputAsset,
+                    quotedAt: health.checkedAt,
+                  });
+                }}
               />
             </section>
           ) : (

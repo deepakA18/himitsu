@@ -45,9 +45,9 @@
   },
   "deployedBytecode": {
     "functionDebugData": {
-      "@verifyProof_4194": {
+      "@verifyProof_4730": {
         "entryPoint": 84,
-        "id": 4194,
+        "id": 4730,
         "parameterSlots": 4,
         "returnSlots": 1
       },
