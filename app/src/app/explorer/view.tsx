@@ -89,7 +89,7 @@ export default function Explorer() {
       ? [
           [deployment.pool, 'Input pool'],
           [deployment.outputPool, 'Output pool'],
-          [deployment.sponsor, 'Paymaster'],
+          [deployment.sponsor, 'Paymaster contract'],
           [deployment.pair, 'Uniswap V2 pair'],
           [deployment.weth, 'WETH'],
           [deployment.token, 'hUSD'],
@@ -192,6 +192,52 @@ export default function Explorer() {
                   </section>
                 ) : (
                   <>
+                    {BigInt(transaction.type) === 6n && (
+                      <aside className={styles.frameNotice}>
+                        <div className={styles.frameNoticeHeading}>
+                          <span className={styles.protocolMark} aria-hidden="true">8141</span>
+                          <div>
+                            <strong>EIP-8141 is active</strong>
+                            <span>Native frame transaction · type 0x06</span>
+                          </div>
+                        </div>
+                        <p>
+                          The shared pool is the transaction sender. The paymaster contract pays
+                          the network fee from its prefunded ETH balance
+                          {receipt?.payer ? ` (${formatEther(BigInt(receipt.gasUsed) * BigInt(receipt.effectiveGasPrice ?? '0x0'))} ETH for this transaction)` : ''}.
+                          Your wallet does not pay gas for this swap or withdrawal.
+                        </p>
+                        <details className={styles.comparison}>
+                          <summary>Why this execution path</summary>
+                          <ul>
+                            <li>
+                              <strong>Direct wallet transaction:</strong> your EOA would be the
+                              sender and normally pay gas itself.
+                            </li>
+                            <li>
+                              <strong>Relayer-based meta-transaction:</strong> an app service must
+                              receive and relay signed requests, adding an online service and
+                              signing-key trust dependency.
+                            </li>
+                            <li>
+                              <strong>ERC-4337:</strong> account actions travel as UserOperations
+                              through an EntryPoint and bundler.
+                            </li>
+                            <li>
+                              <strong>Himitsu with EIP-8141:</strong> one type-0x06 transaction
+                              orders the deadline check, proof-authorized pool validation,
+                              onchain paymaster approval, and pool action. The browser submits it
+                              directly to the node; the paymaster must still be prefunded, and an
+                              included failure still costs it gas.
+                            </li>
+                          </ul>
+                          <p>
+                            This needs an EIP-8141-compatible network; it is not a drop-in flow on
+                            ordinary Ethereum networks.
+                          </p>
+                        </details>
+                      </aside>
+                    )}
                     {receipt &&
                       data.canonical &&
                       BigInt(receipt.status) === 1n && (
@@ -227,11 +273,11 @@ export default function Explorer() {
                             ? 'EIP-8141 · Frame transaction (0x06)'
                             : `Ethereum transaction (${transaction.type})`}
                         </dd>
-                        <dt>Sender</dt>
+                        <dt>{BigInt(transaction.type) === 6n ? 'Sender · shared pool' : 'Sender'}</dt>
                         <dd>{address(transaction.sender ?? transaction.from)}</dd>
                         <dt>Nonce</dt>
                         <dd>{quantity(transaction.nonce)}</dd>
-                        <dt>Gas payer</dt>
+                        <dt>{BigInt(transaction.type) === 6n ? 'Gas payer · paymaster' : 'Gas payer'}</dt>
                         <dd>
                           {receipt?.payer
                             ? address(receipt.payer)
