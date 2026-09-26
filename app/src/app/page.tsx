@@ -22,23 +22,27 @@ function Eth() {
 const faqs = [
   [
     'What is Himitsu?',
-    'Himitsu is a private swap flow. Deposit into a shared privacy pool, keep your private note, and use it to trade through Uniswap V2 or withdraw your funds.',
+    'Himitsu lets you trade tokens without revealing which deposit you spent. Save a private note file when you deposit, then use it to swap through Uniswap or withdraw your funds.',
   ],
   [
-    'Why do I need a private note?',
-    'Your note holds the secrets that let you spend your deposit. Save it before depositing and save the new output note before swapping. Anyone with a valid unspent note can spend it, a connected wallet cannot recover a lost note.',
+    'What is the saved file?',
+    'It is called a private note. This secret file gives access to your deposited funds. Save it before depositing, and save the new file before each swap. Anyone who gets the file can spend those funds. A connected wallet cannot restore a lost file.',
   ],
   [
-    'Who submits my transaction and pays for gas?',
-    'Your client creates a proof and submits the frame transaction directly to the node through RPC. There is no app-operated relayer or bundler signing each spend.',
+    'Who sends my swap and pays the network fee?',
+    'Your browser checks that you own the funds and sends the transaction directly to the network. The app does not use a service to submit swaps for you. A separate, funded sponsor account pays eligible network fees.',
   ],
   [
-    'Do I give Uniswap an allowance?',
-    'No. The swap sends the exact input to a Uniswap V2 pair, rather than giving an exchange permission to pull funds from your wallet. Contracts may still use a scoped allowance when depositing output into the privacy pool.',
+    'Can Uniswap take more tokens than I approve?',
+    'No. Himitsu sends only the amount you approve to Uniswap. It does not give the exchange permission to take more from your wallet.',
   ],
   [
     'Is everything about my trade private?',
-    'No. Zero-knowledge proofs hide which deposit you are spending. Trade amounts, timing and onchain swap activity remain visible',
+    'No. The system hides which deposit you spend. The amount, time, and swap activity are still public',
+  ],
+  [
+    'Why does Himitsu use EIP-8141?',
+    'EIP-8141 lets one transaction run the funds check, fee sponsor, and swap in order. Himitsu uses it instead of ERC-4337, which sends smart account actions through a separate entry contract and submission service. ERC-4337 can also cover fees; EIP-8141 fits the transaction flow we built.',
   ],
 ];
 
@@ -53,16 +57,19 @@ export default function Home() {
         <section className={styles.hero} aria-labelledby="hero-title">
           <div className={styles.heroCopy}>
             <p className={styles.eyebrow}>
-              <span className={styles.dot} /> PRIVATE NOTES · UNISWAP LIQUIDITY
+              <span className={styles.dot} /> PRIVATE DEPOSITS · TOKEN SWAPS
             </p>
             <h1 id="hero-title">
-              Swap from a
+              Swap tokens
               <br />
-              private note.
+              without revealing
+              <br />
+              which deposit
+              <br />
+              you spent
             </h1>
             <p className={styles.intro}>
-              Prove the spend in your browser, trade through Uniswap V2,
-              <br className={styles.desktopBreak} /> and save the output in a new private note.
+              Use a saved file to swap WETH for hUSD through Uniswap.
             </p>
             <div className={styles.actions}>
               <Link className={styles.button} href="/app" prefetch={false}>
@@ -76,20 +83,20 @@ export default function Home() {
           <div
             className={styles.stage}
             role="img"
-            aria-label="Illustration of an ETH to hUSD private swap and a user-held private note. Not a live quote."
+            aria-label="Illustration of swapping ETH for hUSD while keeping the deposit private. Not a live quote."
           >
             <div className={styles.stageGrid} />
-            <span className={styles.stageLabel}>A LITTLE LESS PUBLIC.</span>
+            <span className={styles.stageLabel}>HIDE WHICH DEPOSIT YOU SPEND</span>
             <div className={styles.noteCard}>
               <div className={styles.previewTop}>
-                <span>YOUR PRIVATE NOTE</span>
+                <span>YOUR SECRET FILE</span>
                 <span>↗</span>
               </div>
               <div className={styles.noteGlyph}>秘密</div>
               <div className={styles.noteDots}>•••• •••• •••• ••••</div>
               <div className={styles.noteBottom}>
-                <span>Held by you.</span>
-                <span>Only you.</span>
+                <span>Keep it safe</span>
+                <span>Controls your funds</span>
               </div>
             </div>
             <div className={styles.swapPreview}>
@@ -98,7 +105,7 @@ export default function Home() {
                   <Mark />
                   himitsu
                 </span>
-                <span className={styles.previewPill}>Private swap</span>
+                <span className={styles.previewPill}>Token swap</span>
               </div>
               <div className={styles.previewPair}>
                 <div>
@@ -118,13 +125,13 @@ export default function Home() {
                 </div>
               </div>
               <div className={styles.previewRoute}>
-                <span>Liquidity</span>
-                <strong>Uniswap V2 ↗</strong>
+                <span>Swap on</span>
+                <strong>Uniswap</strong>
               </div>
               <div className={styles.previewSubmit}>
-                Your proof. Your permission.
+                You approve each swap
               </div>
-              <p className={styles.previewFoot}>No exchange allowance · No app relayer</p>
+              <p className={styles.previewFoot}>Only the approved amount · No swap service</p>
             </div>
             <span className={styles.stageCaption}>PRODUCT PREVIEW / NOT A LIVE QUOTE</span>
           </div>
@@ -132,26 +139,27 @@ export default function Home() {
         <div className={styles.stack}>
           <span>BUILT ON OPEN PROTOCOLS</span>
           <span>
-            Ethereum <small>Frame transactions EIP-8141</small>
+            Ethereum <small>One transaction · ordered steps</small>
           </span>
           <span>
             Uniswap <small>Shared liquidity</small>
           </span>
           <span>
-            Zero knowledge <small>Proof, not identity</small>
+            Private balance checks <small>No wallet address in the check</small>
           </span>
         </div>
         <section id="why-himitsu" className={styles.features} aria-labelledby="features-title">
           <div className={styles.sectionHead}>
-            <p className={styles.eyebrow}>PRIVATE NOTES. DIRECT EXECUTION.</p>
+            <p className={styles.eyebrow}>SAVED FILES · DIRECT SWAPS</p>
             <h2 id="features-title">
-              Private by proof.
+              Hide which deposit you spent.
               <br />
-              Direct by design.
+              Swap through Uniswap.
             </h2>
             <p>
-              Himitsu connects a user-held private note to a real Uniswap V2 pair. Your client proves
-              the spend, the pool enforces its scope, and a separate paymaster covers eligible gas.
+              Himitsu lets you use a saved private note file to swap through Uniswap. The network
+              checks that the file can spend the funds, while a separate funded account can pay
+              some network fees.
             </p>
           </div>
           <div className={styles.featureGrid}>
@@ -159,45 +167,44 @@ export default function Home() {
               <span className={styles.featureIcon} aria-hidden="true">
                 ↗
               </span>
-              <h3>No relayer or bundler service.</h3>
+              <h3>Your browser sends the swap.</h3>
               <p>
-                Your client builds the Groth16 proof and submits an EIP-8141 frame transaction
-                directly to RPC, without an application relayer or bundler service. An onchain
-                paymaster separately authorizes sponsored gas.
+                Your browser sends the transaction straight to the network. A built-in fee sponsor
+                checks whether it will cover the network cost. No swap service submits it for you.
               </p>
-              <span className={styles.featureTag}>GROTH16 · EIP-8141 · ONCHAIN SPONSOR</span>
+              <span className={styles.featureTag}>DIRECT SUBMISSION · SEPARATE FEE SPONSOR</span>
             </article>
             <article>
               <span className={styles.featureIcon} aria-hidden="true">
                 ⊘
               </span>
-              <h3>Exact input to Uniswap.</h3>
+              <h3>Only the amount you approve.</h3>
               <p>
-                The pool sends the authorized WETH amount straight to the Uniswap V2 pair, without
-                an open exchange allowance.
+                Himitsu sends the amount you approve to Uniswap. The exchange cannot pull extra
+                tokens from your wallet.
               </p>
-              <span className={styles.featureTag}>WETH → UNISWAP V2 → hUSD</span>
+              <span className={styles.featureTag}>WETH → UNISWAP → hUSD</span>
             </article>
             <article>
               <span className={styles.featureIcon} aria-hidden="true">
                 ∗
               </span>
-              <h3>Save and recover your output.</h3>
+              <h3>Save the file for your new tokens.</h3>
               <p>
-                The proof hides which deposit backs your spend. Save the output note before sending;
-                it recovers the actual hUSD received for later withdrawal.
+                The network checks that your file can spend the funds without showing which deposit
+                is yours. Save the new file to access the tokens you receive.
               </p>
-              <span className={styles.featureTag}>YOUR NOTE IS YOUR KEY · NO HOSTED INDEXER</span>
+              <span className={styles.featureTag}>YOUR FILE CONTROLS YOUR FUNDS</span>
             </article>
           </div>
         </section>
         <section id="how-it-works" className={styles.how} aria-labelledby="how-title">
           <div className={styles.howHeading}>
-            <p className={styles.eyebrow}>FROM ETH DEPOSIT TO PRIVATE WETH NOTE.</p>
+            <p className={styles.eyebrow}>FROM ETH DEPOSIT TO SAVED WETH BALANCE</p>
             <h2 id="how-title">
-              One note.
+              Save your file.
               <br />
-              Your next move.
+              Use it when ready.
             </h2>
             <Link className={styles.textLink} href="/app" prefetch={false}>
               Open the app
@@ -207,32 +214,31 @@ export default function Home() {
             <li>
               <span>01</span>
               <div>
-                <h3>Deposit. Save your note.</h3>
+                <h3>Deposit ETH and save your file</h3>
                 <p>
-                  Connect your wallet to deposit 0.1 ETH. The pool wraps it to WETH, download the
-                  private note before approving the deposit. The note is the key to that balance.
+                  Connect your wallet and deposit 0.1 ETH. Download the secret file before you
+                  approve the deposit. It is the only way to access those funds.
                 </p>
               </div>
             </li>
             <li>
               <span>02</span>
               <div>
-                <h3>Swap from the pool.</h3>
+                <h3>Swap using your saved file</h3>
                 <p>
-                  Import the WETH note, review the live quote and slippage, then save a fresh hUSD
-                  note. Your client proves the spend, the pool swaps exact input through Uniswap V2
-                  and deposits all actual output atomically.
+                  Add your file, review the current price and minimum you may receive, then save a
+                  new file for your hUSD. Himitsu swaps through Uniswap and puts the tokens you
+                  receive into your new balance.
                 </p>
               </div>
             </li>
             <li>
               <span>03</span>
               <div>
-                <h3>Withdraw when you’re ready.</h3>
+                <h3>Withdraw when you’re ready</h3>
                 <p>
-                  Import the output note to recover its confirmed amount from pool events, then
-                  withdraw the full balance to a recipient address. No app account or recovery
-                  phrase is involved, keep your note file safe.
+                  Add your latest file and send the balance to an address you choose. There is no
+                  account that can restore a lost file, so keep it somewhere safe.
                 </p>
               </div>
             </li>
@@ -260,8 +266,8 @@ export default function Home() {
         </section>
         <section className={styles.closing} aria-labelledby="closing-title">
           <div>
-            <p className={styles.eyebrow}>PUBLIC LIQUIDITY. PRIVATE POSSIBILITIES.</p>
-            <h2 id="closing-title">Make your move.</h2>
+            <p className={styles.eyebrow}>SWAP THROUGH UNISWAP · HIDE WHICH DEPOSIT YOU SPEND</p>
+            <h2 id="closing-title">Trade with more privacy.</h2>
             <Link className={styles.button} href="/app" prefetch={false}>
               Launch Himitsu
             </Link>

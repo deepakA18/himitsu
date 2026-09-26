@@ -87,7 +87,7 @@ export function SwapPanel(p: Props) {
     <section className="swap-card" aria-labelledby="swap-heading">
       <div className="swap-heading">
         <div>
-          <p className="eyebrow">02 / MAKE YOUR MOVE</p>
+          <p className="eyebrow">02 / CHOOSE YOUR SWAP</p>
           <h2 id="swap-heading">{p.completed ? 'Swap confirmed.' : 'Make the swap.'}</h2>
         </div>
         <span className="badge">Uniswap V2</span>
@@ -106,7 +106,7 @@ export function SwapPanel(p: Props) {
         >
           <div className="swap-route">
             <div className="route-caption">
-              <span>THE SWAP PATH</span>
+              <span>YOUR SWAP</span>
               <span>
                 {p.completed
                   ? 'Arrived ✓'
@@ -176,7 +176,7 @@ export function SwapPanel(p: Props) {
               aria-describedby="swap-input-hint"
             />
             <p id="swap-input-hint" className="hint">
-              {p.completed ? 'Your new private note' : 'One private note'}
+              {p.completed ? 'Your new saved file' : 'From your saved file'}
             </p>
           </div>
           <div className="swap-amount-panel receive-panel">
@@ -197,7 +197,7 @@ export function SwapPanel(p: Props) {
               {p.completed
                 ? 'Input note spent'
                 : p.outputAmount
-                  ? 'Into your private balance'
+                  ? 'Into your new saved file'
                   : 'Waiting for a quote'}
             </p>
           </div>
@@ -205,10 +205,10 @@ export function SwapPanel(p: Props) {
         {!p.privateNoteMode && (
           <>
             <div className="swap-balance">
-              <span>Available private balance</span>
+              <span>Available balance</span>
               <strong>{p.locked ? 'Unlock to view' : `${p.balance} ${p.inputAsset}`}</strong>
             </div>
-            <label htmlFor="swap-note">Spend from</label>
+            <label htmlFor="swap-note">Use these funds</label>
             <select
               id="swap-note"
               value={p.selected}
@@ -217,10 +217,10 @@ export function SwapPanel(p: Props) {
             >
               <option value="">
                 {p.locked
-                  ? 'Unlock your private wallet'
+                  ? 'Connect your wallet'
                   : p.notes.length
-                    ? 'Choose a private note'
-                    : `No available ${p.inputAsset} notes`}
+                    ? 'Choose saved funds'
+                    : `No saved ${p.inputAsset} funds`}
               </option>
               {p.notes.map((n) => (
                 <option key={n.id} value={n.id}>
@@ -233,7 +233,7 @@ export function SwapPanel(p: Props) {
         {!p.completed && (
           <div className="swap-settings">
             <div>
-              <label htmlFor="slippage">Slippage tolerance</label>
+              <label htmlFor="slippage">Price movement limit</label>
               <select
                 id="slippage"
                 value={p.slippage}
@@ -246,7 +246,7 @@ export function SwapPanel(p: Props) {
               </select>
             </div>
             <div className="swap-minimum">
-              <span className="hint">Minimum received</span>
+              <span className="hint">At least</span>
               <strong>{p.minimum ? `${p.minimum} ${p.outputAsset}` : '—'}</strong>
             </div>
           </div>
@@ -256,15 +256,15 @@ export function SwapPanel(p: Props) {
             ? 'Swapping…'
             : p.completed
               ? 'Swap confirmed'
-              : `Swap to private ${p.outputAsset}`}
+              : `Swap to ${p.outputAsset}`}
         </button>
         <p className="swap-feedback" role="status" aria-live="polite">
           {p.status || p.reason || 'Ready when you are.'}
         </p>
         {p.error && <p className="error">{p.error}</p>}
         <div className="swap-benefits">
-          <span>No exchange allowance</span>
-          <span>Gas paid by paymaster</span>
+          <span>Only the approved amount goes to Uniswap</span>
+          <span>Network fee covered by sponsor</span>
         </div>
       </form>
     </section>

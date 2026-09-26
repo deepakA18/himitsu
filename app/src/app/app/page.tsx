@@ -266,7 +266,7 @@ export default function Page() {
     setReverse(n.pool.toLowerCase() === config.outputPool.toLowerCase());
     setHealth(null);
     setInput('');
-    setStatus('Note checked against the chain.');
+    setStatus('File checked with the network.');
   }
   useEffect(() => {
     const text = input.trim();
@@ -274,7 +274,7 @@ export default function Page() {
     const timer = setTimeout(() => {
       if (working.current) return;
       checkedInput.current = text;
-      void run('Checking private note…', async () => {
+      void run('Checking your saved file…', async () => {
         setNoteError('');
         try {
           await loadNote(text);
@@ -299,7 +299,7 @@ export default function Page() {
     if (kind === 'deposit') download(text, `himitsu-${kind}-${n.id.slice(2, 10)}.txt`);
     const c = kind === 'deposit' ? await session(n, false) : controller!;
     if (!c || (kind === 'swap' && (!note || noteState !== 'Available')))
-      throw new Error('Import an available note for the selected token first');
+      throw new Error('Add a saved file for this token first');
     setDraft({
       kind,
       note: n,
@@ -311,11 +311,11 @@ export default function Page() {
     setCopyMessage('');
     setDownloaded(kind === 'deposit');
     setBackedUp(false);
-    setStatus('Save the new private note before continuing.');
+    setStatus('Save your new file before continuing.');
   }
   async function submitDraft() {
     if (!draft || !downloaded || !backedUp)
-      throw new Error('Save your private note and confirm the backup first');
+      throw new Error('Save your file and confirm the backup first');
     const current = draft;
     // Remove the submission control before awaiting; retries must prepare a fresh output note.
     setDraft(null);
@@ -329,7 +329,7 @@ export default function Page() {
           'Wallet account changed. Prepare a new deposit note for the selected account.',
         );
       if (connection.chainId !== Number(current.controller.deployment.chainId))
-        throw new Error('Switch to the Himitsu devnet before depositing');
+        throw new Error('Switch to the Himitsu network before depositing');
       const provider = await connection.connector.getProvider();
       if (!provider || typeof (provider as Wallet).request !== 'function')
         throw new Error('Selected wallet cannot submit deposits');
@@ -357,7 +357,7 @@ export default function Page() {
       );
       setNoteId(current.note.id);
     } else {
-      if (!health) throw new Error('Wait for a live quote');
+      if (!health) throw new Error('Wait for the current price');
       setSwapPreparing(true);
       try {
         result = await current.controller.spend(
@@ -382,30 +382,30 @@ export default function Page() {
     setStatus(
       result.state === 'submitted'
         ? 'Submitted.'
-        : 'Submission uncertain. Keep both notes and check status before retrying.',
+        : 'The network has not confirmed the swap yet. Keep both saved files and check its status before trying again.',
     );
   }
   const inputAsset = reverse ? 'hUSD' : 'WETH';
   const outputAsset = reverse ? 'WETH' : 'hUSD';
   const swapReason = !note
-    ? `Import a ${inputAsset} private note above to swap.`
+    ? `Add your saved ${inputAsset} file above to swap.`
     : noteState !== 'Available'
-      ? `Note: ${noteState}.`
+      ? `File status: ${noteState}.`
       : asset !== inputAsset
-        ? `Import a ${inputAsset} private note for this direction.`
+        ? `Add your saved ${inputAsset} file for this swap.`
         : !health ||
             health.sourcePool?.toLowerCase() !==
               (reverse ? config?.outputPool : config?.pool)?.toLowerCase() ||
             (note.amount && health.inputAmount !== note.amount)
-          ? 'Waiting for a live quote.'
+          ? 'Waiting for the current price.'
           : health.swapIssues.join(' ');
   const noteEntry = (
     <>
-      <p className="eyebrow">01 / YOUR PRIVATE BALANCE</p>
-      <h2>{tab === 'withdraw' ? 'Withdraw your balance.' : 'Bring your note.'}</h2>
-      <p className="muted">Import the note you saved to find your available funds.</p>
+      <p className="eyebrow">01 / YOUR SAVED FUNDS</p>
+      <h2>{tab === 'withdraw' ? 'Withdraw your funds' : 'Add your saved file'}</h2>
+      <p className="muted">Add the secret file you saved to access your funds.</p>
       <div>
-        <label htmlFor="private-note">Paste your Himitsu note</label>
+        <label htmlFor="private-note">Paste your saved file</label>
         <textarea
           id="private-note"
           rows={3}
@@ -420,14 +420,14 @@ export default function Page() {
           placeholder="himitsu-note-v1:…"
         />
         <p id="note-check-status" className={noteError ? 'error' : 'hint'} role="status" aria-live="polite">
-          {busy === 'Checking private note…'
-            ? 'Checking your note against the chain…'
-            : noteError || (note ? 'Note checked against the chain.' : input.trim() ? 'Your note will be checked automatically.' : 'Paste or upload a note to check your balance automatically.')}
+          {busy === 'Checking your saved file…'
+            ? 'Checking your file with the network…'
+            : noteError || (note ? 'File checked with the network.' : input.trim() ? 'Checking your file…' : 'Paste or upload your file to check your balance.')}
         </p>
         <div className="note-upload-row">
           <label className="note-upload" data-disabled={!config || disabled}>
             <span className="note-upload-copy">
-              <strong>Upload private note</strong>
+              <strong>Upload your saved file</strong>
               <span>Choose your saved .txt file · up to 4 KB</span>
             </span>
             <span className="note-upload-browse" aria-hidden="true">
@@ -435,15 +435,15 @@ export default function Page() {
             </span>
             <input
               type="file"
-              aria-label="Upload a private note file"
+              aria-label="Upload your saved file"
               accept=".txt,text/plain"
               disabled={!config || disabled}
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 e.target.value = '';
                 if (file)
-                  void run('Reading private note…', async () => {
-                    if (file.size > 4096) throw new Error('Private note file is too large');
+                  void run('Reading your saved file…', async () => {
+                    if (file.size > 4096) throw new Error('This file is too large');
                     updateNoteInput(await file.text());
                   });
               }}
@@ -472,7 +472,7 @@ export default function Page() {
               setHealth(null);
               setInput('');
               setStatus(
-                'Note removed from this session. Encrypted transaction records remain for reconciliation.',
+                'Saved file removed from this session. The app will still check the transaction status.',
               );
             }}
           >
@@ -526,7 +526,7 @@ export default function Page() {
           disabled={disabled}
         />
         <p id="withdraw-privacy-warning" className="withdraw-privacy-warning">
-          <strong>Privacy warning:</strong> Withdrawing to the same address you used to deposit can
+          <strong>Privacy:</strong> Withdrawing to the same address you used to deposit can
           link your deposit and withdrawal. Use a fresh address you control to reduce address-based
           linkage.
         </p>
@@ -567,15 +567,15 @@ export default function Page() {
           <h1>
             {tab === 'deposit' ? (
               <>
-                Make it <em>private.</em>
+                Deposit <em>ETH.</em>
               </>
             ) : tab === 'swap' ? (
               <>
-                Your trade. Your <em>secret.</em>
+                Swap <em>{inputAsset} for {outputAsset}</em>
               </>
             ) : (
               <>
-                Your funds. Your <em>move.</em>
+                Withdraw your <em>funds.</em>
               </>
             )}
           </h1>
@@ -587,16 +587,16 @@ export default function Page() {
           ) : (
             <p>
               {tab === 'deposit'
-                ? 'Deposit ETH. Save a note. Keep control of what comes next.'
-                : 'Bring your private balance back to an address you choose.'}
+                ? 'Deposit ETH and save the file that lets you use those funds.'
+                : 'Send your saved balance to an address you choose.'}
             </p>
           )}
         </div>
         {fixedMode && (
           <p className="hint">
-            Fixed-denomination pool · Deposit 0.1 ETH, withdraw 0.1 WETH. Equal amounts reduce
-            amount-based matching. Deposit and recipient addresses remain public; timing and a small
-            number of users can still reveal links. Keep your note secret.
+            This setup uses a fixed amount: deposit 0.1 ETH and withdraw 0.1 WETH. Matching amounts
+            can make deposits harder to tell apart, but addresses and timing stay public. Activity
+            may still be linked, especially when few people use the pool. Keep your saved file safe.
           </p>
         )}
         <nav className="note-tabs" aria-label="Actions">
@@ -637,12 +637,12 @@ export default function Page() {
             onClose={() => setWithdrawReview(null)}
           >
             <section className="note-backup">
-              <p className="eyebrow">REVIEW YOUR WITHDRAWAL</p>
+              <p className="eyebrow">CHECK YOUR WITHDRAWAL</p>
               <h2 id="withdraw-review-heading" tabIndex={-1}>
                 Confirm withdrawal
               </h2>
               <p id="withdraw-review-description">
-                Check the amount and recipient. Confirming will generate your proof and submit the
+                Check the amount and recipient. Confirming checks your saved file and sends the
                 withdrawal.
               </p>
               <dl className="withdraw-review-details">
@@ -658,16 +658,16 @@ export default function Page() {
                 <dd>
                   {config?.name} · Chain {config?.chainId}
                 </dd>
-                <dt>Gas payment</dt>
-                <dd>Paid by the paymaster</dd>
+                <dt>Network fee</dt>
+                <dd>Covered by the transaction sponsor</dd>
               </dl>
               <p className="withdraw-privacy-warning">
-                <strong>Privacy warning:</strong> Using your deposit address can link your deposit
+                <strong>Privacy:</strong> Using your deposit address can link your deposit
                 and withdrawal. A fresh address reduces address reuse; amounts and timing can still
                 reveal a connection.
               </p>
               <p className="hint">
-                The full note will be spent. WETH is received as WETH, not native ETH.
+                This uses your full balance. WETH is a token version of ETH.
               </p>
               <div className="row">
                 <button
@@ -712,11 +712,11 @@ export default function Page() {
             >
               <section className="note-backup">
                 <h2 id="backup-heading" tabIndex={-1}>
-                  Save your private note
+                  Save your secret file
                 </h2>
                 <p id="backup-description" className="note-backup-warning">
-                  Anyone with this note can spend these funds. Keep it private; it cannot be
-                  recovered if lost.
+                  Anyone with this file can spend these funds. Keep it safe. We cannot restore it
+                  if it is lost.
                 </p>
                 {draft.kind === 'deposit' && (
                   <p className="note-backup-amount">
@@ -728,11 +728,11 @@ export default function Page() {
                 )}
                 {draft.kind === 'swap' && (
                   <details className="note-backup-detail">
-                    <summary>About this swap note</summary>
-                    <p>It holds your actual swap output. Keep the input note until the swap confirms.</p>
+                    <summary>About this saved file</summary>
+                    <p>It gives access to the tokens from your swap. Keep your original file until the swap completes.</p>
                   </details>
                 )}
-                <label className="note-backup-label" htmlFor="new-note">Private note</label>
+                <label className="note-backup-label" htmlFor="new-note">Your secret file</label>
                 <textarea
                   id="new-note"
                   className="private-note-value"
@@ -793,10 +793,10 @@ export default function Page() {
                     disabled={!downloaded}
                     onChange={(e) => setBackedUp(e.target.checked)}
                   />
-                  I saved the backup and understand it controls my funds.
+                  I saved the file and understand it controls my funds.
                 </label>
                 <div className="note-backup-footer">
-                  <p>{draft.kind === 'deposit' ? 'Review the gas fee in your wallet.' : 'Keep your input note until the swap confirms.'}</p>
+                  <p>{draft.kind === 'deposit' ? 'Review the network fee in your wallet.' : 'Keep your original file until the swap completes.'}</p>
                   <div className="row">
                   <button
                     disabled={
@@ -838,11 +838,11 @@ export default function Page() {
           {tab === 'deposit' ? (
             <section className="note-action">
               <p className="eyebrow">START WITH ETH</p>
-              <h2>Deposit into the pool.</h2>
+              <h2>Deposit ETH</h2>
               <p>
                 {fixedMode
-                  ? 'Each note holds exactly 0.1 WETH. Save your note to withdraw later.'
-                  : 'Create a private WETH note to swap or withdraw later.'}
+                  ? 'Each saved file gives access to 0.1 WETH. Keep it to withdraw later.'
+                  : 'Save a file to use or withdraw your WETH later.'}
               </p>
               <label htmlFor="deposit-amount">Amount · ETH</label>
               <input id="deposit-amount" value={config ? money(depositValue) : ''} readOnly />
@@ -865,9 +865,9 @@ export default function Page() {
               </div>
               <p className="hint">
                 {config && BigInt(config.denomination) > 0n
-                  ? 'This pool accepts only its fixed denomination. '
+                  ? 'This deposit must use the amount shown. '
                   : 'Choose a standard deposit amount. '}
-                ETH is wrapped into WETH.
+                ETH is converted to WETH, a token version of ETH.
               </p>
               <div className="row">
                 {!isConnected ? (
@@ -915,7 +915,7 @@ export default function Page() {
                     type="button"
                     disabled={!account || !health || !!health.depositIssues.length || disabled}
                     onClick={() =>
-                      void run('Preparing your private note…', () => prepare('deposit'))
+                      void run('Preparing your saved file…', () => prepare('deposit'))
                     }
                   >
                     Deposit
@@ -927,12 +927,10 @@ export default function Page() {
                   {issue}
                 </p>
               ))}
-              <p className="hint">
-                You’ll save a private note before approving the deposit.
-              </p>
+              <p className="hint">Download the file before approving your deposit.</p>
             </section>
           ) : tab === 'swap' ? (
-            <section className="combined-swap-card" aria-label="Swap from your private note">
+            <section className="combined-swap-card" aria-label="Swap using your saved file">
               <div className="note-action swap-note-entry">{noteEntry}</div>
               <SwapPanel
                 privateNoteMode
@@ -999,12 +997,12 @@ export default function Page() {
         </div>
         {attempts.length > 0 && (
           <section className="trade-activity">
-            <h2>Activity for this note</h2>
+            <h2>Activity for these funds</h2>
             <button
               className="secondary"
               disabled={!!busy || !!draft}
               onClick={() =>
-                void run('Checking chain status…', async () => {
+                void run('Checking transaction status…', async () => {
                   await controller!.refresh();
                   setHealth(controller!.health);
                 })

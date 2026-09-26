@@ -99,8 +99,8 @@
     <div class="hero-mark" aria-hidden="true"><span class="glyph">秘密</span><i class="orbit"></i></div>
     <div class="content hero-content">
       <p class="kicker">HIMITSU PROTOCOL</p>
-      <h1>Swap tokens without<br>revealing your deposit</h1>
-      <p class="lede">A private WETH balance becomes a private hUSD balance through Uniswap</p>
+      <h1>Swap tokens<br>without revealing<br>which deposit you spent</h1>
+      <p class="lede">Use a saved secret file to swap WETH for hUSD through Uniswap</p>
       <p class="hero-meta">PROTOCOL PRESENTATION · 2026</p>
     </div>
     <div class="foot"><span>Himitsu protocol</span><span>01</span></div>
@@ -111,7 +111,7 @@
     <div class="content">
       <p class="kicker">THE PROBLEM</p>
       <h2>Wallet swaps expose the link to a trade</h2>
-      <ul class="point-list"><li>Wallet address is public</li><li>Swap amount and timing are public</li><li>Private notes need a constrained path to AMM liquidity</li></ul>
+      <ul class="point-list"><li>Wallet address is public</li><li>Swap amount and timing are public</li><li>Saved files need a safe way to trade through Uniswap</li></ul>
     </div>
     <div class="foot"><span>The problem</span><span>02</span></div>
   </section>
@@ -120,30 +120,30 @@
     <div class="top"><span class="brand"><span class="mark">H</span>himitsu</span><span>02 · The solution</span></div>
     <div class="content">
       <p class="kicker">THE SOLUTION</p>
-      <h2>Swap from one private note to another</h2>
+      <h2>Trade using your saved file</h2>
       <div class="diagram">
-        <div class="node"><small>01 · DEPOSIT</small><strong>WETH note</strong></div><i class="connector"></i>
-        <div class="node"><small>02 · PROVE</small><strong>Groth16 in browser</strong></div><i class="connector"></i>
+        <div class="node"><small>01 · DEPOSIT</small><strong>Save your WETH file</strong></div><i class="connector"></i>
+        <div class="node"><small>02 · CHECK</small><strong>Private ownership check</strong></div><i class="connector"></i>
         <div class="node"><small>03 · SWAP</small><strong>Uniswap V2</strong></div><i class="connector"></i>
-        <div class="node"><small>04 · RECEIVE</small><strong>hUSD note</strong></div>
+        <div class="node"><small>04 · RECEIVE</small><strong>Save your hUSD file</strong></div>
       </div>
-      <ul class="point-list"><li>Proof authorizes a limited spend</li><li>Swap output goes into a new private note</li></ul>
+      <ul class="point-list"><li>The check allows only the spend you approved</li><li>Your hUSD goes into a new saved file</li></ul>
     </div>
-    <div class="foot"><span>Note to note</span><span>03</span></div>
+    <div class="foot"><span>From deposit to new balance</span><span>03</span></div>
   </section>
 
   <section class="slide short">
     <div class="top"><span class="brand"><span class="mark">H</span>himitsu</span><span>03 · EIP-8141</span></div>
     <div class="content">
-      <p class="kicker">EIP-8141 · TYPE 0x06</p>
-      <h2>One transaction, four frames</h2>
+      <p class="kicker">EIP-8141 · TRANSACTION TYPE 0x06</p>
+      <h2>One transaction, four ordered steps</h2>
       <div class="frames four">
-        <div class="frame"><span class="kind">01</span><h3>Expiry</h3><p>Reject expired transaction</p></div>
-        <div class="frame"><span class="kind">02</span><h3>Pool verify</h3><p>Check proof and spend</p></div>
-        <div class="frame"><span class="kind">03</span><h3>Paymaster</h3><p>Approve gas payment</p></div>
-        <div class="frame"><span class="kind">04</span><h3>Pool send</h3><p>Swap and deposit output</p></div>
+        <div class="frame"><span class="kind">01</span><h3>Check time</h3><p>Reject expired requests</p></div>
+        <div class="frame"><span class="kind">02</span><h3>Check funds</h3><p>Confirm the saved file can spend</p></div>
+        <div class="frame"><span class="kind">03</span><h3>Cover the fee</h3><p>Sponsor checks its spending limit</p></div>
+        <div class="frame"><span class="kind">04</span><h3>Make the swap</h3><p>Trade and save the new balance</p></div>
       </div>
-      <ul class="point-list"><li>Pool is the transaction sender</li><li>Prefunded paymaster pays network gas</li></ul>
+      <ul class="point-list"><li>Himitsu sends the transaction</li><li>A separately funded sponsor pays the network fee</li></ul>
     </div>
     <div class="sources">EIP-8141 draft · Requires a compatible Ethrex network</div>
     <div class="foot"><span>EIP-8141 is the transaction core</span><span>04</span></div>
@@ -157,13 +157,13 @@
       <table class="compare compact-compare">
         <thead><tr><th>Approach</th><th>Path</th><th>Trade-off</th></tr></thead>
         <tbody>
-          <tr><td>Direct wallet</td><td>User sends and pays</td><td>Wallet is the public sender</td></tr>
-          <tr><td>Relayer</td><td>Service signs and submits</td><td>Adds service dependency</td></tr>
-          <tr><td>ERC-4337</td><td>UserOperation · EntryPoint · bundler</td><td>Separate account-abstraction route</td></tr>
-          <tr><td>EIP-8141</td><td>Frames in type 0x06</td><td>Pool sender · separate paymaster</td></tr>
+          <tr><td>Direct wallet</td><td>Your wallet sends and pays</td><td>Your address is tied to the swap</td></tr>
+          <tr><td>Relayer service</td><td>A service submits your request</td><td>Depends on that service</td></tr>
+          <tr><td>ERC-4337</td><td>Smart account + separate submission path</td><td>Supports fee sponsors too</td></tr>
+          <tr><td>EIP-8141</td><td>One transaction with ordered steps</td><td>Pool sends · separate fee sponsor</td></tr>
         </tbody>
       </table>
-      <ul class="point-list"><li>Frames combine validation, payment, and execution</li><li>ERC-4337 also supports sponsored gas</li></ul>
+      <ul class="point-list"><li>One transaction checks the spend, fee, and swap</li><li>ERC-4337 can also sponsor network fees</li></ul>
     </div>
     <div class="sources">EIP-4337 · EIP-8141 draft</div>
     <div class="foot"><span>Fit for this transaction design</span><span>05</span></div>
@@ -173,16 +173,16 @@
     <div class="top"><span class="brand"><span class="mark">H</span>himitsu</span><span>05 · Protocols</span></div>
     <div class="content">
       <p class="kicker">RELATED PRIVACY PROTOCOLS</p>
-      <h2>Himitsu focuses on one private swap route</h2>
+      <h2>Himitsu focuses on one more private way to swap</h2>
       <table class="compare compact-compare">
         <thead><tr><th>Protocol</th><th>Focus</th><th>Difference</th></tr></thead>
         <tbody>
-          <tr><td>Tornado Cash Classic</td><td>Private deposits and withdrawals</td><td>No integrated AMM output-note flow</td></tr>
-          <tr><td>RAILGUN</td><td>Shielded balances and private calls</td><td>Broader private DeFi</td></tr>
-          <tr><td>Himitsu</td><td>EIP-8141 note spend through Uniswap V2</td><td>Output committed to a second note</td></tr>
+          <tr><td>Tornado Cash Classic</td><td>Private deposits and withdrawals</td><td>No built-in token swap</td></tr>
+          <tr><td>RAILGUN</td><td>Private balances and contract actions</td><td>Broader private finance tools</td></tr>
+          <tr><td>Himitsu</td><td>Use a saved file to swap through Uniswap</td><td>Save the tokens received in a new file</td></tr>
         </tbody>
       </table>
-      <ul class="point-list"><li>Narrower transaction path</li><li>Not a replacement for broader privacy systems</li></ul>
+      <ul class="point-list"><li>One focused way to swap</li><li>Not a replacement for broader privacy tools</li></ul>
     </div>
     <div class="sources">Tornado Cash Classic · RAILGUN · EIP-8141 draft</div>
     <div class="foot"><span>Protocol comparison</span><span>06</span></div>
@@ -192,23 +192,23 @@
     <div class="top"><span class="brand"><span class="mark">H</span>himitsu</span><span>06 · Privacy boundaries</span></div>
     <div class="content">
       <p class="kicker">PRIVACY BOUNDARIES</p>
-      <h2>The proof hides the note, not the swap</h2>
+      <h2>Hide which deposit you spent, not the trade</h2>
       <div class="privacy-grid">
-        <div class="privacy"><h3>Private</h3><ul class="point-list"><li>Spent note commitment</li><li>Note secret and witness</li><li>Proof generated in browser</li></ul></div>
-        <div class="privacy"><h3>Public</h3><ul class="point-list"><li>Amounts and timing</li><li>AMM activity</li><li>Recipient and RPC metadata</li></ul></div>
+        <div class="privacy"><h3>Hidden</h3><ul class="point-list"><li>Which deposit you spend</li><li>Your saved file’s secret</li><li>Secret check runs in your browser</li></ul></div>
+        <div class="privacy"><h3>Still public</h3><ul class="point-list"><li>Amounts and timing</li><li>Uniswap trade activity</li><li>Recipient and network details</li></ul></div>
       </div>
     </div>
-    <div class="foot"><span>What the proof does and does not hide</span><span>07</span></div>
+    <div class="foot"><span>What the private check does and does not hide</span><span>07</span></div>
   </section>
 
   <section class="slide short">
     <div class="top"><span class="brand"><span class="mark">H</span>himitsu</span><span>07 · Status</span></div>
     <div class="content">
       <p class="kicker">CURRENT BUILD · NEXT VALIDATION</p>
-      <h2>Working prototype, with network and security work ahead</h2>
+      <h2>Prototype built, more testing ahead</h2>
       <div class="status">
-        <div class="status-col"><h3>Built</h3><ul class="point-list"><li>Browser notes and Groth16 proofs</li><li>EIP-8141 frame transaction</li><li>Uniswap V2 swap to output note</li></ul></div>
-        <div class="status-col"><h3>Next</h3><ul class="point-list"><li>Public compatible network</li><li>Independent contract and circuit review</li><li>Measure privacy and user experience</li></ul></div>
+        <div class="status-col"><h3>Built</h3><ul class="point-list"><li>Secret files and browser checks</li><li>EIP-8141 transaction flow</li><li>Uniswap swap to a new saved balance</li></ul></div>
+        <div class="status-col"><h3>Next</h3><ul class="point-list"><li>Test on a reachable EIP-8141 network</li><li>Independent security review</li><li>Measure privacy and ease of use</li></ul></div>
       </div>
       <p class="contact">HIMITSU PROTOCOL · 2026</p>
     </div>

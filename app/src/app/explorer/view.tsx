@@ -114,9 +114,9 @@ export default function Explorer() {
           </button>
         </div>
         <div className={styles.title}>
-          <p>ONCHAIN, FRAME BY FRAME.</p>
-          <h1>Follow the transaction.</h1>
-          <p>Public activity on your configured Ethrex node. No wallet connection needed.</p>
+          <p>PUBLIC NETWORK ACTIVITY</p>
+          <h1>See what happened.</h1>
+          <p>Look up transactions and blocks on the Himitsu network. No wallet needed.</p>
         </div>
         <form
           className={styles.search}
@@ -131,7 +131,7 @@ export default function Explorer() {
             }
           }}
         >
-          <label htmlFor="explorer-query">Transaction hash or block number</label>
+          <label htmlFor="explorer-query">Transaction ID or block number</label>
           <div>
             <input
               id="explorer-query"
@@ -197,38 +197,36 @@ export default function Explorer() {
                         <div className={styles.frameNoticeHeading}>
                           <span className={styles.protocolMark} aria-hidden="true">8141</span>
                           <div>
-                            <strong>EIP-8141 is active</strong>
-                            <span>Native frame transaction · type 0x06</span>
+                            <strong>This transaction uses EIP-8141</strong>
+                            <span>A transaction format with ordered steps · type 0x06</span>
                           </div>
                         </div>
                         <p>
-                          The shared pool is the transaction sender. The paymaster contract pays
-                          the network fee from its prefunded ETH balance
+                          Himitsu’s shared contract sends the swap. A separate account, called the
+                          fee sponsor, pays from its funded ETH balance
                           {receipt?.payer ? ` (${formatEther(BigInt(receipt.gasUsed) * BigInt(receipt.effectiveGasPrice ?? '0x0'))} ETH for this transaction)` : ''}.
-                          Your wallet does not pay gas for this swap or withdrawal.
+                          Your wallet does not pay the network fee for this swap or withdrawal.
                         </p>
                         <details className={styles.comparison}>
-                          <summary>Why this execution path</summary>
+                          <summary>Why this transaction format</summary>
                           <ul>
                             <li>
-                              <strong>Direct wallet transaction:</strong> your EOA would be the
-                              sender and normally pay gas itself.
+                              <strong>Direct from a wallet:</strong> your wallet address would send
+                              the transaction and normally pay the fee.
                             </li>
                             <li>
-                              <strong>Relayer-based meta-transaction:</strong> an app service must
-                              receive and relay signed requests, adding an online service and
-                              signing-key trust dependency.
+                              <strong>Submitted by a service:</strong> an app service would receive
+                              and forward your request, adding another service and signing key.
                             </li>
                             <li>
-                              <strong>ERC-4337:</strong> account actions travel as UserOperations
-                              through an EntryPoint and bundler.
+                              <strong>ERC-4337:</strong> smart account requests go through a
+                              separate entry contract and submission service.
                             </li>
                             <li>
                               <strong>Himitsu with EIP-8141:</strong> one type-0x06 transaction
-                              orders the deadline check, proof-authorized pool validation,
-                              onchain paymaster approval, and pool action. The browser submits it
-                              directly to the node; the paymaster must still be prefunded, and an
-                              included failure still costs it gas.
+                              checks the deadline, verifies the saved file, asks the fee sponsor,
+                              then makes the swap. Your browser sends it to the node; the sponsor
+                              must have ETH, and failed transactions can still cost it a fee.
                             </li>
                           </ul>
                           <p>
@@ -270,14 +268,14 @@ export default function Explorer() {
                         <dt>Type</dt>
                         <dd>
                           {BigInt(transaction.type) === 6n
-                            ? 'EIP-8141 · Frame transaction (0x06)'
+                            ? 'EIP-8141 · Ordered-step transaction (0x06)'
                             : `Ethereum transaction (${transaction.type})`}
                         </dd>
-                        <dt>{BigInt(transaction.type) === 6n ? 'Sender · shared pool' : 'Sender'}</dt>
+                        <dt>{BigInt(transaction.type) === 6n ? 'Sender · Himitsu contract' : 'Sender'}</dt>
                         <dd>{address(transaction.sender ?? transaction.from)}</dd>
                         <dt>Nonce</dt>
                         <dd>{quantity(transaction.nonce)}</dd>
-                        <dt>{BigInt(transaction.type) === 6n ? 'Gas payer · paymaster' : 'Gas payer'}</dt>
+                        <dt>{BigInt(transaction.type) === 6n ? 'Fee payer · sponsor' : 'Fee payer'}</dt>
                         <dd>
                           {receipt?.payer
                             ? address(receipt.payer)
@@ -338,10 +336,10 @@ export default function Explorer() {
                     </section>
                     {!!transaction.frames?.length && (
                       <section>
-                        <h2>Inside the frame transaction</h2>
+                        <h2>Transaction steps</h2>
                         <p>
-                          Each frame has its own purpose and gas budget. Approval scopes below are
-                          allowed permissions, not ERC-20 allowances.
+                          Each step has its own purpose and fee limit. These permissions only apply
+                          to this transaction.
                         </p>
                         <ol className={styles.frames}>
                           {transaction.frames.map((frame, i) => {
@@ -410,8 +408,8 @@ export default function Explorer() {
                           Public events <span className={styles.tag}>{receipt.logs.length}</span>
                         </h2>
                         <p>
-                          Transfers and commitments are public. A commitment does not reveal a
-                          note’s spending secrets.
+                          Token transfers and saved-balance markers are public. A marker does not
+                          reveal the secret needed to spend a saved file.
                         </p>
                         {receipt.logs.length === 0 ? (
                           <p>No events emitted.</p>
