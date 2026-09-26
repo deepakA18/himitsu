@@ -181,7 +181,9 @@ export function TransactionNotifications({
             <Link
               href={`/explorer?tx=${encodeURIComponent(n.hash)}&pool=${encodeURIComponent(pool)}&returnTo=${encodeURIComponent(returnTo)}`}
               prefetch={false}
-              onClick={() => window.history.replaceState(window.history.state, '', returnTo)}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="View transaction (opens in a new tab)"
             >
               View transaction →
             </Link>
