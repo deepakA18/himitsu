@@ -56,7 +56,7 @@ export default function Home() {
       <main id="main" className={styles.main}>
         <section className={styles.hero} aria-labelledby="hero-title">
           <div className={styles.heroCopy}>
-            <h1 id="hero-title">A more private way to swap</h1>
+            <h1 id="hero-title">A more private way to trade</h1>
             <p className={styles.intro}>
               Trade from a saved balance through Uniswap without sending the swap from your wallet
             </p>

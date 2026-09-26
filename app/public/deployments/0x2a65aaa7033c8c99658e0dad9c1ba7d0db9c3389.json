@@ -1,11 +1,11 @@
 {
   "version": 1,
   "noteVersion": 2,
-  "name": "Bidirectional swaps · v2",
+  "name": "Bidirectional swaps \u00b7 v2",
   "id": "0x2a65aaa7033c8c99658e0dad9c1ba7d0db9c3389:0x87e27cd461b0dfb0efb229586de6f8c2c7ba5f5535960eb2019be8784e2790b1",
   "anchorBlock": "29207",
   "anchorBlockHash": "0x87e27cd461b0dfb0efb229586de6f8c2c7ba5f5535960eb2019be8784e2790b1",
-  "rpcUrl": "http://127.0.0.1:8567",
+  "rpcUrl": "https://nonaggressive-gage-nonvacuously.ngrok-free.dev",
   "chainId": "9",
   "genesisHash": "0xb473dc850bb03610a9d5633bd20dcc66a773dba2ef9b1dc05e1c57319eb932ca",
   "deploymentBlock": "29191",

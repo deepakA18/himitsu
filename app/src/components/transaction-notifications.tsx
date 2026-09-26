@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import type { Attempt } from '../../../packages/client/src/vault';
 import styles from './transaction-notifications.module.css';
@@ -56,22 +57,27 @@ function describe(a: Attempt): Notice | null {
     case 'unknown':
       return {
         ...base,
-        title: `${action} status uncertain`,
+        title: 'Transaction pending',
         message:
           'The network has not confirmed the outcome. Keep your notes and check the transaction; do not submit it again yet.',
       };
-    case 'submitted':
     case 'broadcasting':
       return {
         ...base,
-        title: `${action} pending`,
+        title: 'Transaction pending',
+        message: a.detail || 'Preparing the transaction for submission. Keep your saved note.',
+      };
+    case 'submitted':
+      return {
+        ...base,
+        title: 'Transaction pending',
         message:
           'Waiting for network confirmation. Keep your saved notes; this is not yet a successful transaction.',
       };
     case 'mined':
       return {
         ...base,
-        title: `${action} awaiting confirmation`,
+        title: 'Transaction pending',
         message:
           'The transaction was included in a block. Checking confirmations and note settlement.',
       };
@@ -86,12 +92,14 @@ export function TransactionNotifications({
   error,
   status,
   busy,
+  returnTo,
 }: {
   attempts: Attempt[];
   pool: string;
   error: string;
   status: { id: number; message: string };
   busy: string;
+  returnTo: string;
 }) {
   const [notices, setNotices] = useState<Notice[]>([]);
   const mountedAt = useRef(Date.now());
@@ -170,13 +178,13 @@ export function TransactionNotifications({
             <p>{n.message}</p>
           </div>
           {n.hash && (
-            <a
-              href={`/explorer?tx=${encodeURIComponent(n.hash)}&pool=${encodeURIComponent(pool)}`}
-              target="_blank"
-              rel="noreferrer"
+            <Link
+              href={`/explorer?tx=${encodeURIComponent(n.hash)}&pool=${encodeURIComponent(pool)}&returnTo=${encodeURIComponent(returnTo)}`}
+              prefetch={false}
+              onClick={() => window.history.replaceState(window.history.state, '', returnTo)}
             >
-              View transaction ↗
-            </a>
+              View transaction →
+            </Link>
           )}
           <button
             className={styles.dismiss}

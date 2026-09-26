@@ -54,6 +54,11 @@ export default function Page() {
   const { address: account, chainId: walletChainId, isConnected, connector } = useAccount();
   const walletReady = isConnected && walletChainId === Number(config?.chainId);
   const [tab, setTab] = useState<'deposit' | 'swap' | 'withdraw'>('deposit');
+  useEffect(() => {
+    const requestedTab = new URLSearchParams(window.location.search).get('tab');
+    if (requestedTab === 'deposit' || requestedTab === 'withdraw' || (requestedTab === 'swap' && !fixedMode))
+      setTab(requestedTab);
+  }, [fixedMode]);
   const [health, setHealth] = useState<Readiness | null>(null);
   const [controller, setController] = useState<Controller | null>(null);
   const [noteId, setNoteId] = useState('');
@@ -581,6 +586,7 @@ export default function Page() {
           error={error}
           status={status}
           busy={busy}
+          returnTo={`/app?tab=${tab}`}
         />
 
         {fixedMode && (
@@ -1164,7 +1170,7 @@ export default function Page() {
                 completed={swapCompleted}
                 animationKey={`${noteId}:${reverse}`}
                 settledOutput={settledOutput ? money(settledOutput) : ''}
-                status={busy || (swapPending || swapCompleted ? latestSwap?.state : '') || ''}
+                status={swapPending ? 'Transaction pending' : swapCompleted ? 'Transaction confirmed' : busy}
                 error=""
                 reason={swapReason}
                 disabled={disabled || !!swapReason}

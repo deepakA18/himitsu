@@ -25,6 +25,8 @@ export default function Explorer() {
     block = params.get('block') ?? '',
     before = params.get('before') ?? '',
     pool = params.get('pool') ?? '';
+  const requestedReturn = params.get('returnTo') ?? '';
+  const returnTo = /^\/app\?tab=(deposit|withdraw|swap)$/.test(requestedReturn) ? requestedReturn : '/app';
   const [data, setData] = useState<Result | null>(null),
     [deployment, setDeployment] = useState<Deployment | null>(null);
   const [error, setError] = useState(''),
@@ -32,7 +34,7 @@ export default function Explorer() {
     [busy, setBusy] = useState(true),
     [revision, setRevision] = useState(0);
   const url = (q: Record<string, string> = {}) =>
-    `/explorer?${new URLSearchParams({ ...(pool ? { pool } : {}), ...q })}`;
+    `/explorer?${new URLSearchParams({ ...(pool ? { pool } : {}), ...(requestedReturn ? { returnTo } : {}), ...q })}`;
   useEffect(() => {
     let active = true;
     setBusy(true);
@@ -85,6 +87,25 @@ export default function Explorer() {
   }, [tx, block, before, pool, revision]);
   const receipt = data?.receipt,
     transaction = data?.transaction;
+  // Match the app's two-successor-block confirmation policy.
+  const confirmed = !!(receipt && data?.canonical && data.head >= BigInt(receipt.blockNumber) + 2n);
+  useEffect(() => {
+    if (!tx || !deployment || confirmed) return;
+    let active = true;
+    const timer = setTimeout(async () => {
+      try {
+        const result = await loadExplorer(deployment, { tx });
+        if (active) {
+          setData(result);
+          setError('');
+        }
+      } catch (error) {
+        if (active) setError(error instanceof Error ? error.message : 'Could not refresh transaction status');
+      }
+    }, 3000);
+    return () => { active = false; clearTimeout(timer); };
+  }, [tx, deployment, data, confirmed]);
+
   const address = (value: string) => {
     const labels = deployment
       ? [
@@ -109,6 +130,7 @@ export default function Explorer() {
       <SiteNav page="explorer" />
       <main className={styles.explorer}>
         <div className={styles.toolbar}>
+          <Link href={returnTo} prefetch={false}>← Back to app</Link>
           <Link href={url()}>Latest blocks</Link>
           <button disabled={busy} onClick={() => setRevision((v) => v + 1)}>
             {busy ? 'Loading…' : 'Refresh'}
@@ -238,12 +260,12 @@ export default function Explorer() {
                       </aside>
                     )}
                     {receipt &&
-                      data.canonical &&
+                      confirmed &&
                       BigInt(receipt.status) === 1n && (
                         <div className={styles.success} role="status">
                           <span className={styles.successMark} aria-hidden="true">✓</span>
                           <span>
-                            <strong>Transaction successful</strong>
+                            <strong>Transaction confirmed</strong>
                             <small>
                               Included in block {quantity(receipt.blockNumber)} ·{' '}
                               {blockTimestamp(data.canonicalBlock?.timestamp)}
@@ -256,12 +278,14 @@ export default function Explorer() {
                         <h2>Transaction</h2>
                         <span className={styles.tag}>
                           {!receipt
-                            ? 'Pending / no receipt'
+                            ? 'Transaction pending'
                             : !data.canonical
                               ? 'Non-canonical receipt'
-                              : BigInt(receipt.status) === 1n
-                                ? 'Succeeded'
-                                : 'Failed'}
+                              : !confirmed
+                                ? 'Transaction pending'
+                                : BigInt(receipt.status) === 1n
+                                  ? 'Confirmed'
+                                  : 'Failed'}
                         </span>
                       </div>
                       <code className={styles.hash}>{transaction.hash}</code>

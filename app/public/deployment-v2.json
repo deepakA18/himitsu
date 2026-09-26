@@ -5,7 +5,7 @@
   "id": "0x93b2f02f14397d7dde0ac4960664be8c94de4174:0xe6dd6e362f8ad26cc4b737b9d91f9624017aca7aee2bc1b9d6fc39a5791c3da0",
   "anchorBlock": "56459",
   "anchorBlockHash": "0xe6dd6e362f8ad26cc4b737b9d91f9624017aca7aee2bc1b9d6fc39a5791c3da0",
-  "rpcUrl": "http://127.0.0.1:8567",
+  "rpcUrl": "https://nonaggressive-gage-nonvacuously.ngrok-free.dev",
   "chainId": "9",
   "genesisHash": "0xb473dc850bb03610a9d5633bd20dcc66a773dba2ef9b1dc05e1c57319eb932ca",
   "deploymentBlock": "56443",
