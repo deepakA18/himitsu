@@ -114,7 +114,7 @@ export default function Explorer() {
           </button>
         </div>
         <div className={styles.title}>
-          <p>PUBLIC NETWORK ACTIVITY</p>
+          <p>NETWORK ACTIVITY</p>
           <h1>See what happened.</h1>
           <p>Look up transactions and blocks on the Himitsu network. No wallet needed.</p>
         </div>
