@@ -1,3 +1,4 @@
+import { depositAmount } from '../../../packages/client/src/private-note';
 import {
   readiness,
   fundingRequired,
@@ -65,7 +66,7 @@ export class Controller {
   }
   async exclusive<T>(fn: () => Promise<T>): Promise<T> {
     if (!navigator.locks)
-      throw new Error('This browser needs Web Locks support for safe multi-tab use');
+      throw new Error('This client needs Web Locks support for safe multi-tab use');
     return navigator.locks.request('himitsu-vault-actions', async () => {
       await this.vault.reload();
       return fn();
@@ -177,7 +178,7 @@ export class Controller {
       !output &&
       d.noteVersion === 2 &&
       pool.toLowerCase() === d.pool.toLowerCase() &&
-      note.amount !== (d.defaultDepositAmount ?? d.denomination)
+      (note.amount === undefined || note.amount !== depositAmount(d, note.amount))
     )
       throw new Error('Wrong input note amount');
     if (output && note.amount !== undefined)
@@ -221,7 +222,7 @@ export class Controller {
             {
               from: account,
               to: note.pool,
-              value: `0x${BigInt(this.deployment.defaultDepositAmount ?? this.deployment.denomination).toString(16)}`,
+              value: `0x${BigInt(depositAmount(this.deployment, note.amount)).toString(16)}`,
               data: encodeFunctionData({
                 abi: poolAbi,
                 functionName: 'depositETH',
@@ -430,7 +431,7 @@ export class Controller {
       };
       const [hi, lo] = digestLimbs(signingHash(tx));
       const index = pool.indices.get(note.commitment.toLowerCase())!;
-      onProgress('Generating the proof locally in your browser…');
+      onProgress('Generating the proof client-side…');
       const proof = await this.prove(d, {
         root: BigInt(root).toString(),
         nullifierHash: BigInt(note.nullifierHash).toString(),
@@ -558,7 +559,7 @@ async function browserProof(d: Deployment, input: unknown): Promise<Hex> {
     };
     worker.onerror = () => {
       finish();
-      reject(new Error('Browser prover failed; nothing was submitted'));
+      reject(new Error('Client-side prover failed; nothing was submitted'));
     };
     worker.postMessage({ wasm, zkey, input });
   });

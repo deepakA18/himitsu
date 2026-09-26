@@ -293,3 +293,5 @@
     font-size: 23px;
   }
 }
+
+.toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 24px; }

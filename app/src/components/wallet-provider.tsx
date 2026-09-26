@@ -31,6 +31,9 @@ function walletConfig(d: Deployment) {
           transports: { [id]: http(d.rpcUrl) },
           ssr: true,
           walletConnectProjectId: projectId,
+          // Keep ConnectKit's wallet UI without its optional embedded account SDK.
+          // The local Ethrex flow uses external EIP-1193 wallets.
+          enableFamily: false,
           appName: 'Himitsu',
           appDescription: 'Private-note swaps using native frame transactions',
           appUrl: window.location.origin,

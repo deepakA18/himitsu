@@ -88,3 +88,46 @@ test('archived fixed WETH notes still import with their original denomination', 
   expect(imported.commitment).toBe(note.commitment);
   expect(imported.amount).toBe(fixed.denomination);
 });
+
+test('all deposit presets bind the selected amount and submit that exact ETH value', async () => {
+  const { Controller } = await import('../../../app/src/lib/controller');
+  const { DEPOSIT_AMOUNTS, depositAmount } = await import('./private-note');
+  const variable = { ...d, denomination: '0', defaultDepositAmount: '100000000000000000' };
+  const account = '0x1111111111111111111111111111111111111111' as const;
+  for (const amount of DEPOSIT_AMOUNTS) {
+    const note = createPrivateNote(variable, variable.pool, 'deposit', amount);
+    expect(note.amount).toBe(amount);
+    const imported = importPrivateNote(exportPrivateNote(note, variable), variable);
+    expect(withAmount(imported, amount).commitment).toBe(note.commitment);
+    const vault = await Vault.openPrivateNote(store(), privateNoteCacheKey(note));
+    const controller = new Controller(variable, vault);
+    // Isolate deposit construction from the network; preserve real note checks and journal writes.
+    controller.exclusive = async (fn) => fn();
+    Reflect.set(controller, 'sync', async () => {});
+    Reflect.set(controller, 'requireReady', async () => {});
+    let sent: { value: string; to: string } | undefined;
+    const attempt = await controller.deposit(
+      {
+        request: async ({ method, params }) => {
+          if (method === 'eth_chainId') return `0x${BigInt(variable.chainId).toString(16)}`;
+          if (method === 'eth_accounts') return [account];
+          if (method === 'eth_sendTransaction') {
+            sent = params![0] as typeof sent;
+            return '0x' + 'ab'.repeat(32);
+          }
+          throw new Error(`Unexpected call: ${method}`);
+        },
+      },
+      account,
+      note,
+    );
+    expect(attempt.state).toBe('submitted');
+    expect(BigInt(sent!.value)).toBe(BigInt(amount));
+    expect(sent!.to).toBe(variable.pool);
+    expect(vault.data.notes[0]!.amount).toBe(amount);
+  }
+  expect(() => depositAmount(variable, '200000000000000000')).toThrow('Choose');
+  const fixed = { ...variable, denomination: '100000000000000000' };
+  expect(() => depositAmount(fixed, DEPOSIT_AMOUNTS[0])).toThrow('fixed');
+  expect(depositAmount(fixed, DEPOSIT_AMOUNTS[1])).toBe(DEPOSIT_AMOUNTS[1]);
+});

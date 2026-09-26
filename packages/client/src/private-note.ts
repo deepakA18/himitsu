@@ -4,6 +4,25 @@ import { createSecretNote, hex32, validateSecretNote, withAmount, type SavedNote
 import type { Deployment } from './chain';
 
 const PREFIX = 'himitsu-note-v1:';
+export const DEPOSIT_AMOUNTS = [
+  '10000000000000000',
+  '100000000000000000',
+  '1000000000000000000',
+  '10000000000000000000',
+] as const;
+export function depositAmount(
+  d: Deployment,
+  requested = d.defaultDepositAmount ?? d.denomination,
+): string {
+  if (BigInt(d.denomination) > 0n) {
+    if (requested !== d.denomination)
+      throw new Error('This pool requires its fixed deposit amount');
+  } else if (!DEPOSIT_AMOUNTS.some((amount) => amount === requested)) {
+    throw new Error('Choose 0.01, 0.1, 1 or 10 ETH');
+  }
+  return requested;
+}
+
 function identity(d: Deployment, pool: Hex, nullifierHash: Hex) {
   return keccak256(
     stringToHex(JSON.stringify(['himitsu-private-note', d.id, pool.toLowerCase(), nullifierHash])),
@@ -13,6 +32,7 @@ export function createPrivateNote(
   d: Deployment,
   pool: Hex,
   purpose: 'deposit' | 'swap' = 'deposit',
+  amount?: string,
 ): SavedNote {
   const secret = createSecretNote();
   const note = {
@@ -23,7 +43,7 @@ export function createPrivateNote(
     createdAt: Date.now(),
   };
   return d.noteVersion === 2 && purpose === 'deposit' && pool.toLowerCase() === d.pool.toLowerCase()
-    ? withAmount(note, d.defaultDepositAmount ?? d.denomination)
+    ? withAmount(note, depositAmount(d, amount))
     : note;
 }
 /** Export only the spend preimage and deployment binding. V2 amounts are recovered from events.

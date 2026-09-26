@@ -1,4 +1,5 @@
 'use client';
+import { SiteNav } from '../../components/site-nav';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -85,19 +86,14 @@ export default function Explorer() {
   };
   return (
     <div className={styles.shell}>
+      <SiteNav page="explorer" />
       <main className={styles.explorer}>
-        <header className={styles.header}>
-          <Link href="/" className={styles.brand}>
-            himitsu <span>/ explorer</span>
-          </Link>
-          <nav aria-label="Explorer navigation">
-            <Link href="/app">Open app ↗</Link>
-            <Link href={url()}>Latest blocks</Link>
-            <button disabled={busy} onClick={() => setRevision((v) => v + 1)}>
-              {busy ? 'Loading…' : 'Refresh'}
-            </button>
-          </nav>
-        </header>
+        <div className={styles.toolbar}>
+          <Link href={url()}>Latest blocks</Link>
+          <button disabled={busy} onClick={() => setRevision((v) => v + 1)}>
+            {busy ? 'Loading…' : 'Refresh'}
+          </button>
+        </div>
         <div className={styles.title}>
           <p>ONCHAIN, FRAME BY FRAME.</p>
           <h1>Follow the transaction.</h1>
@@ -446,7 +442,7 @@ export default function Explorer() {
           </>
         )}
         <footer>
-          Read-only RPC explorer · No indexer · No access to private notes or browser vaults
+          Read-only RPC explorer · No indexer · No access to private notes or client vaults
         </footer>
       </main>
     </div>

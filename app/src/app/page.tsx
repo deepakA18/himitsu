@@ -1,3 +1,4 @@
+import { SiteNav } from '../components/site-nav';
 import Link from 'next/link';
 import styles from './home.module.css';
 
@@ -29,7 +30,7 @@ const faqs = [
   ],
   [
     'Who submits my transaction and pays for gas?',
-    'Your browser creates a proof and submits the frame transaction directly to the node through RPC. There is no app-operated relayer or bundler signing each spend.',
+    'Your client creates a proof and submits the frame transaction directly to the node through RPC. There is no app-operated relayer or bundler signing each spend.',
   ],
   [
     'Do I give Uniswap an allowance?',
@@ -37,7 +38,7 @@ const faqs = [
   ],
   [
     'Is everything about my trade private?',
-    'No. Zero-knowledge proofs hide which deposit you are spending. Trade amounts, timing and onchain swap activity remain visible, and an RPC provider can observe network metadata.',
+    'No. Zero-knowledge proofs hide which deposit you are spending. Trade amounts, timing and onchain swap activity remain visible',
   ],
 ];
 
@@ -47,20 +48,7 @@ export default function Home() {
       <a className={styles.skip} href="#main">
         Skip to content
       </a>
-      <header className={styles.nav}>
-        <Link className={styles.brand} href="/" aria-label="Himitsu home">
-          <Mark />
-          himitsu<span className={styles.japanese}>秘密</span>
-        </Link>
-        <nav className={styles.navLinks} aria-label="Main navigation">
-          <a href="#how-it-works">How it works</a>
-          <a href="#why-himitsu">Why Himitsu</a>
-          <a href="#faq">FAQ</a>
-        </nav>
-        <Link className={styles.button} href="/app" prefetch={false}>
-          Launch app
-        </Link>
-      </header>
+      <SiteNav page="home" />
       <main id="main" className={styles.main}>
         <section className={styles.hero} aria-labelledby="hero-title">
           <div className={styles.heroCopy}>
@@ -74,7 +62,7 @@ export default function Home() {
             </h1>
             <p className={styles.intro}>
               Spend a private WETH note through Uniswap V2.
-              <br className={styles.desktopBreak} /> Prove the spend in your browser. Keep the new hUSD note.
+              <br className={styles.desktopBreak} /> Prove the spend client-side. Keep the new hUSD note.
             </p>
             <div className={styles.actions}>
               <Link className={styles.button} href="/app" prefetch={false}>
@@ -165,7 +153,7 @@ export default function Home() {
               Direct by design.
             </h2>
             <p>
-              Himitsu connects a user-held private note to a real Uniswap V2 pair. Your browser proves
+              Himitsu connects a user-held private note to a real Uniswap V2 pair. Your client proves
               the spend, the pool enforces its scope, and a separate paymaster covers eligible gas.
             </p>
           </div>
@@ -174,10 +162,11 @@ export default function Home() {
               <span className={styles.featureIcon} aria-hidden="true">
                 ↗
               </span>
-              <h3>Your browser submits.</h3>
+              <h3>No relayer or bundler service.</h3>
               <p>
-                Your browser builds the Groth16 proof and submits an EIP-8141 frame transaction
-                directly to RPC. An onchain paymaster separately authorizes sponsored gas.
+                Your client builds the Groth16 proof and submits an EIP-8141 frame transaction
+                directly to RPC, without an application relayer or bundler service. An onchain
+                paymaster separately authorizes sponsored gas.
               </p>
               <span className={styles.featureTag}>GROTH16 · EIP-8141 · ONCHAIN SPONSOR</span>
             </article>
@@ -234,7 +223,7 @@ export default function Home() {
                 <h3>Swap from the pool.</h3>
                 <p>
                   Import the WETH note, review the live quote and slippage, then save a fresh hUSD
-                  note. Your browser proves the spend, the pool swaps exact input through Uniswap V2
+                  note. Your client proves the spend, the pool swaps exact input through Uniswap V2
                   and deposits all actual output atomically.
                 </p>
               </div>

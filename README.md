@@ -3,7 +3,7 @@
 Private-note swaps through Uniswap, authorized by native frame transactions.
 
 Himitsu lets a user spend a private balance without an application-operated relayer or bundler,
-and without granting the exchange a token allowance. The browser generates a zero-knowledge proof,
+and without granting the exchange a token allowance. The client generates a zero-knowledge proof,
 constructs an EIP-8141 frame transaction, and submits it directly to RPC. The pool authorizes the
 spend; a prefunded onchain paymaster independently authorizes gas payment. Neither step requires an
 operator's per-transaction signature.
@@ -23,7 +23,7 @@ audited or intended for real funds.
    amount-bound commitment into its Merkle tree.
 2. **Choose the trade.** Import the WETH note, review the live Uniswap quote and slippage tolerance,
    and save a fresh output note. No phrase or vault-password onboarding is required.
-3. **Prove and authorize.** A browser worker generates a Groth16 proof of note membership and
+3. **Prove and authorize.** A client-side worker generates a Groth16 proof of note membership and
    spending authority, bound to the transaction digest. Verification frames check expiry, validate
    the proof, and approve gas payment under the paymaster's policy.
 4. **Swap atomically.** A sender frame consumes the input nullifier, transfers WETH directly to the
@@ -46,7 +46,7 @@ flowchart LR
         OUTPUT[(Output note file)]
     end
 
-    subgraph DEVICE[Browser · user device]
+    subgraph DEVICE[Client · user device]
         APP[Himitsu app]
         PROVER[Proof worker]
         JOURNAL[(Encrypted transaction journal)]
@@ -77,7 +77,7 @@ flowchart LR
     GUSD -->|recover or withdraw| RPC
 ```
 
-The browser creates proofs and stores transaction history locally. It sends transactions and recovery
+The client creates proofs and stores transaction history locally. It sends transactions and recovery
 queries straight to RPC; there is no app relayer, proving server, or hosted indexer. The wallet is
 used for deposits only. Private swaps and withdrawals are authorized by the note proof.
 
@@ -87,7 +87,7 @@ used for deposits only. Private swaps and withdrawals are authorized by the note
 sequenceDiagram
     autonumber
     actor User
-    participant App as Browser app
+    participant App as Client app
     participant Worker as Proof worker
     participant RPC as Ethrex RPC
     participant Pool as WETH privacy pool
@@ -174,7 +174,7 @@ route is WETH ↔ hUSD; it is not an arbitrary-token router.
 | Exact-input swap, minimum output, direct pair transfer, full output redeposit | [`HimitsuPoolV2.sol`, `spendAndSwapQuoted()`](packages/protocol/contracts/src/HimitsuPoolV2.sol#L259) |
 | Proof validation and permitted execution layout | [`HimitsuPoolV2.sol`, `validateSpend()`](packages/protocol/contracts/src/HimitsuPoolV2.sol#L193) |
 | Fresh token backing for deposited notes | [`HimitsuPoolV2.sol`, `depositTokenAmount()`](packages/protocol/contracts/src/HimitsuPoolV2.sol#L153) |
-| Browser frame construction and submission | [`controller.ts`, `spend()`](app/src/lib/controller.ts#L284) |
+| Client-side frame construction and submission | [`controller.ts`, `spend()`](app/src/lib/controller.ts#L284) |
 | Onchain sponsorship policy | [`paymaster.ts`, `buildPaymaster()`](packages/contracts/src/paymaster.ts#L55) |
 | Pair deployment and initial liquidity | [`deploy-app-v2.mjs`](packages/protocol/deploy-app-v2.mjs) |
 | Reserve-based quotes and readiness checks | [`market.ts`](packages/client/src/market.ts) |
@@ -195,7 +195,7 @@ spending and native frame authorization.
 - **Atomic settlement.** A failed swap or output deposit leaves the input unspent. Included failures
   can still cost sponsor gas. Fresh backing checks prevent unsolicited donations being claimed as notes.
 - **Recoverable confirmed funds.** A downloaded note can recover its confirmed deposit and amount in
-  a fresh browser. The checksum detects file damage; it does not authenticate ownership or encrypt it.
+  a fresh client. The checksum detects file damage; it does not authenticate ownership or encrypt it.
 - **Conservative retries.** The raw transaction is encrypted and saved before broadcast. Uncertain
   outcomes remain reserved until reconciliation; there is no automatic reproving or replacement.
 
@@ -205,8 +205,8 @@ and can enable correlation. Direct RPC submission does not provide network anony
 
 **Custody boundary.** Tokens are held by pool contracts; downloaded notes are unencrypted bearer
 secrets. Anyone holding a note can spend it, and losing it can lose access. Local AES-GCM caches are
-unlocked from note-derived key material, not a user password. Clearing browser data loses pending
-history even when saved files can recover confirmed funds. Use one active browser per note.
+unlocked from note-derived key material, not a user password. Clearing client data loses pending
+history even when saved files can recover confirmed funds. Use one active client per note.
 
 **MVP boundary.** Trees have depth 10 and hold at most 1,024 commitments each; spent notes do not free
 slots. Users share a pool nonce, so concurrent spends can require explicit retries. Two-block
@@ -216,7 +216,7 @@ has not received an independent security audit.
 ## Repository layout
 
 ```text
-app/                         Next.js UI, ConnectKit, proof worker, browser transaction controller.
+app/                         Next.js UI, ConnectKit, proof worker, client-side transaction controller.
 packages/client/             RPC verification, private-note format, Merkle trees, encrypted storage,
                              quotes, event reconstruction, and receipt/nonce reconciliation.
 packages/frame-codec/        Frame encoding, authorization hashes, and rollback-aware outcomes.
@@ -295,7 +295,7 @@ fixtures and must not target real funds. Existing notes remain tied to their ori
 bun run build:protocol
 # Bootstrap the V1 manifest required by the current V2 publisher on a fresh workspace.
 RPC_URL=http://127.0.0.1:8567 bun run deploy:app
-# Publish the V2 pools, Uniswap liquidity, automatic sponsor, and browser proving files.
+# Publish the V2 pools, Uniswap liquidity, automatic sponsor, and client-side proving files.
 RPC_URL=http://127.0.0.1:8567 bun run deploy:app:v2
 bun run doctor --app
 ```
@@ -307,7 +307,7 @@ verifier. Deployment supplies test liquidity and funds sponsorship; keep the nod
 
 ### Wallet configuration
 
-Injected browser wallets work without an API key. To enable WalletConnect, create `app/.env.local`
+Injected wallets work without an API key. To enable WalletConnect, create `app/.env.local`
 from [`app/.env.example`](app/.env.example) and supply your public project ID:
 
 ```dotenv
@@ -320,7 +320,7 @@ wallet needs a reachable RPC; the laptop's `127.0.0.1` endpoint is not reachable
 
 The integration pins ConnectKit 1.9.1, Wagmi 2.15.6, and TanStack Query 5.103.2. ConnectKit declares
 React 17/18 peers while the app uses React 19.3.0: builds pass, but wallet-modal runtime compatibility
-still needs local browser verification. See [Family's setup guide](https://family.co/docs/connectkit/getting-started).
+still needs local client verification. See [Family's setup guide](https://family.co/docs/connectkit/getting-started).
 
 ### Hosting the demo
 
@@ -368,8 +368,8 @@ production build passed. Public native-flow evidence is in
 [`app.v2-market-evidence.json`](deployments/app.v2-market-evidence.json), and
 [`app.v2-deposit-evidence.json`](deployments/app.v2-deposit-evidence.json).
 
-The current private-note UI and ConnectKit flow have **not** been exercised end to end in a browser.
-Earlier browser evidence covers the previous UI. See [`app-validation.md`](docs/app-validation.md)
+The current private-note UI and ConnectKit flow have **not** been exercised end to end in a client.
+Earlier client evidence covers the previous UI. See [`app-validation.md`](docs/app-validation.md)
 for the distinction. `test:client` retains historical phrase-recovery and nonce-contention regression
 coverage; phrase recovery is no longer an app workflow. Tests are evidence of the checked behavior,
 not an audit or a proof of production safety.
