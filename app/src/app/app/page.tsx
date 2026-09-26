@@ -44,12 +44,22 @@ export default function Page() {
   const { address: account, chainId: walletChainId, isConnected } = useAccount();
   const { switchChainAsync } = useSwitchChain();
   const walletReady = isConnected && walletChainId === Number(config?.chainId);
-  const [catalog, setCatalog] = useState<{ name: string; url: string }[]>([]);
   const [tab, setTab] = useState<'deposit' | 'swap' | 'withdraw'>('deposit');
   const [health, setHealth] = useState<Readiness | null>(null);
   const [controller, setController] = useState<Controller | null>(null);
   const [noteId, setNoteId] = useState('');
   const [input, setInput] = useState('');
+  const [noteError, setNoteError] = useState('');
+  const checkedInput = useRef('');
+  function updateNoteInput(value: string) {
+    setInput(value);
+    checkedInput.current = '';
+    setNoteError('');
+    setNoteId('');
+    setController(null);
+    setHealth(null);
+    setStatus('');
+  }
   const [recipient, setRecipient] = useState('');
   const [reverse, setReverse] = useState(false);
   const [slippage, setSlippage] = useState('50');
@@ -95,12 +105,6 @@ export default function Page() {
       rerender((v) => v + 1);
     }
   }
-  useEffect(() => {
-    fetch('/deployments.json', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setCatalog)
-      .catch(() => {});
-  }, []);
   useEffect(() => {
     if (!config) return;
     let stopped = false;
@@ -195,6 +199,24 @@ export default function Page() {
     setInput('');
     setStatus('Note checked against the chain.');
   }
+  useEffect(() => {
+    const text = input.trim();
+    if (!text || !config || disabled || checkedInput.current === text) return;
+    const timer = setTimeout(() => {
+      if (working.current) return;
+      checkedInput.current = text;
+      void run('Checking private note…', async () => {
+        setNoteError('');
+        try {
+          await loadNote(text);
+        } catch (e) {
+          setNoteError(e instanceof Error ? e.message : 'Could not check this note');
+        }
+      });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [input, config, disabled]);
+
   async function prepare(kind: 'deposit' | 'swap') {
     if (!config) throw new Error('Wait for the deployment to load');
     const n = createPrivateNote(
@@ -313,30 +335,28 @@ export default function Page() {
       <p className="eyebrow">01 / YOUR PRIVATE BALANCE</p>
       <h2>{tab === 'withdraw' ? 'Withdraw your balance.' : 'Bring your note.'}</h2>
       <p className="muted">Import the note you saved to find your available funds.</p>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void run('Checking private note…', () => loadNote(input));
-        }}
-      >
+      <div>
         <label htmlFor="private-note">Paste your Himitsu note</label>
         <textarea
           id="private-note"
           rows={3}
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => updateNoteInput(e.target.value)}
+          aria-describedby="note-check-status"
+          aria-invalid={!!noteError}
           disabled={disabled}
           spellCheck={false}
           autoComplete="off"
           autoCapitalize="none"
           placeholder="himitsu-note-v1:…"
         />
-        <div className="row">
-          <button disabled={!input.trim() || !config || disabled}>Check note</button>
+        <p id="note-check-status" className={noteError ? 'error' : 'hint'} role="status" aria-live="polite">
+          {busy === 'Checking private note…'
+            ? 'Checking your note against the chain…'
+            : noteError || (note ? 'Note checked against the chain.' : input.trim() ? 'Your note will be checked automatically.' : 'Paste or upload a note to check your balance automatically.')}
+        </p>
+        <div className="note-upload-row">
           <label className="note-upload" data-disabled={!config || disabled}>
-            <span className="note-upload-icon" aria-hidden="true">
-              ↑
-            </span>
             <span className="note-upload-copy">
               <strong>Upload private note</strong>
               <span>Choose your saved .txt file · up to 4 KB</span>
@@ -355,13 +375,13 @@ export default function Page() {
                 if (file)
                   void run('Reading private note…', async () => {
                     if (file.size > 4096) throw new Error('Private note file is too large');
-                    await loadNote(await file.text());
+                    updateNoteInput(await file.text());
                   });
               }}
             />
           </label>
         </div>
-      </form>
+      </div>
       {note && (
         <div className="note-summary">
           <strong>
@@ -391,11 +411,6 @@ export default function Page() {
           </button>
         </div>
       )}
-      <p className="hint">
-        Notes stay secret in this client. Imported notes unlock encrypted local transaction
-        records. Use one active client per note; do not retry an uncertain transaction from another
-        device.
-      </p>
     </>
   );
   const withdrawalFields = (
@@ -445,10 +460,6 @@ export default function Page() {
           <strong>Privacy warning:</strong> Withdrawing to the same address you used to deposit can
           link your deposit and withdrawal. Use a fresh address you control to reduce address-based
           linkage.
-        </p>
-        <p className="hint">
-          The full note amount goes to this public address. WETH notes withdraw as WETH. The
-          paymaster pays gas.
         </p>
         <button
           disabled={
@@ -957,66 +968,6 @@ export default function Page() {
             </ul>
           </section>
         )}
-        <details className="trade-network">
-          <summary>Pool details & network status</summary>
-          <section>
-            <label htmlFor="deployment">Pool deployment</label>
-            <select
-              id="deployment"
-              value={config ? '/deployments/' + config.pool.toLowerCase() + '.json' : ''}
-              disabled={disabled}
-              onChange={(e) =>
-                void run('Loading deployment…', async () => {
-                  const r = await fetch(e.target.value, { cache: 'no-store' });
-                  if (!r.ok) throw new Error('Deployment unavailable');
-                  const d = await r.json();
-                  setConfig(d);
-                  setTab('deposit');
-                  setController(null);
-                  setNoteId('');
-                  setReverse(false);
-                  setHealth(null);
-                  setInput('');
-                  setHealth(null);
-                  setStatus('Deployment changed. Import a note for this pool.');
-                })
-              }
-            >
-              {catalog.map((d) => (
-                <option key={d.url} value={d.url}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-            {config && (
-              <>
-                <p>
-                  Chain {config.chainId} · <code>{config.rpcUrl}</code>
-                </p>
-                <p>
-                  Input pool <code>{config.pool}</code>
-                </p>
-              </>
-            )}
-            {health ? (
-              <>
-                <p>
-                  Verified block {health.block} · paymaster {money(health.sponsorBalance)} ETH
-                </p>
-                <p>
-                  Swap quote: {money(health.quote)} {outputAsset} per{' '}
-                  {money(health.inputAmount ?? config!.denomination)} {inputAsset}
-                </p>
-              </>
-            ) : (
-              <p>Checking network and pool liquidity…</p>
-            )}
-          </section>
-        </details>
-        <footer className="hint">
-          Test assets only. Swap amounts are public. Keep private notes offline; sharing a note
-          gives access to its funds.
-        </footer>
       </main>
     </>
   );

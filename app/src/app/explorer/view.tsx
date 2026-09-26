@@ -441,9 +441,6 @@ export default function Explorer() {
             )}
           </>
         )}
-        <footer>
-          Read-only RPC explorer · No indexer · No access to private notes or client vaults
-        </footer>
       </main>
     </div>
   );

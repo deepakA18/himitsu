@@ -267,12 +267,6 @@ export function SwapPanel(p: Props) {
           <span>No exchange allowance</span>
           <span>Gas paid by paymaster</span>
         </div>
-        <p className="hint swap-disclosure">
-          {p.market
-            ? 'Full output returns as a private note. Swap amounts are public.'
-            : 'Legacy fixed-output pool. Select Market swaps v2 for full output.'}{' '}
-          ETH deposits are wrapped into WETH.
-        </p>
       </form>
     </section>
   );

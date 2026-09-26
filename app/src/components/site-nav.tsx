@@ -25,14 +25,11 @@ export function SiteNav({ page }: { page: 'home' | 'app' | 'explorer' }) {
         </Link>
         <Link href={`${home}#faq`}>FAQ</Link>
       </nav>
-      <Link
-        className={styles.action}
-        href="/app"
-        prefetch={false}
-        aria-current={page === 'app' ? 'page' : undefined}
-      >
-        {page === 'app' ? 'App' : 'Launch app'}
-      </Link>
+      {page === 'home' && (
+        <Link className={styles.action} href="/app" prefetch={false}>
+          Launch app
+        </Link>
+      )}
     </header>
   );
 }

@@ -654,6 +654,11 @@
 .trade :global(.withdrawal-destination) form > button {
   width: 100%;
 }
+.trade :global(.note-upload-row) {
+  width: 100%;
+  min-width: 0;
+  margin: 12px 0;
+}
 .trade :global(.note-upload) {
   position: relative;
   display: flex;
@@ -695,6 +700,7 @@
   flex-shrink: 0;
 }
 .trade :global(.note-upload-copy) {
+  flex: 1;
   display: grid;
   gap: 5px;
   min-width: 0;
@@ -709,6 +715,8 @@
   line-height: 1.5;
 }
 .trade :global(.note-upload-browse) {
+  flex-shrink: 0;
+  white-space: nowrap;
   margin-left: auto;
   border: 1px solid #555;
   border-radius: 99px;

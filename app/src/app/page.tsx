@@ -72,9 +72,6 @@ export default function Home() {
                 See how it works
               </a>
             </div>
-            <p className={styles.demoNote}>
-              EIP-8141 frame transactions · Groth16 proofs · prefunded onchain paymaster
-            </p>
           </div>
           <div
             className={styles.stage}
@@ -135,7 +132,7 @@ export default function Home() {
         <div className={styles.stack}>
           <span>BUILT ON OPEN PROTOCOLS</span>
           <span>
-            Ethereum <small>Frame transactions</small>
+            Ethereum <small>Frame transactions EIP-8141</small>
           </span>
           <span>
             Uniswap <small>Shared liquidity</small>
@@ -274,20 +271,6 @@ export default function Home() {
           </span>
         </section>
       </main>
-      <footer className={styles.footer}>
-        <Link className={styles.brand} href="/" aria-label="Himitsu home">
-          <Mark />
-          himitsu
-        </Link>
-        <span>Your trade. Your secret.</span>
-        <div>
-          <a href="#how-it-works">How it works</a>
-          <a href="#faq">FAQ</a>
-          <Link href="/app" prefetch={false}>
-            Open app
-          </Link>
-        </div>
-      </footer>
     </div>
   );
 }
